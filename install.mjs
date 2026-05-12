@@ -39,6 +39,11 @@ const SKILLS = [
     description: 'Generate invoice subjects and newsletter blurb from git history',
     hasSetup: true,
   },
+  {
+    name: 'ai-cv-scanner',
+    description: 'Mine conversation history to answer questions about your AI experience',
+    hasSetup: false,
+  },
 ];
 
 function createPrompt() {

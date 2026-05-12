@@ -33,7 +33,15 @@ Generate monthly invoice subjects and newsletter blurb from git commit history a
 
 ## Install
 
-Requires Node.js 18+.
+### ai-cv-scanner
+
+Mine your full Claude Code conversation history to answer questions about your AI experience. Bring your own questionnaire or get a general AI experience summary. Spawns parallel subagents to deep-dive into relevant sessions and extract concrete evidence (projects, tools, impact).
+
+Requires Python 3 for the indexing scripts. Future versions will share parsers with the morning skill.
+
+## Install
+
+Requires Node.js 18+ (Python 3 also needed for ai-cv-scanner).
 
 ```bash
 git clone https://github.com/thatmike1/claude-skills.git
@@ -82,6 +90,8 @@ After installing, restart Claude Code. Skills are available as slash commands:
 /capacities           # triggered by mentioning daily note, PKM, etc.
 
 /invoice-subjects     # generate invoice subjects for a given month
+
+/ai-cv-scanner        # mine history to answer AI experience questions
 ```
 
 ## Structure
@@ -106,5 +116,9 @@ claude-skills/
   invoice-subjects/
     SKILL.md
     EXAMPLES.md            # past output for style reference
-    TODO.md                # generalization plans
+    config.json.example
+  ai-cv-scanner/
+    SKILL.md
+    QUESTIONNAIRE.md       # example questionnaire template
+    scripts/               # python indexing scripts
 ```
