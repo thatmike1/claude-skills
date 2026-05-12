@@ -1,0 +1,6 @@
+{
+    "name": "morning",
+    "version": "1.0.0",
+    "description": "Daily briefing skill that aggregates yesterday's work context from Claude Code conversations, Codex sessions, git history, and memory files into an actionable morning plan with checkboxes, time estimates, and sequencing. Use when user says morning, catch up, recap, start of day, what was I doing, yesterday's context, or wants to review previous day's work before starting.",
+    "skills": "."
+}

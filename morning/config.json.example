@@ -1,0 +1,6 @@
+{
+  "gitAuthor": "your.email@example.com",
+  "repoDir": "/home/youruser/git",
+  "workRemotePattern": "gitlab",
+  "personalRemotePattern": "github"
+}

@@ -1,0 +1,11 @@
+{
+  "gitAuthor": "your.email@example.com",
+  "repoDir": "/home/youruser/git",
+  "workRepos": ["repo-a", "repo-b", "repo-c"],
+  "language": "czech",
+  "projectNames": {
+    "repo-a": "Project A",
+    "repo-b": "Project B"
+  },
+  "forbiddenWords": ["opravy", "testování", "chyby", "bugy", "fixování"]
+}

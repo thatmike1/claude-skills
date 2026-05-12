@@ -1,0 +1,6 @@
+{
+  "name": "goblin",
+  "version": "1.0.0",
+  "description": "Neurodivergent thought structuring tool inspired by goblin.tools. Compiles braindumps into tasks, decomposes overwhelming tasks into steps, estimates realistic time with ADHD buffers, and breaks analysis paralysis with direct recommendations. Use when user says braindump, break down, how long, estimate, decide, overwhelmed, stuck, or dumps unstructured stream-of-consciousness text.",
+  "skills": "."
+}
