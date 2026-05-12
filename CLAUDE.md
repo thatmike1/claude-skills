@@ -25,7 +25,6 @@ Each skill follows the Claude Code skill convention:
 ## Code Conventions
 
 - Scripts are Node.js ESM (`.mjs`) with zero npm dependencies — only built-in modules
-- Exception: `ai-cv-scanner` uses Python 3 scripts (legacy, should be ported to Node)
 - Use kebab-case for all file and folder names
 - JSDoc comments for functions, lowercase first letter
 - No `any` types, no unnecessary abstractions
@@ -52,6 +51,9 @@ Scripts can be tested directly:
 node morning/scripts/parse-cc-sessions.mjs --from 2026-05-11 --to 2026-05-12
 node morning/scripts/parse-codex-sessions.mjs --from 2026-05-11 --to 2026-05-12
 node morning/scripts/gather-context.mjs --mode global --range 1day
-python3 ai-cv-scanner/scripts/build-index.py
-python3 ai-cv-scanner/scripts/scan-setup.py
+node shared/cc-parser.mjs --from 2026-05-11 --to 2026-05-12
+node shared/codex-parser.mjs --from 2026-05-11 --to 2026-05-12
+node ai-cv-scanner/scripts/build-index.mjs
+node ai-cv-scanner/scripts/scan-setup.mjs
+node ai-cv-scanner/scripts/build-index.mjs | node ai-cv-scanner/scripts/extract-evidence.mjs
 ```

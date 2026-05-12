@@ -1,21 +1,19 @@
 #!/usr/bin/env node
 
 /**
- * parses claude code conversation history for a given date range.
+ * parses Claude Code conversation history for a given date range.
  * extracts AI titles, user messages, and assistant text responses.
  *
  * usage: node parse-cc-sessions.mjs --from 2026-05-11 --to 2026-05-12 [--project /path/to/repo]
  * output: structured markdown to stdout
  */
 
-import { createReadStream, readFileSync, readdirSync, existsSync } from 'fs';
-import { createInterface } from 'readline';
+import { existsSync } from 'fs';
 import { join, resolve } from 'path';
 import { homedir } from 'os';
+import { discoverSessions, parseSessionFile, truncateText } from '../../shared/cc-parser.mjs';
 
-const CLAUDE_DIR = join(homedir(), '.claude');
-const HISTORY_FILE = join(CLAUDE_DIR, 'history.jsonl');
-const PROJECTS_DIR = join(CLAUDE_DIR, 'projects');
+const HISTORY_FILE = join(homedir(), '.claude', 'history.jsonl');
 const MAX_MSG_LENGTH = 500;
 const MAX_USER_MSGS = 15;
 const MAX_ASSISTANT_MSGS = 8;
@@ -35,97 +33,7 @@ function parseArgs() {
   return opts;
 }
 
-function truncate(text, max = MAX_MSG_LENGTH) {
-  if (!text || text.length <= max) return text;
-  return text.substring(0, max) + '...';
-}
-
-/** finds sessions in the date range from history.jsonl */
-async function discoverSessions(fromMs, toMs, projectFilter) {
-  const sessions = new Map();
-
-  const rl = createInterface({ input: createReadStream(HISTORY_FILE) });
-  for await (const line of rl) {
-    try {
-      const entry = JSON.parse(line);
-      if (!entry.sessionId || !entry.timestamp) continue;
-
-      const ts = typeof entry.timestamp === 'number' ? entry.timestamp : Date.parse(entry.timestamp);
-      if (ts < fromMs || ts >= toMs) continue;
-
-      if (projectFilter && entry.project && !entry.project.startsWith(projectFilter)) continue;
-
-      if (!sessions.has(entry.sessionId)) {
-        sessions.set(entry.sessionId, {
-          sessionId: entry.sessionId,
-          project: entry.project || '',
-          firstPrompt: entry.display || '',
-        });
-      }
-    } catch {}
-  }
-
-  return [...sessions.values()];
-}
-
-/** finds the JSONL file for a session ID across all project dirs */
-function findSessionFile(sessionId) {
-  try {
-    const dirs = readdirSync(PROJECTS_DIR);
-    for (const dir of dirs) {
-      const filePath = join(PROJECTS_DIR, dir, `${sessionId}.jsonl`);
-      if (existsSync(filePath)) return filePath;
-    }
-  } catch {}
-  return null;
-}
-
-/** extracts signal from a session JSONL file */
-async function parseSessionFile(filePath) {
-  const result = {
-    aiTitle: null,
-    branch: null,
-    userMessages: [],
-    assistantTexts: [],
-  };
-
-  const rl = createInterface({ input: createReadStream(filePath) });
-  for await (const line of rl) {
-    try {
-      const record = JSON.parse(line);
-
-      if (record.type === 'ai-title' && record.aiTitle) {
-        result.aiTitle = record.aiTitle;
-      }
-
-      if (!result.branch && record.gitBranch) {
-        result.branch = record.gitBranch;
-      }
-
-      if (record.type === 'user' && typeof record.message?.content === 'string') {
-        const text = record.message.content.trim();
-        if (!text) continue;
-        if (text.startsWith('<local-command-caveat>')) continue;
-        if (text.startsWith('<command-name>')) continue;
-        if (text.startsWith('<command-message>')) continue;
-        if (text.startsWith('<local-command-stdout>')) continue;
-        result.userMessages.push(text);
-      }
-
-      if (record.type === 'assistant' && Array.isArray(record.message?.content)) {
-        for (const block of record.message.content) {
-          if (block.type === 'text' && block.text?.trim()) {
-            result.assistantTexts.push(block.text.trim());
-          }
-        }
-      }
-    } catch {}
-  }
-
-  return result;
-}
-
-/** formats a parsed session as markdown */
+/** formats a parsed session as markdown. */
 function formatSession(session, parsed) {
   const lines = [];
   const title = parsed.aiTitle || session.firstPrompt || session.sessionId;
@@ -145,7 +53,7 @@ function formatSession(session, parsed) {
     const shown = msgs.length <= MAX_USER_MSGS ? msgs : msgs.slice(0, MAX_USER_MSGS);
     lines.push('**User said:**');
     for (const msg of shown) {
-      lines.push(`- ${truncate(msg)}`);
+      lines.push(`- ${truncateText(msg, MAX_MSG_LENGTH)}`);
     }
     if (msgs.length > MAX_USER_MSGS) {
       lines.push(`- *...and ${msgs.length - MAX_USER_MSGS} more messages*`);
@@ -158,7 +66,7 @@ function formatSession(session, parsed) {
     const shown = msgs.length <= MAX_ASSISTANT_MSGS ? msgs : msgs.slice(0, MAX_ASSISTANT_MSGS);
     lines.push('**Assistant did:**');
     for (const msg of shown) {
-      lines.push(`- ${truncate(msg)}`);
+      lines.push(`- ${truncateText(msg, MAX_MSG_LENGTH)}`);
     }
     if (msgs.length > MAX_ASSISTANT_MSGS) {
       lines.push(`- *...and ${msgs.length - MAX_ASSISTANT_MSGS} more responses*`);
@@ -171,15 +79,13 @@ function formatSession(session, parsed) {
 
 async function main() {
   const opts = parseArgs();
-  const fromMs = new Date(opts.from + 'T00:00:00').getTime();
-  const toMs = new Date(opts.to + 'T23:59:59.999').getTime();
 
   if (!existsSync(HISTORY_FILE)) {
     console.error('claude code history not found at', HISTORY_FILE);
     process.exit(1);
   }
 
-  const sessions = await discoverSessions(fromMs, toMs, opts.project);
+  const sessions = await discoverSessions(opts);
 
   if (sessions.length === 0) {
     console.log('*No Claude Code sessions found for this date range.*');
@@ -189,10 +95,9 @@ async function main() {
   console.log(`## Claude Code Sessions (${sessions.length})\n`);
 
   for (const session of sessions) {
-    const filePath = findSessionFile(session.sessionId);
-    if (!filePath) continue;
+    if (!session.filePath) continue;
 
-    const parsed = await parseSessionFile(filePath);
+    const parsed = await parseSessionFile(session.filePath);
     console.log(formatSession(session, parsed));
     console.log('---\n');
   }

@@ -35,13 +35,11 @@ Generate monthly invoice subjects and newsletter blurb from git commit history a
 
 ### ai-cv-scanner
 
-Mine your full Claude Code conversation history to answer questions about your AI experience. Bring your own questionnaire or get a general AI experience summary. Spawns parallel subagents to deep-dive into relevant sessions and extract concrete evidence (projects, tools, impact).
-
-Requires Python 3 for the indexing scripts. Future versions will share parsers with the morning skill.
+Mine your full Claude Code and Codex conversation history to answer questions about your AI experience. Bring your own questionnaire or get a general AI experience summary. Pre-parses clean evidence before spawning parallel subagents to extract concrete examples (projects, tools, impact).
 
 ## Install
 
-Requires Node.js 18+ (Python 3 also needed for ai-cv-scanner).
+Requires Node.js 18+.
 
 ```bash
 git clone https://github.com/thatmike1/claude-skills.git
@@ -105,6 +103,9 @@ claude-skills/
     config.json.example    # template for user config
     references/            # detailed mode docs + output format
     scripts/               # node.js parsers (zero npm deps)
+  shared/
+    cc-parser.mjs          # shared Claude Code discovery + parsing
+    codex-parser.mjs       # shared Codex discovery + parsing
   goblin/
     SKILL.md
     plugin.json
@@ -120,5 +121,5 @@ claude-skills/
   ai-cv-scanner/
     SKILL.md
     QUESTIONNAIRE.md       # example questionnaire template
-    scripts/               # python indexing scripts
+    scripts/               # node.js evidence indexing scripts
 ```

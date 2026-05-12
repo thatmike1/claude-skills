@@ -8,15 +8,22 @@
  * output: combined structured markdown to stdout
  */
 
-import { execSync, execFileSync } from 'child_process';
+import { execSync } from 'child_process';
 import { existsSync, readFileSync, readdirSync } from 'fs';
 import { join, dirname, resolve } from 'path';
 import { homedir } from 'os';
 import { fileURLToPath } from 'url';
+import { discoverSessions, parseSessionFile, truncateText as truncateClaudeText } from '../../shared/cc-parser.mjs';
+import { discoverCodexSessions, truncateText as truncateCodexText } from '../../shared/codex-parser.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const HOME = homedir();
 const CLAUDE_PROJECTS_DIR = join(HOME, '.claude', 'projects');
+const MAX_MSG_LENGTH = 500;
+const MAX_CC_USER_MSGS = 15;
+const MAX_CC_ASSISTANT_MSGS = 8;
+const MAX_CODEX_USER_MSGS = 10;
+const MAX_CODEX_AGENT_MSGS = 8;
 
 /** loads config from morning/config.json, falls back to defaults */
 function loadConfig() {
@@ -97,18 +104,117 @@ function formatDate(date) {
   return `${y}-${m}-${d}`;
 }
 
-/** runs a script and returns stdout */
-function runScript(scriptName, args) {
-  const scriptPath = join(__dirname, scriptName);
-  try {
-    return execFileSync('node', [scriptPath, ...args], {
-      encoding: 'utf-8',
-      timeout: 30000,
-      maxBuffer: 10 * 1024 * 1024,
-    });
-  } catch (err) {
-    return `*Error running ${scriptName}: ${err.message}*\n`;
+/** gathers Claude Code sessions using shared parser modules. */
+async function gatherClaudeCodeSessions(fromDate, toDate, projectPath) {
+  const sessions = await discoverSessions({
+    from: fromDate,
+    to: toDate,
+    ...(projectPath ? { project: projectPath } : {}),
+  });
+
+  if (sessions.length === 0) return '*No Claude Code sessions found for this date range.*\n';
+
+  const lines = [`## Claude Code Sessions (${sessions.length})`, ''];
+  for (const session of sessions) {
+    if (!session.filePath) continue;
+    const parsed = await parseSessionFile(session.filePath);
+    lines.push(formatClaudeSession(session, parsed), '---', '');
   }
+  return lines.join('\n');
+}
+
+/** gathers Codex sessions using shared parser modules. */
+async function gatherCodexSessions(fromDate, toDate, projectPath) {
+  const sessions = await discoverCodexSessions(fromDate, toDate, projectPath);
+  if (sessions.length === 0) return '*No Codex sessions found matching the filters.*\n';
+
+  const lines = [`## Codex Sessions (${sessions.length})`, ''];
+  for (const session of sessions) {
+    lines.push(formatCodexSession(session), '---', '');
+  }
+  return lines.join('\n');
+}
+
+/** formats a Claude Code session as markdown. */
+function formatClaudeSession(session, parsed) {
+  const lines = [];
+  const title = parsed.aiTitle || session.firstPrompt || session.sessionId;
+  lines.push(`### ${title}`, '');
+
+  const meta = [];
+  if (session.project) meta.push(`**Project:** ${session.project}`);
+  if (parsed.branch) meta.push(`**Branch:** ${parsed.branch}`);
+  if (meta.length) lines.push(meta.join(' | '), '');
+
+  if (parsed.userMessages.length > 0) {
+    const shown = parsed.userMessages.slice(0, MAX_CC_USER_MSGS);
+    lines.push('**User said:**');
+    for (const msg of shown) lines.push(`- ${truncateClaudeText(msg, MAX_MSG_LENGTH)}`);
+    if (parsed.userMessages.length > MAX_CC_USER_MSGS) {
+      lines.push(`- *...and ${parsed.userMessages.length - MAX_CC_USER_MSGS} more messages*`);
+    }
+    lines.push('');
+  }
+
+  if (parsed.assistantTexts.length > 0) {
+    const shown = parsed.assistantTexts.slice(0, MAX_CC_ASSISTANT_MSGS);
+    lines.push('**Assistant did:**');
+    for (const msg of shown) lines.push(`- ${truncateClaudeText(msg, MAX_MSG_LENGTH)}`);
+    if (parsed.assistantTexts.length > MAX_CC_ASSISTANT_MSGS) {
+      lines.push(`- *...and ${parsed.assistantTexts.length - MAX_CC_ASSISTANT_MSGS} more responses*`);
+    }
+    lines.push('');
+  }
+
+  return lines.join('\n');
+}
+
+/** formats a Codex session as markdown. */
+function formatCodexSession(parsed) {
+  const lines = [];
+  const firstAgent = parsed.agentMessages[0]?.text?.slice(0, 80);
+  const title = parsed.threadName || parsed.userMessages[0]?.slice(0, 80) || firstAgent || parsed.sessionId;
+  lines.push(`### ${title}`, '');
+
+  const meta = [];
+  if (parsed.cwd) meta.push(`**Project:** ${parsed.cwd}`);
+  if (parsed.branch) meta.push(`**Branch:** ${parsed.branch}`);
+  if (meta.length) lines.push(meta.join(' | '), '');
+
+  if (parsed.rolloutSummary) {
+    const summaryLines = parsed.rolloutSummary.split('\n')
+      .filter(line => !line.startsWith('thread_id:') && !line.startsWith('updated_at:') &&
+        !line.startsWith('rollout_path:') && !line.startsWith('cwd:') &&
+        !line.startsWith('git_branch:'))
+      .join('\n').trim();
+
+    if (summaryLines) lines.push('**Rollout summary:**', truncateCodexText(summaryLines, 800), '');
+  }
+
+  if (parsed.userMessages.length > 0) {
+    const shown = parsed.userMessages.slice(0, MAX_CODEX_USER_MSGS);
+    lines.push('**User said:**');
+    for (const msg of shown) lines.push(`- ${truncateCodexText(msg, MAX_MSG_LENGTH)}`);
+    if (parsed.userMessages.length > MAX_CODEX_USER_MSGS) {
+      lines.push(`- *...and ${parsed.userMessages.length - MAX_CODEX_USER_MSGS} more messages*`);
+    }
+    lines.push('');
+  }
+
+  if (parsed.agentMessages.length > 0) {
+    const shown = parsed.agentMessages.slice(0, MAX_CODEX_AGENT_MSGS);
+    lines.push('**Agent did:**');
+    for (const msg of shown) {
+      const tag = msg.phase === 'final_answer' ? '[final] ' : '';
+      lines.push(`- ${tag}${truncateCodexText(msg.text, MAX_MSG_LENGTH)}`);
+    }
+    if (parsed.agentMessages.length > MAX_CODEX_AGENT_MSGS) {
+      lines.push(`- *...and ${parsed.agentMessages.length - MAX_CODEX_AGENT_MSGS} more responses*`);
+    }
+    lines.push('');
+  }
+
+  return lines.join('\n');
 }
 
 /** detects remote type (work/personal) from git remote URL */
@@ -255,16 +361,14 @@ async function main() {
   const opts = parseArgs();
   const { fromDate, toDate, label } = calculateDateRange(opts.range);
 
-  const projectArgs = opts.project ? ['--project', opts.project] : [];
-
   console.log(`# Context Gathered: ${label} (${fromDate} to ${toDate})`);
   console.log(`**Mode:** ${opts.mode}${opts.project ? ` | **Project:** ${opts.project}` : ''}`);
   console.log('');
 
-  const ccOutput = runScript('parse-cc-sessions.mjs', ['--from', fromDate, '--to', toDate, ...projectArgs]);
+  const ccOutput = await gatherClaudeCodeSessions(fromDate, toDate, opts.project);
   console.log(ccOutput);
 
-  const codexOutput = runScript('parse-codex-sessions.mjs', ['--from', fromDate, '--to', toDate, ...projectArgs]);
+  const codexOutput = await gatherCodexSessions(fromDate, toDate, opts.project);
   console.log(codexOutput);
 
   console.log('## Git Activity\n');

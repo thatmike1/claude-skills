@@ -16,36 +16,35 @@ The user provides questions to answer — either:
 
 If no specific questions are given, produce a general AI experience summary covering: tools used, proficiency level, concrete project examples, API/integration experience, and biggest wins.
 
-## Phase 1: Gather data (scripts — run in parallel)
+## Phase 1: Gather data
 
-Run both scripts from this skill's `scripts/` directory:
+Run these scripts from this skill's `scripts/` directory:
 
 ```bash
-python3 <skill-dir>/scripts/build-index.py > /tmp/cc-session-index.json
-python3 <skill-dir>/scripts/scan-setup.py > /tmp/cc-setup-scan.json
+node <skill-dir>/scripts/build-index.mjs > /tmp/cc-session-index.json
+node <skill-dir>/scripts/scan-setup.mjs > /tmp/cc-setup-scan.json
+node <skill-dir>/scripts/extract-evidence.mjs < /tmp/cc-session-index.json > /tmp/cc-evidence.json
 ```
 
-- `build-index.py` — extracts summaries + first prompts from all session indexes (lightweight, no JSONL reading)
-- `scan-setup.py` — scans `~/.claude/` for skills, commands, MCP servers, hooks, CLAUDE.md files
+- `build-index.mjs` — extracts summaries + first prompts from all session indexes
+- `scan-setup.mjs` — scans `~/.claude/` for skills, commands, MCP servers, hooks, CLAUDE.md files
+- `extract-evidence.mjs` — pre-parses Claude Code and Codex sessions into clean user/assistant text
 
-Read both output files. This is your map of the user's entire AI history.
-
-> **Note:** Future versions should use the shared CC session parsers from the `morning` skill instead of having subagents read raw JSONL. For now, the subagent approach works but burns more context tokens.
+Read all three output files. This is your map of the user's AI history and extracted evidence.
 
 ## Phase 2: Spawn subagents (parallel, use model: sonnet)
 
 Launch **3 sonnet subagents in parallel**. Each gets:
 1. The full session index from `/tmp/cc-session-index.json`
 2. The setup scan from `/tmp/cc-setup-scan.json`
-3. Their specific mission below
+3. The parsed evidence from `/tmp/cc-evidence.json`
+4. Their specific mission below
 
 **IMPORTANT**: Tell each subagent to:
-- First scan the index for relevant sessions using keyword matching
-- Then open only the most promising JSONL files (max 10-15 per agent) to extract specific evidence
-- JSONL files are at `~/.claude/projects/{project-dir}/{sessionId}.jsonl`
-- In JSONL files, look for `type: "user"` and `type: "assistant"` messages
-- User message text is in `message.content` (string or list of `{type: "text", text: "..."}`)
-- Skip `agent-*.jsonl` files (those are subagent transcripts, less useful)
+- Search the evidence JSON for relevant sessions by keyword matching on user and assistant text fields
+- Use the session index for summary, first prompt, project, and date context
+- Cross-reference setup scan findings when the mission involves tools or configuration
+- Do NOT open raw JSONL files; the evidence file already contains the extracted signal
 - Return structured findings, not raw dumps
 
 ### Agent 1: "Project Impact Scanner"
