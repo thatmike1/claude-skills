@@ -44,6 +44,11 @@ const SKILLS = [
     description: 'Mine conversation history to answer questions about your AI experience',
     hasSetup: false,
   },
+  {
+    name: 'cc-audit',
+    description: 'Audit Claude Code setup and usage patterns — flags anti-patterns with actionable fixes',
+    hasSetup: false,
+  },
 ];
 
 function createPrompt() {

@@ -11,6 +11,7 @@ goblin/                   — neurodivergent thought structuring (compile/decomp
 capacities/               — Capacities.io PKM integration
 invoice-subjects/         — invoice subject + newsletter generator from git history
 ai-cv-scanner/            — mine conversation history for AI experience evidence
+cc-audit/                 — audit CC setup and usage patterns, flag anti-patterns
 ```
 
 ## Skill Format
