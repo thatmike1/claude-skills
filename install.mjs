@@ -49,6 +49,11 @@ const SKILLS = [
     description: 'Audit Claude Code setup and usage patterns — flags anti-patterns with actionable fixes',
     hasSetup: false,
   },
+  {
+    name: 'scan',
+    description: 'Scan Claude Code conversations for a date range / project and answer a specific question about them',
+    hasSetup: false,
+  },
 ];
 
 function createPrompt() {

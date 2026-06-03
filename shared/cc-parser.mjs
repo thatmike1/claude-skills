@@ -267,6 +267,7 @@ function isClaudeUserNoise(text) {
     '<command-name>',
     '<command-message>',
     '<local-command-stdout>',
+    '<task-notification>',
   ].some(prefix => text.startsWith(prefix));
 }
 
