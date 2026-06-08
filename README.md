@@ -50,6 +50,16 @@ Generate monthly invoice subjects and newsletter blurb from git commit history a
 
 Mine your full Claude Code and Codex conversation history to answer questions about your AI experience. Bring your own questionnaire or get a general AI experience summary. Pre-parses clean evidence before spawning parallel subagents to extract concrete examples (projects, tools, impact).
 
+### engagement styles (panels / detective / punchy)
+
+A small wardrobe of response-formatting styles that keep work output engaging to read — built for ADHD attention, where any single fixed style goes stale. Rotate between them when one stops registering; the switch itself restores the novelty. Each preserves full technical accuracy and keeps code/commits clean — the style governs prose only. Stays active every response until you say "normal mode" or switch styles (same mechanism as caveman).
+
+- **panels** — comic-book layout: bold mini-headers, short chunks, `[BLOCKER]/[RISK]/[FYI]` severity tags, Spine outline for long pieces. Best for code reviews, implementation plans, long output.
+- **detective** — debugging as a case log: titled episodes moving clue → hypothesis → ruled-out → culprit → fix, over real diagnosis discipline. Best for bugs and investigations.
+- **punchy** — hot-take-first, rhythm-switching, filler cut, minimal. Best for everyday quick work.
+
+These are skills rather than [output styles](https://code.claude.com/docs/en/output-styles) on purpose: skills hot-swap instantly mid-session (output styles only load at session start), and they're purely additive so they never strip Claude Code's built-in coding behavior.
+
 ## Install
 
 Requires Node.js 18+.
@@ -103,6 +113,10 @@ After installing, restart Claude Code. Skills are available as slash commands:
 /invoice-subjects     # generate invoice subjects for a given month
 
 /ai-cv-scanner        # mine history to answer AI experience questions
+
+/panels               # comic-book layout for reviews/plans/long output
+/detective            # debugging as a case log
+/punchy               # hot-take-first, minimal — everyday work
 ```
 
 ## Structure

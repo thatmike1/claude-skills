@@ -54,6 +54,21 @@ const SKILLS = [
     description: 'Scan Claude Code conversations for a date range / project and answer a specific question about them',
     hasSetup: false,
   },
+  {
+    name: 'panels',
+    description: 'Engagement style — comic-book layout with severity tags for reviews, plans, long output',
+    hasSetup: false,
+  },
+  {
+    name: 'detective',
+    description: 'Engagement style — debugging as a case log (clue -> hypothesis -> culprit -> fix)',
+    hasSetup: false,
+  },
+  {
+    name: 'punchy',
+    description: 'Engagement style — hot-take-first, rhythm-switching, minimal prose for everyday work',
+    hasSetup: false,
+  },
 ];
 
 function createPrompt() {
