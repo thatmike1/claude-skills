@@ -5,7 +5,8 @@ A collection of custom skills for Claude Code and compatible agent harnesses.
 ## Repo Structure
 
 ```
-install.mjs              — interactive CLI installer (Node.js, zero deps)
+install.mjs              — installer entry: env guards, npm self-bootstrap, loads src/app.jsx via tsx
+src/                      — installer ink (React terminal) app: components/ (UI screens), lib/ (discovery, install, setup writers)
 morning/                  — daily briefing skill (CC + Codex session parsing)
 evening/                  — end-of-day receipts: what actually got done today (reuses morning's gather script)
 goblin/                   — neurodivergent thought structuring (compile/decompose/estimate/decide)
@@ -28,7 +29,8 @@ Each skill follows the Claude Code skill convention:
 
 ## Code Conventions
 
-- Scripts are Node.js ESM (`.mjs`) with zero npm dependencies — only built-in modules
+- Skill scripts are Node.js ESM (`.mjs`) with zero npm dependencies — only built-in modules (they get symlinked/copied to `~/.claude/skills/` without node_modules)
+- The installer is the one exception: an ink (React terminal) app with npm deps, Node 22+
 - Use kebab-case for all file and folder names
 - JSDoc comments for functions, lowercase first letter
 - No `any` types, no unnecessary abstractions
@@ -42,10 +44,11 @@ Skills that need user-specific values (API keys, git author, repo paths) use a `
 
 ## Installer
 
-`install.mjs` handles:
-- Interactive skill selection
-- Symlink vs copy install to `~/.claude/skills/`
-- Per-skill setup prompts (morning: git author/repos, capacities: API token, invoice-subjects: repo list)
+An ink (React terminal) app. `install.mjs` is a thin entry (Node 22+ guard, TTY guard, npm self-bootstrap, tsx JSX loading); the app lives in `src/`. It handles:
+- Skill auto-discovery — scans repo dirs for `SKILL.md`, no hardcoded list (new skills appear automatically)
+- Checkbox multi-select with installed markers, symlink vs copy install to `~/.claude/skills/`
+- Per-skill setup forms driven by field definitions in `src/lib/setup-fields.js` (morning: git author/repos, capacities: API token, invoice-subjects: repo list)
+- Installing `shared/` alongside when a selected skill imports from it (copy mode would otherwise break `../../shared/*.mjs` imports)
 - Removing existing installs before re-installing
 
 ## Testing

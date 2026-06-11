@@ -9,9 +9,9 @@
  ╚═════╝╚══════╝╚═╝  ╚═╝ ╚═════╝ ╚═════╝ ╚══════╝      ╚══════╝╚═╝  ╚═╝╚═╝╚══════╝╚══════╝╚══════╝
 ```
 
-> **The installer is being rewritten as a React app. In the terminal. Using [ink](https://github.com/vadimdemedes/ink). Because we can.**
+> **The installer is a React app. In the terminal. Using [ink](https://github.com/vadimdemedes/ink). Because we can.**
 >
-> Web. Mobile. Desktop. **Terminal.** The React world domination arc is nearly complete.
+> Web. Mobile. Desktop. **Terminal.** The React world domination arc is complete.
 
 A collection of custom skills for [Claude Code](https://docs.anthropic.com/en/docs/claude-code). Each skill is a self-contained directory that can be installed independently.
 
@@ -44,8 +44,6 @@ Integration with [Capacities.io](https://capacities.io) PKM system. Save to dail
 
 Generate monthly invoice subjects and newsletter blurb from git commit history across repos. Currently Czech-language specific — see `invoice-subjects/TODO.md` for generalization plans.
 
-## Install
-
 ### ai-cv-scanner
 
 Mine your full Claude Code and Codex conversation history to answer questions about your AI experience. Bring your own questionnaire or get a general AI experience summary. Pre-parses clean evidence before spawning parallel subagents to extract concrete examples (projects, tools, impact).
@@ -62,7 +60,7 @@ These are skills rather than [output styles](https://code.claude.com/docs/en/out
 
 ## Install
 
-Requires Node.js 18+.
+Requires Node.js 22+ (the installer is an [ink](https://github.com/vadimdemedes/ink) app; skill scripts themselves stay zero-dep).
 
 ```bash
 git clone https://github.com/thatmike1/claude-skills.git
@@ -70,9 +68,9 @@ cd claude-skills
 node install.mjs
 ```
 
-The installer will:
-1. Show available skills and let you pick which to install
-2. Ask whether to **symlink** (edits here update the skill) or **copy** (standalone)
+First run installs the installer's npm dependencies automatically. The installer will:
+1. Auto-discover available skills (anything with a `SKILL.md`) and let you pick with checkboxes
+2. Ask whether to **symlink** (edits here update the skill) or **copy** (standalone — also copies the `shared/` parser helpers)
 3. Run setup for skills that need configuration (morning asks for git author, repo directory; capacities asks for API token)
 4. Install to `~/.claude/skills/`
 
