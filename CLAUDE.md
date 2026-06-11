@@ -12,6 +12,8 @@ capacities/               — Capacities.io PKM integration
 invoice-subjects/         — invoice subject + newsletter generator from git history
 ai-cv-scanner/            — mine conversation history for AI experience evidence
 cc-audit/                 — audit CC setup and usage patterns, flag anti-patterns
+live-prompt/              — write handoff prompts for attended fresh-instance sessions (collaborative / off-the-leash)
+afk-prompt/               — write autonomous-run prompts + pick tasks safe to run unattended
 ```
 
 ## Skill Format
