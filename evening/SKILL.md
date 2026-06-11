@@ -11,8 +11,10 @@ Produce an honest end-of-day accomplishment log. The sibling of /morning: mornin
 
 | Signal | Mode |
 |--------|------|
-| `/evening` (in a project dir) | **repo** — this project's day |
-| `/evening global` | **global** — everything today |
+| `/evening` | **global** — everything today (default) |
+| `/evening repo` / `/evening here` / "what did we do HERE" or similar this-project phrasing | **repo** — only the current project's day |
+
+Unlike /morning, global is the default — the end-of-day question is usually "what did I do overall". In global mode, still pass the current project's stream first if it had activity.
 
 ## Workflow
 
