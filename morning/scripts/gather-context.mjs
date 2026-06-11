@@ -4,7 +4,7 @@
  * orchestrator for the /morning skill.
  * gathers context from CC sessions, codex sessions, git history, memory, and beads.
  *
- * usage: node gather-context.mjs --mode repo|global [--range 1day|3days|week] [--project /path]
+ * usage: node gather-context.mjs --mode repo|global [--range today|1day|3days|week] [--project /path]
  * output: combined structured markdown to stdout
  */
 
@@ -72,6 +72,9 @@ function calculateDateRange(range) {
 
   let daysBack;
   switch (range) {
+    case 'today':
+      daysBack = 0;
+      break;
     case '3days':
       daysBack = 3;
       break;
@@ -88,11 +91,13 @@ function calculateDateRange(range) {
   from.setDate(from.getDate() - daysBack);
   const fromDate = formatDate(from);
 
-  const label = daysBack === 1
-    ? 'yesterday'
-    : daysBack === 3 && dayOfWeek === 1
-      ? 'Friday-Sunday'
-      : `last ${daysBack} days`;
+  const label = daysBack === 0
+    ? 'today'
+    : daysBack === 1
+      ? 'yesterday'
+      : daysBack === 3 && dayOfWeek === 1
+        ? 'Friday-Sunday'
+        : `last ${daysBack} days`;
 
   return { fromDate, toDate, label };
 }

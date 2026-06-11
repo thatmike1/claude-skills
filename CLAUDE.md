@@ -7,6 +7,7 @@ A collection of custom skills for Claude Code and compatible agent harnesses.
 ```
 install.mjs              — interactive CLI installer (Node.js, zero deps)
 morning/                  — daily briefing skill (CC + Codex session parsing)
+evening/                  — end-of-day receipts: what actually got done today (reuses morning's gather script)
 goblin/                   — neurodivergent thought structuring (compile/decompose/estimate/decide)
 capacities/               — Capacities.io PKM integration
 invoice-subjects/         — invoice subject + newsletter generator from git history
