@@ -1,0 +1,46 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { toMarkdown, toJsonl } from '../cc-format.mjs';
+
+const SESSIONS = [
+  {
+    sessionId: 's1',
+    title: 'Demo session',
+    date: '2026-06-01',
+    project: 'demo',
+    branch: 'main',
+    model: 'claude-opus-4-8',
+    userMessages: ['u1', 'u2', 'u3', 'u4', 'u5'],
+    assistantTexts: ['a1', 'a2'],
+    toolCounts: { Bash: 3, Read: 1 },
+  },
+];
+
+test('toMarkdown renders meta, tools, and message sections', () => {
+  const md = toMarkdown(SESSIONS, {});
+  assert.ok(md.includes('### Demo session'));
+  assert.ok(md.includes('**Date:** 2026-06-01'));
+  assert.ok(md.includes('**Model:** claude-opus-4-8'));
+  assert.ok(md.includes('**Tools:** Bash×3, Read×1'));
+  assert.ok(md.includes('- u1'));
+});
+
+test('toMarkdown caps lists and shows the remainder count', () => {
+  const md = toMarkdown(SESSIONS, { maxUserMessages: 2 });
+  assert.ok(md.includes('- u1'));
+  assert.ok(md.includes('- u2'));
+  assert.ok(!md.includes('- u3'));
+  assert.ok(md.includes('*...and 3 more*'));
+});
+
+test('toMarkdown handles the empty case', () => {
+  assert.ok(toMarkdown([], {}).includes('No sessions found'));
+});
+
+test('toJsonl emits one valid JSON record per line', () => {
+  const out = toJsonl([{ a: 1 }, { b: 2 }]);
+  const lines = out.split('\n');
+  assert.equal(lines.length, 2);
+  assert.deepEqual(JSON.parse(lines[0]), { a: 1 });
+  assert.deepEqual(JSON.parse(lines[1]), { b: 2 });
+});

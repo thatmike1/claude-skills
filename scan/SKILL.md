@@ -1,46 +1,58 @@
 ---
 name: scan
-description: Scan Claude Code conversations for a date range / project and answer a specific question about them. Dumps clean session digests (titles, user messages, assistant actions) then reasons over them. Use when user says scan my chats, scan conversations, what did I do in <project> today, search my Claude history, recap a specific project, or asks a question about past Claude Code sessions.
+description: Scan Claude Code conversations for a date range / project and answer a specific question about them. Searches full message bodies (keyword/regex), lists sessions as a lightweight index, or dumps per-session digests, then reasons over the result. Use when user says scan my chats, scan conversations, find a message where I said X, what did I do in <project> today, search my Claude history, recap a specific project, or asks a question about past Claude Code sessions.
 ---
 
 # /scan
 
-Answer a question about past Claude Code conversations by scanning them and reasoning over the digest. Unlike `/morning` (which builds a fixed daily plan), this is **question-driven** — the user asks something specific, and the job is to answer *that*, not to summarize everything.
+Answer a question about past Claude Code conversations by scanning them and reasoning over the result. Unlike `/morning` (which builds a fixed daily plan), this is **question-driven** — the user asks something specific, and the job is to answer *that*.
 
-## Workflow
+## Step 1: Identify the question, scope, and mode
 
-### Step 1: Identify the question and scope
-
-From the user's request, pull out:
-- **The question** — what do they actually want to know? (e.g. "what did I decide about auth", "what's left unfinished", "did I touch the parser today"). If they just say "scan today", the question is an open recap.
-- **When** — `today` (default), `yesterday`, `3days`, `week`, `Ndays`, or a `YYYY-MM-DD`.
+From the request, pull out:
+- **The question** — what do they actually want to know?
+- **When** — `today` (default), `yesterday`, `3days`, `week`, `Ndays`, or `YYYY-MM-DD`.
 - **Scope** — current project (default) or all projects (`--global`).
+- **Mode** — pick based on the question:
+  - **Search** — finding a *specific message or moment* ("the message where I sent the requirements", "when did I decide X", "where did we run the migration"). Use `--search`.
+  - **Digest / recap** — open-ended "what did I do" over a range. Use the default mode.
 
-### Step 2: Run the scan
+## Step 2: Run the right mode
 
 ```bash
 node <skill-dir>/scripts/scan.mjs [when] [--project <cwd>] [--global] [--full]
 ```
 
-- Default `when` is `today`; default scope is the current working directory (pass it as `--project`).
-- Use `--global` when the user asks across all projects.
-- Use `--full` only when the question needs verbatim detail and the session count is small — it stops truncating messages.
-- Output is structured markdown: one block per session with title, date, branch, user messages, assistant actions.
+### Search (targeted lookup — prefer this for "find the message…")
+```bash
+node <skill-dir>/scripts/scan.mjs --search "<query>" [--scope messages|actions|all] [--regex] [--context N] [--limit N] [--global] [--from --to]
+```
+- Searches **full, untruncated** message bodies and returns each hit with surrounding context and a session/file pointer — so long or buried messages are found in full.
+- `--scope messages` (default) searches your + Claude's prose only (lean, fast). `--scope actions` also searches tool calls / commands run; `--scope all` also searches Claude's reasoning. Reach for the wider scopes only when a plain search misses.
+- `--regex` switches the query to a regular expression.
 
-### Step 3: Answer the question
+### Digest (open recap)
+- Default mode dumps a per-session markdown digest (title, date, branch, model, your messages, what Claude did + tool counts).
+- **Auto-routing:** if the range has more than ~12 sessions, scan returns a lightweight **index** instead of a giant digest (to protect context). Read the index, then load only the relevant sessions:
+  ```bash
+  node <skill-dir>/scripts/scan.mjs --sessions <id,id,...> [--full]
+  ```
+- Force the index yourself anytime with `--index` (add `--deep` for message/tool counts per session).
+- `--full` stops truncating message bodies — use only when the question needs verbatim detail and the session count is small.
 
-Read the digest and answer **the user's question directly**:
-- Lead with the answer. Cite which session/project/date it came from.
-- Pull only the relevant threads — don't replay every message.
-- If the answer isn't in the scanned range, say so and suggest widening (`week`, `--global`).
+## Step 3: Answer the question
+
+- Lead with the answer. Cite which session/project/date it came from (the search/index output includes session IDs and file paths).
+- For search hits, quote the relevant message; widen (`week`, `--global`, broader `--scope`) if nothing matched.
+- Pull only the relevant threads — don't replay everything.
 
 ## Scale guard
 
-If the scan returns many long sessions (digest is huge / would bloat context), don't read it all inline. Spawn **sonnet subagents — one per session or per project cluster** — each given the question and told to return only matching findings, then synthesize. This mirrors the `ai-cv-scanner` fan-out pattern.
+If a digest is still huge after auto-routing, spawn **sonnet subagents — one per session or project cluster** — each given the question and told to return only matching findings, then synthesize (mirrors the `ai-cv-scanner` fan-out).
 
 ## Rules
 
 - Question first, summary second. A generic recap is the fallback, not the default.
+- Prefer `--search` over reading a whole digest when the user wants one specific thing.
 - No hallucinated activity — if sessions are thin, say so.
 - Match the user's language (Czech in → Czech out).
-- One line per session max when listing; expand only the threads relevant to the question.

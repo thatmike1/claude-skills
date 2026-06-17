@@ -10,7 +10,8 @@
         "node": ">=22"
     },
     "scripts": {
-        "start": "node install.mjs"
+        "start": "node install.mjs",
+        "test": "node --test \"shared/test/*.test.mjs\""
     },
     "dependencies": {
         "cfonts": "^3.3.0",

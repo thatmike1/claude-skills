@@ -2,10 +2,16 @@
 
 /**
  * shared Claude Code conversation discovery and parsing utilities.
+ *
+ * the parser turns a session JSONL into a structured record:
+ *   { sessionId, project, date, branch, model, aiTitle, filePath,
+ *     messages: [ { seq, role, ts, text, tools?, thinking? } ] }
+ * legacy flat fields (userMessages / assistantTexts) are derived from
+ * `messages` so existing consumers keep working unchanged.
  */
 
 import { createReadStream, existsSync, readdirSync, readFileSync, statSync } from 'fs';
-import { join, resolve } from 'path';
+import { basename, join, resolve } from 'path';
 import { homedir } from 'os';
 import { createInterface } from 'readline';
 import { fileURLToPath } from 'url';
@@ -15,10 +21,86 @@ const HISTORY_FILE = join(CLAUDE_DIR, 'history.jsonl');
 const PROJECTS_DIR = join(CLAUDE_DIR, 'projects');
 const DEFAULT_MAX_MESSAGE_LENGTH = 5000;
 
-/** truncates text to the configured maximum length. */
+/** prefixes that mark a user "message" as harness noise rather than real input. */
+export const DEFAULT_NOISE_PREFIXES = [
+  '<local-command-caveat>',
+  '<command-name>',
+  '<command-message>',
+  '<local-command-stdout>',
+  '<task-notification>',
+];
+
+/** truncates text to the configured maximum length (Infinity / 0 disables it). */
 export function truncateText(text, maxLength = DEFAULT_MAX_MESSAGE_LENGTH) {
-  if (!text || text.length <= maxLength) return text;
+  if (!text) return text;
+  if (!maxLength || maxLength === Infinity || text.length <= maxLength) return text;
   return `${text.slice(0, maxLength)}...`;
+}
+
+/** checks whether a user text is harness noise (command tags, notifications, empty). */
+export function isNoise(text, prefixes = DEFAULT_NOISE_PREFIXES) {
+  if (!text) return true;
+  return prefixes.some(prefix => text.startsWith(prefix));
+}
+
+/**
+ * extracts human-readable text from a record's `message.content`, handling both
+ * the string form and the array-of-blocks form. only `text` blocks contribute —
+ * tool_result / image / tool_use blocks are ignored here. this is the single
+ * extractor used everywhere, so array-content user messages are never dropped.
+ */
+export function extractMessageText(content) {
+  if (content == null) return '';
+  if (typeof content === 'string') return content;
+  if (!Array.isArray(content)) return '';
+
+  const parts = [];
+  for (const block of content) {
+    if (block?.type === 'text' && typeof block.text === 'string' && block.text.trim()) {
+      parts.push(block.text);
+    }
+  }
+  return parts.join('\n');
+}
+
+/** collects tool_use blocks from assistant content as {name, input}. */
+function extractToolUses(content) {
+  if (!Array.isArray(content)) return [];
+  const tools = [];
+  for (const block of content) {
+    if (block?.type === 'tool_use' && block.name) {
+      tools.push({ name: block.name, input: block.input ?? {} });
+    }
+  }
+  return tools;
+}
+
+/** collects thinking blocks from assistant content as a single string. */
+function extractThinking(content) {
+  if (!Array.isArray(content)) return '';
+  const parts = [];
+  for (const block of content) {
+    if (block?.type === 'thinking' && block.thinking?.trim()) parts.push(block.thinking);
+  }
+  return parts.join('\n');
+}
+
+/** encodes an absolute path into its Claude project directory name (/ -> -). */
+function encodeProjectDir(absPath) {
+  return absPath.replace(/\//g, '-');
+}
+
+/**
+ * checks whether a discovered session belongs to a project filter, robust to
+ * whether the project came from a sessions-index.json (absolute path) or the
+ * fallback decode (slash-form). matches on the absolute path prefix OR the
+ * encoded project directory name.
+ */
+export function projectMatches(session, projectFilter) {
+  if (!projectFilter) return true;
+  if (session.project && String(session.project).startsWith(projectFilter)) return true;
+  if (session.projectDir && session.projectDir === encodeProjectDir(projectFilter)) return true;
+  return false;
 }
 
 /** decodes a Claude project directory name into a readable path-ish project name. */
@@ -42,7 +124,7 @@ export function findSessionFile(sessionId) {
   return null;
 }
 
-/** extracts the first non-meta user message from a JSONL file. */
+/** extracts the first non-meta, non-noise user message from a JSONL file. */
 export async function extractFirstUserMessage(filePath, maxLength = 300) {
   try {
     const rl = createInterface({ input: createReadStream(filePath) });
@@ -50,16 +132,8 @@ export async function extractFirstUserMessage(filePath, maxLength = 300) {
       try {
         const record = JSON.parse(line);
         if (record.type !== 'user' || record.isMeta) continue;
-
-        const content = record.message?.content ?? record.message;
-        if (typeof content === 'string') return truncateText(content.trim(), maxLength);
-        if (Array.isArray(content)) {
-          for (const item of content) {
-            if (item?.type === 'text' && item.text?.trim()) {
-              return truncateText(item.text.trim(), maxLength);
-            }
-          }
-        }
+        const text = extractMessageText(record.message?.content).trim();
+        if (text && !isNoise(text)) return truncateText(text, maxLength);
       } catch {}
     }
   } catch {}
@@ -115,6 +189,7 @@ export async function discoverSessionsFromIndex() {
           sessions.push({
             sessionId: entry.sessionId,
             project: entry.projectPath || data.originalPath || decodeProjectName(projectDirName),
+            projectDir: projectDirName,
             summary: entry.summary || '',
             firstPrompt: truncateText(entry.firstPrompt || '', 300),
             timestamp,
@@ -140,6 +215,7 @@ export async function discoverSessionsFromIndex() {
       sessions.push({
         sessionId: file.replace(/\.jsonl$/, ''),
         project: decodeProjectName(projectDirName),
+        projectDir: projectDirName,
         summary: '',
         firstPrompt: await extractFirstUserMessage(filePath),
         timestamp,
@@ -190,7 +266,7 @@ export async function discoverSessionsFromHistory(fromMs, toMs, projectFilter) {
 
 /** discovers sessions, merging index summaries with history timestamps when available. */
 export async function discoverSessions(opts = {}) {
-  const projectFilter = opts.project ? resolve(opts.project) : null;
+  const projectFilter = !opts.global && opts.project ? resolve(opts.project) : null;
   const indexSessions = await discoverSessionsFromIndex();
   const byId = new Map(indexSessions.map(session => [session.sessionId, session]));
 
@@ -212,66 +288,179 @@ export async function discoverSessions(opts = {}) {
     });
   }
 
-  return indexSessions.filter(session => {
-    if (!projectFilter) return true;
-    return session.project?.startsWith(projectFilter);
-  });
+  return indexSessions.filter(session => projectMatches(session, projectFilter));
 }
 
-/** extracts clean signal from a Claude Code session JSONL file. */
+/**
+ * extracts a structured record from a Claude Code session JSONL file.
+ *
+ * @param {string} filePath
+ * @param {object} [opts]
+ * @param {number} [opts.maxLength=5000]   per-message truncation; Infinity = none
+ * @param {?number} [opts.maxUserMessages] cap on user messages kept (null = all)
+ * @param {?number} [opts.maxAssistantMessages] cap on assistant messages kept
+ * @param {string[]} [opts.roles]          roles to include (default user+assistant)
+ * @param {boolean} [opts.includeTools=true] capture tool_use blocks as message.tools
+ * @param {boolean} [opts.includeThinking=false] capture thinking blocks
+ * @param {string[]} [opts.noiseFilters]   user-message prefixes to drop
+ */
 export async function parseSessionFile(filePath, opts = {}) {
-  const maxLength = opts.maxLength ?? DEFAULT_MAX_MESSAGE_LENGTH;
+  const {
+    maxLength = DEFAULT_MAX_MESSAGE_LENGTH,
+    maxUserMessages = null,
+    maxAssistantMessages = null,
+    roles = ['user', 'assistant'],
+    includeTools = true,
+    includeThinking = false,
+    noiseFilters = DEFAULT_NOISE_PREFIXES,
+  } = opts;
+
   const result = {
-    aiTitle: null,
+    sessionId: basename(filePath).replace(/\.jsonl$/, ''),
+    project: null,
+    date: null,
     branch: null,
+    model: null,
+    aiTitle: null,
+    filePath,
+    messages: [],
     userMessages: [],
     assistantTexts: [],
   };
 
+  let order = 0;
   const rl = createInterface({ input: createReadStream(filePath) });
   for await (const line of rl) {
     try {
       const record = JSON.parse(line);
 
-      if (record.type === 'ai-title' && record.aiTitle) {
-        result.aiTitle = record.aiTitle;
+      if (record.type === 'ai-title' && record.aiTitle) result.aiTitle = record.aiTitle;
+      if (!result.branch && record.gitBranch) result.branch = record.gitBranch;
+      if (!result.project && record.cwd) result.project = record.cwd;
+      if (!result.date && record.timestamp) {
+        const ts = normalizeTimestamp(record.timestamp);
+        if (ts) result.date = ts.slice(0, 10);
       }
 
-      if (!result.branch && record.gitBranch) {
-        result.branch = record.gitBranch;
-      }
+      const ts = record.timestamp ? normalizeTimestamp(record.timestamp) : null;
 
-      if (record.type === 'user' && typeof record.message?.content === 'string') {
-        const text = record.message.content.trim();
-        if (isClaudeUserNoise(text)) continue;
-        result.userMessages.push(truncateText(text, maxLength));
-      }
-
-      if (record.type === 'assistant' && Array.isArray(record.message?.content)) {
-        for (const block of record.message.content) {
-          if (block.type === 'text' && block.text?.trim()) {
-            result.assistantTexts.push(truncateText(block.text.trim(), maxLength));
-          }
-        }
+      if (record.type === 'user' && !record.isMeta && roles.includes('user')) {
+        const text = extractMessageText(record.message?.content).trim();
+        if (!text || isNoise(text, noiseFilters)) continue;
+        result.messages.push({ seq: order++, role: 'user', ts, text: truncateText(text, maxLength) });
+      } else if (record.type === 'assistant' && roles.includes('assistant')) {
+        if (!result.model && record.message?.model) result.model = record.message.model;
+        const content = record.message?.content;
+        const text = extractMessageText(content).trim();
+        const tools = includeTools ? extractToolUses(content) : [];
+        const thinking = includeThinking ? extractThinking(content).trim() : '';
+        if (!text && !tools.length && !thinking) continue;
+        const msg = { seq: order++, role: 'assistant', ts, text: truncateText(text, maxLength) };
+        if (tools.length) msg.tools = tools;
+        if (thinking) msg.thinking = truncateText(thinking, maxLength);
+        result.messages.push(msg);
       }
     } catch {}
   }
 
+  // apply per-role caps, keeping the first N of each role in original order
+  if (maxUserMessages != null || maxAssistantMessages != null) {
+    let users = 0;
+    let assistants = 0;
+    result.messages = result.messages.filter(msg => {
+      if (msg.role === 'user') {
+        if (maxUserMessages != null && users >= maxUserMessages) return false;
+        users++;
+        return true;
+      }
+      if (msg.role === 'assistant') {
+        if (maxAssistantMessages != null && assistants >= maxAssistantMessages) return false;
+        assistants++;
+        return true;
+      }
+      return true;
+    });
+  }
+
+  // legacy flat fields derived from messages (kept for existing consumers)
+  result.userMessages = result.messages.filter(m => m.role === 'user').map(m => m.text);
+  result.assistantTexts = result.messages.filter(m => m.role === 'assistant' && m.text).map(m => m.text);
+
   return result;
 }
 
-function isClaudeUserNoise(text) {
-  if (!text) return true;
-  return [
-    '<local-command-caveat>',
-    '<command-name>',
-    '<command-message>',
-    '<local-command-stdout>',
-    '<task-notification>',
-  ].some(prefix => text.startsWith(prefix));
+/** cheap single-pass stats for a session file — counts without retaining bodies. */
+async function scanSessionStats(filePath) {
+  const stats = {
+    branch: null, model: null, aiTitle: null,
+    messageCount: 0, userCount: 0, assistantCount: 0, toolCounts: {},
+  };
+  try {
+    const rl = createInterface({ input: createReadStream(filePath) });
+    for await (const line of rl) {
+      try {
+        const record = JSON.parse(line);
+        if (record.type === 'ai-title' && record.aiTitle) stats.aiTitle = record.aiTitle;
+        if (!stats.branch && record.gitBranch) stats.branch = record.gitBranch;
+
+        if (record.type === 'user' && !record.isMeta) {
+          const text = extractMessageText(record.message?.content).trim();
+          if (text && !isNoise(text)) { stats.userCount++; stats.messageCount++; }
+        } else if (record.type === 'assistant') {
+          if (!stats.model && record.message?.model) stats.model = record.message.model;
+          const content = record.message?.content;
+          const text = extractMessageText(content).trim();
+          const tools = extractToolUses(content);
+          if (text || tools.length) { stats.assistantCount++; stats.messageCount++; }
+          for (const tool of tools) stats.toolCounts[tool.name] = (stats.toolCounts[tool.name] || 0) + 1;
+        }
+      } catch {}
+    }
+  } catch {}
+  return stats;
 }
 
-function normalizeTimestamp(timestamp) {
+/**
+ * builds a lightweight per-session index for "decide what to load" workflows.
+ * shallow (default) returns metadata only with no file parsing; deep:true adds
+ * branch / model / message + tool counts by cheaply scanning each file.
+ */
+export async function buildIndex(opts = {}) {
+  const sessions = await discoverSessions(opts);
+
+  if (!opts.deep) {
+    return sessions.map(session => ({
+      sessionId: session.sessionId,
+      date: session.date,
+      project: session.project,
+      title: session.summary || session.firstPrompt || '',
+      firstPrompt: session.firstPrompt || '',
+      filePath: session.filePath,
+    }));
+  }
+
+  const indexed = [];
+  for (const session of sessions) {
+    const stats = session.filePath ? await scanSessionStats(session.filePath) : null;
+    indexed.push({
+      sessionId: session.sessionId,
+      date: session.date,
+      project: session.project,
+      title: stats?.aiTitle || session.summary || session.firstPrompt || '',
+      firstPrompt: session.firstPrompt || '',
+      branch: stats?.branch ?? null,
+      model: stats?.model ?? null,
+      messageCount: stats?.messageCount ?? 0,
+      userCount: stats?.userCount ?? 0,
+      assistantCount: stats?.assistantCount ?? 0,
+      toolCounts: stats?.toolCounts ?? {},
+      filePath: session.filePath,
+    });
+  }
+  return indexed;
+}
+
+export function normalizeTimestamp(timestamp) {
   if (!timestamp) return null;
   if (typeof timestamp === 'string') {
     const parsed = Date.parse(timestamp);
@@ -291,13 +480,17 @@ function parseArgs() {
     if (args[i] === '--from' && args[i + 1]) opts.from = args[++i];
     else if (args[i] === '--to' && args[i + 1]) opts.to = args[++i];
     else if (args[i] === '--project' && args[i + 1]) opts.project = resolve(args[++i]);
+    else if (args[i] === '--global') opts.global = true;
+    else if (args[i] === '--index') opts.index = true;
+    else if (args[i] === '--deep') opts.deep = true;
   }
   return opts;
 }
 
 async function main() {
-  const sessions = await discoverSessions(parseArgs());
-  console.log(JSON.stringify(sessions, null, 2));
+  const opts = parseArgs();
+  const result = opts.index ? await buildIndex(opts) : await discoverSessions(opts);
+  console.log(JSON.stringify(result, null, 2));
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
