@@ -28,6 +28,12 @@ node <skills-repo>/morning/scripts/gather-context.mjs --mode <repo|global> --ran
 
 Supplement with anything visible in the current conversation (work done in this very session won't be in the session index yet — include it from context).
 
+Each CC session reports a **Tools** line (e.g. `Edit×12, Write×3, Bash×40, Agent×2, Skill×1`) — read it as receipts:
+- `Edit`/`Write`/`Bash` counts → **Shipped** (files changed, commands run) even when the prose is thin
+- `Agent`/`Task` counts → directed-agent work (directing is doing)
+- `Skill`/`mcp__*` counts → tooling/infra/automation, the **Invisible work** the "did nothing" feeling erases
+This is the hard signal that turns a "felt unproductive" day into a list of artifacts.
+
 ### Step 2: Synthesize the receipts
 
 Group into a timeline of work streams, then for each stream pull out:

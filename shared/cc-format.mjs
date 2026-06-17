@@ -8,6 +8,33 @@
 const DEFAULT_MAX_USER_MESSAGES = 20;
 const DEFAULT_MAX_ASSISTANT_MESSAGES = 12;
 
+/** {toolName: count} across a parsed session's messages. */
+export function toolCountsFrom(parsed) {
+  const counts = {};
+  for (const msg of parsed.messages || []) {
+    for (const tool of msg.tools || []) counts[tool.name] = (counts[tool.name] || 0) + 1;
+  }
+  return counts;
+}
+
+/**
+ * merges discovery metadata with a parsed session into a digest view consumed
+ * by toMarkdown. shared by scan / morning so the digest shape stays consistent.
+ */
+export function toSessionView(discovered, parsed) {
+  return {
+    sessionId: parsed.sessionId,
+    title: parsed.aiTitle || discovered?.summary || discovered?.firstPrompt || parsed.sessionId,
+    date: discovered?.date || parsed.date,
+    project: discovered?.project || parsed.project,
+    branch: parsed.branch,
+    model: parsed.model,
+    userMessages: parsed.userMessages,
+    assistantTexts: parsed.assistantTexts,
+    toolCounts: toolCountsFrom(parsed),
+  };
+}
+
 /** renders a "- item" list with a "...and N more" tail when capped. */
 function renderList(items, cap) {
   const lines = [];

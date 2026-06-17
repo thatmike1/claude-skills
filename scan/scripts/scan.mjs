@@ -21,7 +21,7 @@
 import { resolve } from 'path';
 import { discoverSessions, parseSessionFile, buildIndex } from '../../shared/cc-parser.mjs';
 import { searchSessions, formatHits } from '../../shared/cc-search.mjs';
-import { toMarkdown } from '../../shared/cc-format.mjs';
+import { toMarkdown, toSessionView } from '../../shared/cc-format.mjs';
 
 const DEFAULT_MSG_LENGTH = 500;
 const FULL_MSG_LENGTH = Infinity;
@@ -93,30 +93,6 @@ function parseArgs() {
   return opts;
 }
 
-/** {toolName: count} across a parsed session's messages. */
-function toolCountsOf(parsed) {
-  const counts = {};
-  for (const msg of parsed.messages) {
-    for (const tool of msg.tools || []) counts[tool.name] = (counts[tool.name] || 0) + 1;
-  }
-  return counts;
-}
-
-/** merges discovery metadata with a parsed session into a digest view. */
-function buildView(session, parsed) {
-  return {
-    sessionId: parsed.sessionId,
-    title: parsed.aiTitle || session?.summary || session?.firstPrompt || parsed.sessionId,
-    date: session?.date || parsed.date,
-    project: session?.project || parsed.project,
-    branch: parsed.branch,
-    model: parsed.model,
-    userMessages: parsed.userMessages,
-    assistantTexts: parsed.assistantTexts,
-    toolCounts: toolCountsOf(parsed),
-  };
-}
-
 /** renders a session index as a scannable markdown list. */
 function formatIndex(entries, { label, scope }) {
   const lines = [`# Scan index: ${label} — ${entries.length} sessions`, `**Scope:** ${scope}`, ''];
@@ -159,7 +135,7 @@ async function main() {
       const filePath = session?.filePath;
       if (!filePath) { console.error(`warn: session ${id} not found`); continue; }
       const parsed = await parseSessionFile(filePath, { maxLength: maxLen });
-      views.push(buildView(session, parsed));
+      views.push(toSessionView(session, parsed));
     }
     console.log(toMarkdown(views, {
       header: `# Scan: ${opts.sessions.length} session(s)`,

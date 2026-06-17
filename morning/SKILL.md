@@ -32,6 +32,7 @@ node <skill-dir>/scripts/gather-context.mjs --mode <repo|global> [--range 1day|3
 - **repo mode**: pass `--project` with the current working directory
 - **global mode**: omit `--project`
 - Script outputs structured markdown with sections for CC sessions, Codex sessions, git activity, memory, and open issues
+- Each CC session now also reports a **Tools** line (e.g. `Bash×67, Edit×10, Agent×1`) and **Model** — use these to tell real building from research/yapping when grouping work streams
 
 ### Step 2: Synthesize
 

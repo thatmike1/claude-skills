@@ -13,7 +13,8 @@ import { existsSync, readFileSync, readdirSync } from 'fs';
 import { join, dirname, resolve } from 'path';
 import { homedir } from 'os';
 import { fileURLToPath } from 'url';
-import { discoverSessions, parseSessionFile, truncateText as truncateClaudeText } from '../../shared/cc-parser.mjs';
+import { discoverSessions, parseSessionFile } from '../../shared/cc-parser.mjs';
+import { toMarkdown, toSessionView } from '../../shared/cc-format.mjs';
 import { discoverCodexSessions, truncateText as truncateCodexText } from '../../shared/codex-parser.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -109,7 +110,7 @@ function formatDate(date) {
   return `${y}-${m}-${d}`;
 }
 
-/** gathers Claude Code sessions using shared parser modules. */
+/** gathers Claude Code sessions using shared parser + formatter modules. */
 async function gatherClaudeCodeSessions(fromDate, toDate, projectPath) {
   const sessions = await discoverSessions({
     from: fromDate,
@@ -119,13 +120,16 @@ async function gatherClaudeCodeSessions(fromDate, toDate, projectPath) {
 
   if (sessions.length === 0) return '*No Claude Code sessions found for this date range.*\n';
 
-  const lines = [`## Claude Code Sessions (${sessions.length})`, ''];
+  const views = [];
   for (const session of sessions) {
     if (!session.filePath) continue;
-    const parsed = await parseSessionFile(session.filePath);
-    lines.push(formatClaudeSession(session, parsed), '---', '');
+    const parsed = await parseSessionFile(session.filePath, { maxLength: MAX_MSG_LENGTH });
+    views.push(toSessionView(session, parsed));
   }
-  return lines.join('\n');
+  return toMarkdown(views, {
+    maxUserMessages: MAX_CC_USER_MSGS,
+    maxAssistantMessages: MAX_CC_ASSISTANT_MSGS,
+  });
 }
 
 /** gathers Codex sessions using shared parser modules. */
@@ -137,40 +141,6 @@ async function gatherCodexSessions(fromDate, toDate, projectPath) {
   for (const session of sessions) {
     lines.push(formatCodexSession(session), '---', '');
   }
-  return lines.join('\n');
-}
-
-/** formats a Claude Code session as markdown. */
-function formatClaudeSession(session, parsed) {
-  const lines = [];
-  const title = parsed.aiTitle || session.firstPrompt || session.sessionId;
-  lines.push(`### ${title}`, '');
-
-  const meta = [];
-  if (session.project) meta.push(`**Project:** ${session.project}`);
-  if (parsed.branch) meta.push(`**Branch:** ${parsed.branch}`);
-  if (meta.length) lines.push(meta.join(' | '), '');
-
-  if (parsed.userMessages.length > 0) {
-    const shown = parsed.userMessages.slice(0, MAX_CC_USER_MSGS);
-    lines.push('**User said:**');
-    for (const msg of shown) lines.push(`- ${truncateClaudeText(msg, MAX_MSG_LENGTH)}`);
-    if (parsed.userMessages.length > MAX_CC_USER_MSGS) {
-      lines.push(`- *...and ${parsed.userMessages.length - MAX_CC_USER_MSGS} more messages*`);
-    }
-    lines.push('');
-  }
-
-  if (parsed.assistantTexts.length > 0) {
-    const shown = parsed.assistantTexts.slice(0, MAX_CC_ASSISTANT_MSGS);
-    lines.push('**Assistant did:**');
-    for (const msg of shown) lines.push(`- ${truncateClaudeText(msg, MAX_MSG_LENGTH)}`);
-    if (parsed.assistantTexts.length > MAX_CC_ASSISTANT_MSGS) {
-      lines.push(`- *...and ${parsed.assistantTexts.length - MAX_CC_ASSISTANT_MSGS} more responses*`);
-    }
-    lines.push('');
-  }
-
   return lines.join('\n');
 }
 

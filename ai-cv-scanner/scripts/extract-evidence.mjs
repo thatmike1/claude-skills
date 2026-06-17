@@ -6,6 +6,7 @@
 
 import { readFileSync } from 'fs';
 import { discoverSessions, parseSessionFile } from '../../shared/cc-parser.mjs';
+import { toolCountsFrom } from '../../shared/cc-format.mjs';
 import { discoverCodexSessions } from '../../shared/codex-parser.mjs';
 
 const DEFAULT_CODEX_DAYS = 365;
@@ -27,6 +28,7 @@ async function extractClaudeEvidence(session) {
   if (!session.filePath) return null;
   try {
     const parsed = await parseSessionFile(session.filePath);
+    const toolCounts = toolCountsFrom(parsed);
     return {
       source: 'claude-code',
       sessionId: session.sessionId,
@@ -37,6 +39,10 @@ async function extractClaudeEvidence(session) {
       filePath: session.filePath,
       aiTitle: parsed.aiTitle,
       branch: parsed.branch,
+      model: parsed.model,
+      // scope + sophistication signal: high counts = big session; Skill/Agent/mcp__* = advanced usage
+      messageCount: parsed.messages.length,
+      toolCounts,
       userMessages: parsed.userMessages,
       assistantTexts: parsed.assistantTexts,
     };

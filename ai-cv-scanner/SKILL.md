@@ -28,7 +28,7 @@ node <skill-dir>/scripts/extract-evidence.mjs < /tmp/cc-session-index.json > /tm
 
 - `build-index.mjs` — extracts summaries + first prompts from all session indexes
 - `scan-setup.mjs` — scans `~/.claude/` for skills, commands, MCP servers, hooks, CLAUDE.md files
-- `extract-evidence.mjs` — pre-parses Claude Code and Codex sessions into clean user/assistant text
+- `extract-evidence.mjs` — pre-parses Claude Code and Codex sessions into clean user/assistant text, plus per-session **`toolCounts`**, **`messageCount`**, and **`model`** (hard signal for scope and sophistication)
 
 Read all three output files. This is your map of the user's AI history and extracted evidence.
 
@@ -43,6 +43,8 @@ Launch **3 sonnet subagents in parallel**. Each gets:
 **IMPORTANT**: Tell each subagent to:
 - Search the evidence JSON for relevant sessions by keyword matching on user and assistant text fields
 - Use the session index for summary, first prompt, project, and date context
+- Use per-session **`toolCounts`** as hard evidence of *how* AI was used — `Skill`/`Agent`/`mcp__*` counts signal advanced orchestration (custom skills, subagent fan-out, MCP); high `Edit`/`Write`/`Bash` counts signal real multi-file building, not just chat
+- Use **`messageCount`** to rank the highest-effort sessions (the "very high message count" sessions worth deep-diving)
 - Cross-reference setup scan findings when the mission involves tools or configuration
 - Do NOT open raw JSONL files; the evidence file already contains the extracted signal
 - Return structured findings, not raw dumps
