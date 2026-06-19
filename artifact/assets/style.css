@@ -530,3 +530,105 @@
     .callout .ico, .callout .label, .chip, .mark { color: #000 !important; }
     .callouts { break-inside: avoid; }
   }
+
+/* ============================================================
+   GALLERY — auto-generated index pages (build-gallery.mjs)
+   ============================================================ */
+.page.gallery-page { max-width: 1080px; }
+
+.gallery {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: var(--s-4);
+}
+.gallery > li { margin: 0; }
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  height: 100%;
+  padding: var(--s-6);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+  background: var(--surface);
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 0.15s ease, transform 0.15s ease, background 0.15s ease;
+}
+.card:hover {
+  border-color: var(--accent-dim);
+  background: var(--surface-2);
+  transform: translateY(-2px);
+}
+.card-kicker {
+  font-family: var(--sans);
+  font-size: 0.74rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.card-title {
+  font-family: var(--serif);
+  font-optical-sizing: auto;
+  font-weight: 600;
+  font-size: 1.3rem;
+  line-height: 1.2;
+  color: var(--text-strong);
+}
+.card-summary {
+  font-family: var(--sans);
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+.card-collection .card-title::before { content: "▤ "; color: var(--accent); }
+
+/* back-to-gallery nav for multi-page artifact sets */
+.artifact-nav { margin: 0 0 var(--s-8); font-family: var(--sans); font-size: 0.9rem; }
+.artifact-nav a { color: var(--text-faint); text-decoration: none; }
+.artifact-nav a:hover { color: var(--accent-strong); }
+
+/* ============================================================
+   INTERACTIVE TABLES — sortable headers + live row filter
+   (table.sortable + .tablewrap[data-filter], wired in artifact.js)
+   ============================================================ */
+table.sortable thead th { cursor: pointer; user-select: none; }
+table.sortable thead th[data-nosort] { cursor: default; }
+table.sortable thead th[aria-sort]::after {
+  content: "";
+  display: inline-block;
+  width: 0;
+  height: 0;
+  margin-left: 0.4rem;
+  vertical-align: middle;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+}
+table.sortable thead th[aria-sort="ascending"]::after { border-bottom: 5px solid var(--accent); }
+table.sortable thead th[aria-sort="descending"]::after { border-top: 5px solid var(--accent); }
+table.sortable thead th:not([data-nosort]):hover { color: var(--accent-strong); }
+
+.table-filter {
+  display: block;
+  width: 100%;
+  margin: 0 0 var(--s-3);
+  padding: 0.5rem 0.75rem;
+  font-family: var(--sans);
+  font-size: 0.95rem;
+  color: var(--text);
+  background: var(--surface-2);
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+}
+.table-filter:focus { outline: none; border-color: var(--accent-dim); }
+.table-filter::placeholder { color: var(--text-faint); }
+
+@media print {
+  .artifact-nav, .table-filter { display: none !important; }
+  table.sortable thead th { cursor: auto; }
+}

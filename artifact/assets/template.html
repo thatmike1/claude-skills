@@ -9,6 +9,9 @@
 <body>
 <main class="page">
 
+  <!-- back-link to the project gallery — keep on multi-page artifact sets, drop for a lone page -->
+  <nav class="artifact-nav"><a href="index.html">← gallery</a></nav>
+
   <!-- ===================== MASTHEAD ===================== -->
   <header class="masthead">
     <p class="eyebrow">Session Walkthrough</p>
@@ -193,12 +196,12 @@ export type UserRole = (typeof UserRoleEnum)[keyof typeof UserRoleEnum];</code><
     <p class="section-intro">
       Artifact generation is gated to the workspace tiers — not the consumer plans.
     </p>
-    <div class="tablewrap breakout">
-      <table>
+    <div class="tablewrap breakout" data-filter="Filter plans…">
+      <table class="sortable">
         <thead>
           <tr>
             <th scope="col">Plan</th>
-            <th scope="col">Artifacts</th>
+            <th scope="col" data-nosort>Artifacts</th>
             <th scope="col">Notes</th>
           </tr>
         </thead>
