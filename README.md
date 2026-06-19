@@ -48,6 +48,17 @@ Generate monthly invoice subjects and newsletter blurb from git commit history a
 
 Mine your full Claude Code and Codex conversation history to answer questions about your AI experience. Bring your own questionnaire or get a general AI experience summary. Pre-parses clean evidence before spawning parallel subagents to extract concrete examples (projects, tools, impact).
 
+### artifact
+
+Generate a polished single-page HTML "session artifact" — a shareable document (warm dark editorial theme) that captures work from a session: walkthroughs, plans, comparisons, investigations, changelogs.
+
+- Single column, typography-led (Fraunces + Inter), rounded callouts, severity pills, mermaid diagrams, syntax-highlighted code, a version-history footer
+- Living document: re-running updates the file in place and bumps the version history
+- Stores under an external artifacts directory (`<root>/<project>/<slug>.html`), never inside the work repo
+- Theme lives in a shared stylesheet (`<root>/_shared/style.css`) so generation is fast and restyling is global; a "make it self-contained" mode inlines everything for sharing
+- Setup asks where artifacts live and seeds the shared `style.css` + `artifact.js` base there
+- Loads cleanly straight from disk over `file://` (classic script, not an ES module — modules are CORS-blocked there)
+
 ### engagement styles (panels / detective / punchy)
 
 A small wardrobe of response-formatting styles that keep work output engaging to read — built for ADHD attention, where any single fixed style goes stale. Rotate between them when one stops registering; the switch itself restores the novelty. Each preserves full technical accuracy and keeps code/commits clean — the style governs prose only. Stays active every response until you say "normal mode" or switch styles (same mechanism as caveman).
@@ -71,7 +82,7 @@ node install.mjs
 First run installs the installer's npm dependencies automatically. The installer will:
 1. Auto-discover available skills (anything with a `SKILL.md`) and let you pick with checkboxes
 2. Ask whether to **symlink** (edits here update the skill) or **copy** (standalone — also copies the `shared/` parser helpers)
-3. Run setup for skills that need configuration (morning asks for git author, repo directory; capacities asks for API token)
+3. Run setup for skills that need configuration (morning asks for git author, repo directory; capacities asks for API token; artifact asks where artifacts live and seeds the shared theme base there)
 4. Install to `~/.claude/skills/`
 
 ### Manual install
@@ -112,6 +123,8 @@ After installing, restart Claude Code. Skills are available as slash commands:
 
 /ai-cv-scanner        # mine history to answer AI experience questions
 
+/artifact             # generate a polished HTML session artifact (then ask to update it)
+
 /panels               # comic-book layout for reviews/plans/long output
 /detective            # debugging as a case log
 /punchy               # hot-take-first, minimal — everyday work
@@ -147,4 +160,9 @@ claude-skills/
     SKILL.md
     QUESTIONNAIRE.md       # example questionnaire template
     scripts/               # node.js evidence indexing scripts
+  artifact/
+    SKILL.md
+    plugin.json
+    config.json.example    # artifacts directory (user config)
+    assets/                # shared style.css + artifact.js, plus template.html
 ```

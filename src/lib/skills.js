@@ -22,6 +22,7 @@ const SHORT_BLURBS = {
     punchy: "Engagement style — hot-take-first, minimal prose",
     "live-prompt": "Handoff prompts for attended fresh-instance sessions",
     "afk-prompt": "Autonomous-run prompts + picking tasks safe to run unattended",
+    artifact: "Session artifacts — polished single-page HTML docs from your work",
 };
 
 // skills whose scripts import from ../../shared — copy installs must also copy
@@ -42,6 +43,7 @@ const DISPLAY_ORDER = [
     "ai-cv-scanner",
     "cc-audit",
     "scan",
+    "artifact",
     "live-prompt",
     "afk-prompt",
     "panels",
@@ -64,6 +66,7 @@ const GLYPHS = {
     panels: "▦",
     detective: "☂",
     punchy: "✸",
+    artifact: "▤",
 };
 
 /**

@@ -5,3 +5,4 @@ node_modules/
 morning/config.json
 capacities/references/auth.md
 invoice-subjects/config.json
+artifact/config.json

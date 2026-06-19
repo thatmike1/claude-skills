@@ -1,8 +1,9 @@
 import { resolve } from "path";
-import { detectGitAuthor, defaultRepoDir } from "./detect.js";
+import { detectGitAuthor, defaultRepoDir, defaultArtifactsRoot } from "./detect.js";
 import { writeMorningConfig } from "./setup-morning.js";
 import { writeCapacitiesConfig } from "./setup-capacities.js";
 import { writeInvoiceConfig } from "./setup-invoice.js";
+import { writeArtifactConfig } from "./setup-artifact.js";
 
 /** splits a comma/space separated repo list into clean names */
 function splitRepos(input) {
@@ -69,5 +70,17 @@ export const SETUP_FIELDS = {
                 default: repo,
             })),
         write: writeInvoiceConfig,
+    },
+    artifact: {
+        title: "artifact setup",
+        fields: [
+            {
+                key: "artifactsRoot",
+                label: "artifacts directory (where generated HTML docs live)",
+                default: () => defaultArtifactsRoot(),
+                transform: resolve,
+            },
+        ],
+        write: writeArtifactConfig,
     },
 };

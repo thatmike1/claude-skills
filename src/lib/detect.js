@@ -16,6 +16,11 @@ export function defaultRepoDir() {
     return join(homedir(), "git");
 }
 
+/** default directory where generated artifacts live */
+export function defaultArtifactsRoot() {
+    return join(homedir(), "git", "artifacts");
+}
+
 /** target directory for installed skills */
 export function skillsDir() {
     return join(homedir(), ".claude", "skills");
