@@ -45,6 +45,7 @@ function readMeta(file) {
         title: grab(html, /<title>([\s\S]*?)<\/title>/) || basename(file, ".html"),
         updated: grab(html, /Updated:\s*([^<·]+)/),
         version: grab(html, /Version\s*(\d+)/),
+        session: grab(html, /class="session">([\s\S]*?)<\/span>/),
         summary:
             grab(html, /<p class="lead">([\s\S]*?)<\/p>/) ||
             grab(html, /class="section-intro">([\s\S]*?)<\/p>/),
@@ -97,7 +98,7 @@ const cardsHtml = cards
         const cls = c.kind === "collection" ? "card card-collection" : "card";
         return `      <li><a class="${cls}" href="${esc(c.href)}">
 ${kicker ? `        <span class="card-kicker">${esc(kicker)}</span>\n` : ""}        <span class="card-title">${esc(c.title)}</span>
-${c.summary ? `        <span class="card-summary">${esc(c.summary)}</span>\n` : ""}      </a></li>`;
+${c.summary ? `        <span class="card-summary">${esc(c.summary)}</span>\n` : ""}${c.session ? `        <span class="card-session">${esc(c.session)}</span>\n` : ""}      </a></li>`;
     })
     .join("\n");
 

@@ -632,3 +632,16 @@ table.sortable thead th:not([data-nosort]):hover { color: var(--accent-strong); 
   .artifact-nav, .table-filter { display: none !important; }
   table.sortable thead th { cursor: auto; }
 }
+
+/* ============================================================
+   PROVENANCE — session-id stamp (footer + gallery cards)
+   ============================================================ */
+.smallprint .session { font-family: var(--mono); color: var(--text-faint); }
+.card-session {
+  margin-top: auto;
+  padding-top: var(--s-2);
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  color: var(--text-faint);
+  word-break: break-all;
+}

@@ -66,9 +66,20 @@ The artifacts directory is a **local** git repo — no remote, just real version
 
 - On first run, if `<artifactsRoot>/.git` is missing: `git -C <artifactsRoot> init`.
 - After each generate/update (and gallery rebuild):
-  `git -C <artifactsRoot> add -A && git -C <artifactsRoot> commit -m "<project>/<slug>: <what changed>"`.
+  `git -C <artifactsRoot> add -A && git -C <artifactsRoot> commit -m "<project>/<slug>: <what changed> [session $CLAUDE_CODE_SESSION_ID]"`.
 - Restore a prior version: `git -C <artifactsRoot> log -- <project>/<slug>.html`, then
   `git -C <artifactsRoot> checkout <sha> -- <project>/<slug>.html`.
+
+## Provenance
+
+Stamp every artifact with the session that produced it, so an artifact found later is traceable.
+
+- **Footer:** set the `.session` span to `$CLAUDE_CODE_SESSION_ID`
+  (`<span class="session">$CLAUDE_CODE_SESSION_ID</span>`). If the var is unset, drop the
+  `· <span…>` part. That id is also the transcript filename
+  (`~/.claude/projects/<cwd-slug>/<id>.jsonl`), and `claude --resume <id>` reopens the session.
+- The commit message carries `[session <id>]` and the gallery shows the id on each card — so
+  provenance is visible from the git history, the list, and the page itself.
 
 ## Gallery & multi-page
 
@@ -100,7 +111,7 @@ SVG only).
 - **Table:** `.tablewrap` → `<table>`; `<span class="mark yes|no">✓|✕</span>` for marks. Add
   `class="sortable"` to the `<table>` for click-to-sort headers (mark a non-sortable column with
   `<th data-nosort>`), and `data-filter="placeholder text"` on the `.tablewrap` for a live row filter.
-- **Footer:** `footer` → `h2` "Version history" + `ul.history` (`.v`/`.d`/`.what` per row) + `.smallprint`.
+- **Footer:** `footer` → `h2` "Version history" + `ul.history` (`.v`/`.d`/`.what` per row) + `.smallprint` (carries the `.session` provenance stamp — see Provenance).
 
 ## Notes
 
