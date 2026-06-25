@@ -1,7 +1,6 @@
 import { resolve } from "path";
 import { detectGitAuthor, defaultRepoDir, defaultArtifactsRoot } from "./detect.js";
 import { writeMorningConfig } from "./setup-morning.js";
-import { writeCapacitiesConfig } from "./setup-capacities.js";
 import { writeInvoiceConfig } from "./setup-invoice.js";
 import { writeArtifactConfig } from "./setup-artifact.js";
 
@@ -30,19 +29,6 @@ export const SETUP_FIELDS = {
             { key: "personalRemotePattern", label: "personal remote pattern", default: "github" },
         ],
         write: writeMorningConfig,
-    },
-    capacities: {
-        title: "capacities setup",
-        fields: [
-            {
-                key: "token",
-                label: "API bearer token (Capacities Settings > API, enter to skip)",
-                default: "",
-                secret: true,
-            },
-            { key: "spaceId", label: "space ID (from Capacities URL, enter to skip)", default: "" },
-        ],
-        write: writeCapacitiesConfig,
     },
     "invoice-subjects": {
         title: "invoice-subjects setup",

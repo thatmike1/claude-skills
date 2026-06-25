@@ -36,10 +36,6 @@ Neurodivergent thought structuring tool inspired by [goblin.tools](https://gobli
 - **estimate** — realistic time estimates with ADHD-aware multipliers
 - **decide** — break analysis paralysis with a recommendation (always picks a side)
 
-### capacities
-
-Integration with [Capacities.io](https://capacities.io) PKM system. Save to daily notes, save weblinks, search/lookup content. Write-only (Capacities API doesn't support reading content yet).
-
 ### invoice-subjects
 
 Generate monthly invoice subjects and newsletter blurb from git commit history across repos. Currently Czech-language specific — see `invoice-subjects/TODO.md` for generalization plans.
@@ -82,7 +78,7 @@ node install.mjs
 First run installs the installer's npm dependencies automatically. The installer will:
 1. Auto-discover available skills (anything with a `SKILL.md`) and let you pick with checkboxes
 2. Ask whether to **symlink** (edits here update the skill) or **copy** (standalone — also copies the `shared/` parser helpers)
-3. Run setup for skills that need configuration (morning asks for git author, repo directory; capacities asks for API token; artifact asks where artifacts live and seeds the shared theme base there)
+3. Run setup for skills that need configuration (morning asks for git author, repo directory; artifact asks where artifacts live and seeds the shared theme base there)
 4. Install to `~/.claude/skills/`
 
 ### Manual install
@@ -117,8 +113,6 @@ After installing, restart Claude Code. Skills are available as slash commands:
 /goblin compile       # force compile mode
 /goblin estimate      # force estimate mode
 
-/capacities           # triggered by mentioning daily note, PKM, etc.
-
 /invoice-subjects     # generate invoice subjects for a given month
 
 /ai-cv-scanner        # mine history to answer AI experience questions
@@ -148,10 +142,6 @@ claude-skills/
     SKILL.md
     plugin.json
     references/            # one file per mode (compile, decompose, estimate, decide)
-  capacities/
-    SKILL.md
-    plugin.json
-    references/            # auth template
   invoice-subjects/
     SKILL.md
     EXAMPLES.md            # past output for style reference

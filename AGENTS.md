@@ -8,7 +8,6 @@ A collection of custom skills for Claude Code and compatible agent harnesses.
 install.mjs              — interactive CLI installer (Node.js, zero deps)
 morning/                  — daily briefing skill (CC + Codex session parsing)
 goblin/                   — neurodivergent thought structuring (compile/decompose/estimate/decide)
-capacities/               — Capacities.io PKM integration
 invoice-subjects/         — invoice subject + newsletter generator from git history
 ai-cv-scanner/            — mine conversation history for AI experience evidence
 ```
@@ -42,7 +41,7 @@ Skills that need user-specific values (API keys, git author, repo paths) use a `
 `install.mjs` handles:
 - Interactive skill selection
 - Symlink vs copy install to `~/.claude/skills/`
-- Per-skill setup prompts (morning: git author/repos, capacities: API token, invoice-subjects: repo list)
+- Per-skill setup prompts (morning: git author/repos, invoice-subjects: repo list)
 - Removing existing installs before re-installing
 
 ## Testing

@@ -55,10 +55,6 @@ Show the briefing. Ask if the user wants to:
 - Adjust priorities or skip items
 - Get time estimates refined
 
-### Step 4: Optional Capacities push
-
-After the user is happy with the briefing, offer to push it to their Capacities daily note using the `/capacities` skill.
-
 ## Rules
 
 - No motivational fluff — straight into the plan

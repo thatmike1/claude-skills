@@ -10,7 +10,6 @@ src/                      — installer ink (React terminal) app: components/ (U
 morning/                  — daily briefing skill (CC + Codex session parsing)
 evening/                  — end-of-day receipts: what actually got done today (reuses morning's gather script)
 goblin/                   — neurodivergent thought structuring (compile/decompose/estimate/decide)
-capacities/               — Capacities.io PKM integration
 invoice-subjects/         — invoice subject + newsletter generator from git history
 ai-cv-scanner/            — mine conversation history for AI experience evidence
 cc-audit/                 — audit CC setup and usage patterns, flag anti-patterns
@@ -47,7 +46,7 @@ Skills that need user-specific values (API keys, git author, repo paths) use a `
 An ink (React terminal) app. `install.mjs` is a thin entry (Node 22+ guard, TTY guard, npm self-bootstrap, tsx JSX loading); the app lives in `src/`. It handles:
 - Skill auto-discovery — scans repo dirs for `SKILL.md`, no hardcoded list (new skills appear automatically)
 - Checkbox multi-select with installed markers, symlink vs copy install to `~/.claude/skills/`
-- Per-skill setup forms driven by field definitions in `src/lib/setup-fields.js` (morning: git author/repos, capacities: API token, invoice-subjects: repo list)
+- Per-skill setup forms driven by field definitions in `src/lib/setup-fields.js` (morning: git author/repos, invoice-subjects: repo list)
 - Installing `shared/` alongside when a selected skill imports from it (copy mode would otherwise break `../../shared/*.mjs` imports)
 - Removing existing installs before re-installing
 
