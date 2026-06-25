@@ -416,7 +416,19 @@
     text-align: center;
     overflow-x: auto;
   }
-  .diagram .mermaid { display: inline-block; min-width: 0; }
+  .diagram .mermaid { display: block; width: 100%; }
+  /* mermaid stamps an inline `max-width: <intrinsic>px` on the <svg>, which
+     leaves narrow flowcharts rendered tiny and centered in a much wider box.
+     override it so the diagram scales up to fill its column; cap by viewport
+     height so a tall flowchart doesn't upscale into an endless scroll. */
+  .diagram .mermaid svg {
+    display: block;
+    margin: 0 auto;
+    width: 100%;
+    height: auto;
+    max-width: 100% !important;
+    max-height: 80vh;
+  }
 
   /* ============================================================
      TABLE

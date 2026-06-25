@@ -34,6 +34,9 @@
             startOnLoad: false,
             theme: "base",
             fontFamily: "Inter, system-ui, sans-serif",
+            // roomier layout so diagrams read well once CSS scales them
+            // up to fill the column (see .diagram .mermaid svg in style.css)
+            flowchart: { nodeSpacing: 45, rankSpacing: 55, padding: 14 },
             themeVariables: {
                 darkMode: true,
                 background: "#1F1A13",
@@ -50,7 +53,7 @@
                 nodeBorder: "#B98842",
                 nodeTextColor: "#F4EFE6",
                 mainBkg: "#241E16",
-                fontSize: "15px",
+                fontSize: "16px",
             },
         });
         try {
