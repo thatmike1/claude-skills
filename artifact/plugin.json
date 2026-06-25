@@ -1,6 +1,6 @@
 {
     "name": "artifact",
     "version": "1.0.0",
-    "description": "Generate and update a polished single-page HTML session artifact — a shareable warm-dark editorial document capturing work from a Claude Code session (walkthroughs, plans, comparisons, investigations, changelogs). Stores under an external artifacts directory and opens in the browser. Use when the user asks to make/create/generate an artifact, wants session output as a viewable HTML page, or asks to update an existing artifact.",
+    "description": "Generate and update a polished single-page HTML session artifact — a shareable document in a configurable theme (dossier by default; also editorial, terminal, brutalist) capturing work from a Claude Code session (walkthroughs, plans, comparisons, investigations, changelogs). Stores under an external artifacts directory and opens in the browser. Use when the user asks to make/create/generate an artifact, wants session output as a viewable HTML page, asks to update an existing artifact, or asks to change the artifact theme/style.",
     "skills": "."
 }

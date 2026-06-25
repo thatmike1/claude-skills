@@ -1,3 +1,4 @@
 {
-  "artifactsRoot": "/home/youruser/git/artifacts"
+  "artifactsRoot": "/home/youruser/git/artifacts",
+  "theme": "dossier"
 }

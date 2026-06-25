@@ -66,6 +66,11 @@ export const SETUP_FIELDS = {
                 default: () => defaultArtifactsRoot(),
                 transform: resolve,
             },
+            {
+                key: "theme",
+                label: "theme (dossier · editorial · terminal · brutalist)",
+                default: "dossier",
+            },
         ],
         write: writeArtifactConfig,
     },

@@ -26,33 +26,47 @@
         }
     );
 
-    // mermaid (UMD global) — warm-dark theme matched to style.css. render
-    // explicitly with run() so it never depends on load-event timing.
+    // mermaid (UMD global) — themed from the active stylesheet's CSS custom
+    // properties so the diagram matches whichever theme is loaded (editorial /
+    // dossier / terminal / brutalist), with editorial defaults as fallback.
+    // render explicitly with run() so it never depends on load-event timing.
+    function cssVar(name, fallback) {
+        var v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+        return v || fallback;
+    }
     loadScript("https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js", function () {
         if (!window.mermaid) return;
+        var bg = cssVar("--bg", "#16120D");
+        var surface = cssVar("--surface", "#1F1A13");
+        var surface2 = cssVar("--surface-2", "#241E16");
+        var accent = cssVar("--accent", "#E0A85B");
+        var accentDim = cssVar("--accent-dim", "#B98842");
+        var text = cssVar("--text", "#F4EFE6");
+        var textStrong = cssVar("--text-strong", "#FBF7EF");
+        var hairline = cssVar("--hairline", "#352C20");
         window.mermaid.initialize({
             startOnLoad: false,
             theme: "base",
-            fontFamily: "Inter, system-ui, sans-serif",
+            fontFamily: cssVar("--sans", "Inter, system-ui, sans-serif"),
             // roomier layout so diagrams read well once CSS scales them
-            // up to fill the column (see .diagram .mermaid svg in style.css)
+            // up to fill the column (see .diagram .mermaid svg in the theme)
             flowchart: { nodeSpacing: 45, rankSpacing: 55, padding: 14 },
             themeVariables: {
                 darkMode: true,
-                background: "#1F1A13",
-                primaryColor: "#241E16",
-                primaryBorderColor: "#E0A85B",
-                primaryTextColor: "#F4EFE6",
-                secondaryColor: "#241E16",
-                tertiaryColor: "#1F1A13",
-                lineColor: "#E0A85B",
-                edgeLabelBackground: "#16120D",
-                clusterBkg: "#1F1A13",
-                clusterBorder: "#352C20",
-                titleColor: "#FBF7EF",
-                nodeBorder: "#B98842",
-                nodeTextColor: "#F4EFE6",
-                mainBkg: "#241E16",
+                background: bg,
+                primaryColor: surface2,
+                primaryBorderColor: accent,
+                primaryTextColor: text,
+                secondaryColor: surface2,
+                tertiaryColor: surface,
+                lineColor: accent,
+                edgeLabelBackground: bg,
+                clusterBkg: surface,
+                clusterBorder: hairline,
+                titleColor: textStrong,
+                nodeBorder: accentDim,
+                nodeTextColor: text,
+                mainBkg: surface2,
                 fontSize: "16px",
             },
         });

@@ -26,6 +26,7 @@
     --accent-strong: #F0BE76;
     --accent-dim:     #B98842;
     --accent-tint:   rgba(224, 168, 91, 0.12);
+    --accent-border: rgba(224, 168, 91, 0.32);
 
     /* --- semantic tints (warm-leaning) --- */
     --ok:            #8FC290;
@@ -657,3 +658,191 @@ table.sortable thead th:not([data-nosort]):hover { color: var(--accent-strong); 
   color: var(--text-faint);
   word-break: break-all;
 }
+
+/* ============================================================
+   SPLIT LAYOUT — main reading column + supporting right rail.
+
+   OPT-IN. Add class "split" to <main class="page split">.
+   Single-column artifacts (no .split) are completely untouched,
+   so this is backward compatible with everything already shipped.
+
+   Authoring model — it's a *placement vocabulary*, not a fixed
+   grid. Per section you only TAG where a block lives:
+
+     <section>
+       <h2><span class="marker">02</span>Heading</h2>   full width
+       <div class="main"> prose · lists · callouts </div>  left column
+       <div class="rail"> screenshots · stats · notes </div>  right rail (optional)
+       <div class="wide"> big table / diagram </div>         spans both
+     </section>
+
+   • No .rail in a section  → that section reads as one column.
+   • Lots of rail items     → they stack down the rail.
+   • .wide (or .breakout)   → spans the full width.
+   Nothing has to vertically align by hand — the grid sizes each
+   row to its tallest column. That's what makes it reuse across
+   artifacts whose content you can't predict.
+   ============================================================ */
+  :root {
+    --rail-w:        340px;   /* generous — a too-narrow rail is the #1 failure */
+    --rail-gap:      3.5rem;
+    --measure-wide:  1120px;
+  }
+
+  .page.split { max-width: var(--measure-wide); }
+
+  /* masthead / footer / nav stay at single-column reading measure
+     even inside a split doc — a 1120px-wide lead line reads badly. */
+  .page.split > .masthead,
+  .page.split > footer,
+  .page.split > .artifact-nav { max-width: var(--measure); }
+
+  .page.split section {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) var(--rail-w);
+    column-gap: var(--rail-gap);
+    align-items: start;
+  }
+  .page.split section > h2 { grid-column: 1 / -1; }
+  .page.split section > .main { grid-column: 1; min-width: 0; }
+  .page.split section > .rail { grid-column: 2; min-width: 0; }
+  .page.split section > .wide,
+  .page.split section > .breakout { grid-column: 1 / -1; }
+
+  /* a section that is just prose still wants the reading measure,
+     not the full 1120 — cap a bare .main when there's no rail. */
+  .page.split section > .main:only-of-type { max-width: 760px; }
+
+  /* ---------- rail building blocks ---------- */
+  .rail { font-family: var(--sans); }
+  .rail > * + * { margin-top: var(--s-6); }
+  .rail .codewrap,
+  .rail .diagram,
+  .rail figure,
+  .rail .callout { margin: 0; }
+
+  /* small uppercase label that titles a rail block */
+  .rail-h {
+    font-family: var(--sans);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    margin: 0 0 var(--s-3);
+  }
+
+  /* margin note — hairline sidenote, not a boxed card */
+  .rail-note {
+    font-size: 0.875rem;
+    line-height: 1.55;
+    color: var(--text-muted);
+    padding-left: var(--s-4);
+    border-left: 2px solid var(--hairline);
+  }
+  .rail-note + .rail-note { margin-top: var(--s-4); }
+  .rail-note strong { color: var(--text); }
+
+  /* stat callouts — big serif numeral + small label */
+  .rail-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--s-6) var(--s-4);
+  }
+  .rail-stat .num {
+    display: block;
+    font-family: var(--serif);
+    font-optical-sizing: auto;
+    font-weight: 600;
+    font-size: 2.3rem;
+    line-height: 1;
+    color: var(--accent-strong);
+    letter-spacing: -0.01em;
+  }
+  .rail-stat .lbl {
+    display: block;
+    margin-top: var(--s-2);
+    font-size: 0.78rem;
+    line-height: 1.35;
+    letter-spacing: 0.02em;
+    color: var(--text-muted);
+  }
+
+  /* mini horizontal bar chart (risk / effort / coverage) */
+  .rail-bars { display: grid; gap: var(--s-3); font-size: 0.82rem; }
+  .rail-bars .row {
+    display: grid;
+    grid-template-columns: 1.6rem 1fr;
+    align-items: center;
+    gap: var(--s-3);
+  }
+  .rail-bars .k { font-weight: 700; color: var(--text-muted); }
+  .rail-bars .track {
+    height: 0.5rem;
+    border-radius: 999px;
+    background: var(--surface-2);
+    overflow: hidden;
+  }
+  .rail-bars .fill { height: 100%; border-radius: 999px; background: var(--accent); }
+  .rail-bars .fill.lo { background: var(--ok); }
+  .rail-bars .fill.mid { background: var(--warn); }
+  .rail-bars .fill.hi { background: var(--danger); }
+
+  /* rail figures (screenshots / mockups) — thumbnails by default, 2-up,
+     so a stack of tall phone shots doesn't tower over a short main column.
+     They link out to the full image, so detail is one click away.
+     Use .solo for a single full-rail-width shot. */
+  .rail-shots { display: grid; gap: var(--s-4); grid-template-columns: 1fr 1fr; }
+  .rail-shots.solo { grid-template-columns: 1fr; }
+  .rail-shots.grid2 { grid-template-columns: 1fr 1fr; }
+  .rail-shot { margin: 0; }
+  .rail-shot img,
+  .rail-shot .ph {
+    width: 100%;
+    height: auto;
+    display: block;
+    border-radius: 10px;
+    border: 1px solid var(--hairline);
+    background: #000;
+  }
+  .rail-shot figcaption {
+    font-family: var(--sans);
+    font-size: 0.76rem;
+    line-height: 1.45;
+    color: var(--text-muted);
+    margin-top: var(--s-2);
+  }
+  .rail-shot figcaption strong { color: var(--accent); font-weight: 600; }
+
+  /* striped placeholder — only used in demos / before real shots land.
+     In production a .rail-shot holds a real <img>. */
+  .ph {
+    aspect-ratio: 9 / 16;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: var(--s-4);
+    color: var(--text-faint);
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    line-height: 1.5;
+    background:
+      repeating-linear-gradient(45deg, #1b1710, #1b1710 9px, #211c14 9px, #211c14 18px);
+  }
+  .ph.wide-ph { aspect-ratio: 16 / 10; }
+
+  @media (max-width: 820px) {
+    .page.split { max-width: var(--measure); }
+    .page.split section { display: block; }
+    .page.split section > .rail { margin-top: var(--s-8); }
+    .page.split section > .main:only-of-type { max-width: none; }
+    .rail-shots.grid2 { grid-template-columns: 1fr 1fr; }
+  }
+
+  @media print {
+    .page.split { max-width: none; }
+    .page.split section { display: block; }
+    .page.split section > .rail { margin-top: var(--s-6); }
+    .ph { background: #eee !important; color: #555 !important; }
+  }
