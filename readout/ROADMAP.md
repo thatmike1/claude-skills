@@ -30,6 +30,12 @@ useful:
 - `<ApiEndpoint>` / `<DataModel>` — structured request/response and schema blocks.
 - `<Timeline>` — session/incident chronology.
 - `<StatTiles>` — small KPI row for recap-style readouts.
+- Higher-fidelity diagrams. readout's diagrams are mermaid-only; BuilderIO's
+  `diagram` block has a full HTML/CSS/inline-SVG authoring path (panels, layers,
+  swimlanes, matrices, arrows) driven by theme tokens and a sketch/clean toggle.
+  This is the clearest capability gap — arguably higher value than several blocks
+  above. A `<Diagram html={...}>` breakout variant (themes already have
+  `.breakout`) would close it without abandoning mermaid for simple flows.
 
 ## 3. Layout & style evolution
 
@@ -53,28 +59,27 @@ it either way: thread metadata (below).
 
 ## 5. Comment workflow (from the comparison)
 
-- Resolved/consumed state per comment thread, so `read-comments.mjs` can show only
-  what's new and the agent can mark what it addressed (two extra fields on
-  `readout_comments`, superuser-token update from the script).
-- Routing: a comment is *for the agent* or *for a human* — BuilderIO treats this as
-  the only routing signal. One select field.
-- Replies (`parent_id`) to make threads actual threads.
-- Some notification path (currently poll-only): simplest is a `--watch` mode or a
-  morning-skill hook that checks for new comments across recent readouts.
+Shipped 2026-07-02 except notifications: `readout_comments` gained `resolved`,
+`consumed`, `audience` (agent|human), `parent_id`; the widget posts audience +
+replies and dims resolved threads; `read-comments.mjs` defaults to unresolved,
+with `--new`, `--all`, `--consume`, and `--resolve <ids>`.
+
+- Remaining: some notification path (currently poll-only): simplest is a `--watch`
+  mode or a morning-skill hook that checks for new comments across recent readouts.
 
 ## 6. Feature comparison: readout vs BuilderIO visual-plan
 
 | Feature | readout | BuilderIO visual-plan |
 | --- | --- | --- |
-| Hosting | self-hosted (own VPS, own domain, own data) | their SaaS (hosted editor + DB), local-files escape hatch |
-| Authoring | MDX + JSX components, compiled to static HTML | MDX against a hosted block registry, rendered by their app |
+| Hosting | self-hosted (own VPS, own domain, own data) | their SaaS (hosted editor + DB), plus a first-class offline path: portable `plan.mdx`/`canvas.mdx` with `import`/`export`/`patch-source` tools and a `plan local serve/verify` bridge |
+| Authoring | MDX + JSX components, compiled to static HTML | MDX against a hosted block registry (`get-plan-blocks`), rendered by their app; source is portable MDX |
 | Viewer requirements | any browser, no account | account for commenting; guest editing |
-| Block catalog | sections, keypoints, callouts, chips, code, mermaid, tables, history | larger: + diff, annotated-code, file-tree, checklist, question-form, api-endpoint, data-model, openapi, json-explorer, tabs, custom-html |
+| Block catalog | sections, keypoints, callouts, chips, code, mermaid, tables, history | larger: + diff, annotated-code, file-tree, checklist, question-form, api-endpoint, data-model, openapi, json-explorer, tabs, columns, callout, custom-html — and a `diagram` block with a full HTML/CSS/inline-SVG authoring path (panels, layers, swimlanes, matrices, arrows), not just mermaid |
 | Visual surface | document only | top canvas (wireframe artboards), live prototype tab, design tab |
 | Comments | block-anchored pins, public, no accounts | rich anchors (text quotes, coordinates, wireframe nodes), routing, resolve/consume states, detached-thread handling |
 | Agent feedback loop | `read-comments.mjs` (poll) | MCP `get-plan-feedback` with consumed/resolved bookkeeping |
-| Versions | full MDX snapshot per publish in PocketBase | version list + restore in their app |
-| Theming | 4 interchangeable themes, one CSS swap sitewide | their product look |
+| Versions | full MDX snapshot per publish in PocketBase | version list + restore in their app; granular source patches by stable block id (`patch-visual-plan-source`) |
+| Theming | 4 interchangeable themes, one CSS swap sitewide | one product look, but a real themeable renderer: `--wf-*` tokens, dark mode, and a sketch/clean (rough.js) toggle |
 | Sharing controls | public link (auth gating = roadmap #1) | visibility scopes + per-user shares |
 | Editing by reviewers | none (comments only) | reviewers can edit blocks in the hosted editor |
 

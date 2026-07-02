@@ -46,12 +46,24 @@ existing comment threads detach.
 ## Comments (the feedback loop)
 
 Reviewers hover a block on the published page and pin a comment (no login; name is
-remembered locally). Read them back:
+remembered locally). Each comment routes to an audience (**for the agent** — default —
+or **for a human**) and can reply to another comment. Read them back:
 
 ```bash
-node <skill-dir>/scripts/read-comments.mjs [<project>/<slug> | <slug>] [--since <ISO>] [--json]
+node <skill-dir>/scripts/read-comments.mjs [<project>/<slug> | <slug>] \
+  [--since <ISO>] [--new] [--all] [--consume] [--json]
 ```
 
+Default output is unresolved comments only, threaded, each with its record id.
+`--new` narrows to comments you haven't consumed yet; `--all` includes resolved ones.
+Workflow (writes need `pbToken`): pass `--consume` to mark what you just read as seen,
+and after addressing a comment mark it resolved:
+
+```bash
+node <skill-dir>/scripts/read-comments.mjs --resolve <id>[,<id>...]
+```
+
+Comments tagged `[for human]` are not yours to resolve — surface them to the user.
 Anchors map to the document: `masthead`, `s-<section-slug>`, or
 `<section-slug>-<type>-<n>` (callout|diagram|code|table|keypoints, ordinal within the
 section). When the user asks "any comments on the readout?", run the script and act on

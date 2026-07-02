@@ -29,6 +29,21 @@ Public rules are the empty string `""` (everyone); superuser-only rules are
 `null`. Comment row shape is enforced by the field `required` + `max`
 constraints (`doc_id`/`anchor_id` ≤ 200, `author` ≤ 80, `body` ≤ 4000).
 
+Workflow fields on `readout_comments`: `parent_id` (reply threading),
+`audience` (`agent` | `human` routing; empty means agent), `resolved` and
+`consumed` (bools, written only by `read-comments.mjs` with the superuser
+token — the public create rule technically accepts them on new rows, which is
+harmless).
+
+To apply a schema change to a running instance without the admin UI, PATCH the
+collection with the superuser token:
+
+```bash
+curl -s -X PATCH "https://readout.ssscribe.app/api/collections/readout_comments" \
+  -H "Authorization: <pbToken>" -H "Content-Type: application/json" \
+  -d "$(node -e "const c=JSON.parse(require('fs').readFileSync('pb-collections.json','utf8')).find(c=>c.name==='readout_comments');process.stdout.write(JSON.stringify({fields:c.fields,indexes:c.indexes}))")"
+```
+
 ## 2. Superuser token for the publish script
 
 `readout_versions` create/update/delete are superuser-only, so the publish

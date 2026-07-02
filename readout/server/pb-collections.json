@@ -77,6 +77,48 @@
                 "pattern": ""
             },
             {
+                "id": "readout_comments_parent",
+                "name": "parent_id",
+                "type": "text",
+                "system": false,
+                "required": false,
+                "presentable": false,
+                "hidden": false,
+                "primaryKey": false,
+                "min": 0,
+                "max": 15,
+                "pattern": "^[a-z0-9]*$"
+            },
+            {
+                "id": "readout_comments_audience",
+                "name": "audience",
+                "type": "select",
+                "system": false,
+                "required": false,
+                "presentable": false,
+                "hidden": false,
+                "maxSelect": 1,
+                "values": ["agent", "human"]
+            },
+            {
+                "id": "readout_comments_resolved",
+                "name": "resolved",
+                "type": "bool",
+                "system": false,
+                "required": false,
+                "presentable": false,
+                "hidden": false
+            },
+            {
+                "id": "readout_comments_consumed",
+                "name": "consumed",
+                "type": "bool",
+                "system": false,
+                "required": false,
+                "presentable": false,
+                "hidden": false
+            },
+            {
                 "id": "readout_comments_created",
                 "name": "created",
                 "type": "autodate",

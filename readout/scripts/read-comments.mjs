@@ -3,12 +3,26 @@
  * read-comments.mjs — pull readout comments back into an agent session.
  *
  * usage:
- *   node read-comments.mjs [<project>/<slug> | <slug>] [--since <ISO date>] [--json] [--pb-url <url>]
+ *   node read-comments.mjs [<project>/<slug> | <slug>] [flags]
+ *
+ * flags:
+ *   --since <ISO>       only comments created on/after this date
+ *   --new               only comments not yet consumed (seen) by the agent
+ *   --all               include resolved comments (default hides them)
+ *   --consume           mark the listed comments as consumed (needs pbToken)
+ *   --resolve <ids>     mark comma-separated comment ids resolved (needs pbToken;
+ *                       no doc argument required)
+ *   --json              raw JSON output
+ *   --pb-url <url>      override the PocketBase base URL
  *
  * resolves the doc id, fetches comments from the PocketBase readout_comments
- * collection, and prints them grouped by anchor. a doc id (or slug) is required;
- * a bare slug resolves its project from the current git toplevel basename
- * (fallback cwd basename), matching the v1 skill convention.
+ * collection, and prints them grouped by anchor with reply threading. a doc id
+ * (or slug) is required unless --resolve is used; a bare slug resolves its
+ * project from the current git toplevel basename (fallback cwd basename).
+ *
+ * workflow states (superuser-only updates, written with config.pbToken):
+ *   consumed — the agent has seen the comment (read-comments --consume)
+ *   resolved — the agent addressed it (read-comments --resolve <ids>)
  *
  * zero npm dependencies — Node 22 built-ins only (global fetch).
  */
@@ -20,12 +34,25 @@ import { execSync } from "node:child_process";
 const SKILL_DIR = dirname(dirname(fileURLToPath(import.meta.url)));
 const DEFAULT_PB_URL = "https://readout.ssscribe.app";
 
-/** parse argv into { doc, since, json, pbUrl }. */
+/** parse argv into an options object. */
 function parseArgs(argv) {
-  const out = { doc: null, since: null, json: false, pbUrl: null };
+  const out = {
+    doc: null,
+    since: null,
+    json: false,
+    all: false,
+    newOnly: false,
+    consume: false,
+    resolve: null,
+    pbUrl: null,
+  };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--json") out.json = true;
+    else if (a === "--all") out.all = true;
+    else if (a === "--new") out.newOnly = true;
+    else if (a === "--consume") out.consume = true;
+    else if (a === "--resolve") out.resolve = argv[++i];
     else if (a === "--since") out.since = argv[++i];
     else if (a === "--pb-url") out.pbUrl = argv[++i];
     else if (a === "--help" || a === "-h") out.help = true;
@@ -84,9 +111,12 @@ function relTime(iso) {
 }
 
 /** fetch every comment for a doc (perPage=500 cap; single readout stays under it). */
-async function fetchComments(pbUrl, docId, since) {
-  let filter = `(doc_id='${docId}')`;
-  if (since) filter = `(doc_id='${docId}' && created>='${since}')`;
+async function fetchComments(pbUrl, docId, opts) {
+  const parts = [`doc_id='${docId}'`];
+  if (opts.since) parts.push(`created>='${opts.since}'`);
+  if (!opts.all) parts.push("resolved=false");
+  if (opts.newOnly) parts.push("consumed=false");
+  const filter = `(${parts.join(" && ")})`;
   const url =
     `${pbUrl.replace(/\/$/, "")}/api/collections/readout_comments/records` +
     `?filter=${encodeURIComponent(filter)}&sort=created&perPage=500`;
@@ -103,6 +133,22 @@ async function fetchComments(pbUrl, docId, since) {
   return json.items || [];
 }
 
+/** PATCH one comment record; returns true on success. */
+async function patchComment(pbUrl, token, id, body) {
+  const url = `${pbUrl.replace(/\/$/, "")}/api/collections/readout_comments/records/${id}`;
+  const res = await fetch(url, {
+    method: "PATCH",
+    headers: { Authorization: token, "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    process.stderr.write(`warn: could not update ${id} (HTTP ${res.status}) ${text}\n`);
+    return false;
+  }
+  return true;
+}
+
 /** group comments by anchor_id, preserving created order within each group. */
 function groupByAnchor(items) {
   const groups = {};
@@ -112,9 +158,42 @@ function groupByAnchor(items) {
   return groups;
 }
 
+/** status tags for one comment, e.g. "[for human] [resolved]". */
+function tags(c) {
+  const t = [];
+  if (c.audience === "human") t.push("[for human]");
+  if (c.resolved) t.push("[resolved]");
+  else if (c.consumed) t.push("[seen]");
+  return t.length ? " " + t.join(" ") : "";
+}
+
+/** render one comment line at the given indent depth. */
+function renderComment(c, depth) {
+  const pad = "  ".repeat(depth);
+  return `${pad}- **${c.author}** (${relTime(c.created)}) \`${c.id}\`${tags(c)}: ${c.body}`;
+}
+
+/** render an anchor group as a reply-threaded list: roots first, replies indented. */
+function renderThread(list) {
+  const byId = new Map(list.map((c) => [c.id, c]));
+  const children = {};
+  const roots = [];
+  for (const c of list) {
+    if (c.parent_id && byId.has(c.parent_id)) (children[c.parent_id] ||= []).push(c);
+    else roots.push(c);
+  }
+  const lines = [];
+  const walk = (c, depth) => {
+    lines.push(renderComment(c, depth));
+    for (const r of children[c.id] || []) walk(r, depth + 1);
+  };
+  for (const c of roots) walk(c, 0);
+  return lines;
+}
+
 /** render grouped comments as agent-readable markdown. */
 function renderMarkdown(docId, groups, total) {
-  const lines = [`# Comments on ${docId}`, "", `${total} comment${total === 1 ? "" : "s"} total.`, ""];
+  const lines = [`# Comments on ${docId}`, "", `${total} comment${total === 1 ? "" : "s"}.`, ""];
   // order anchors by their most recent activity, newest last
   const anchors = Object.keys(groups).sort((a, b) => {
     const la = groups[a][groups[a].length - 1].created;
@@ -123,11 +202,10 @@ function renderMarkdown(docId, groups, total) {
   });
   for (const anchor of anchors) {
     lines.push(`## ${anchor}`);
-    for (const c of groups[anchor]) {
-      lines.push(`- **${c.author}** (${relTime(c.created)}): ${c.body}`);
-    }
+    lines.push(...renderThread(groups[anchor]));
     lines.push("");
   }
+  lines.push("Mark addressed comments: read-comments.mjs --resolve <id,id,...>");
   return lines.join("\n").trimEnd();
 }
 
@@ -135,12 +213,29 @@ async function main() {
   const args = parseArgs(process.argv.slice(2));
   if (args.help) {
     process.stdout.write(
-      "usage: read-comments.mjs [<project>/<slug> | <slug>] [--since <ISO date>] [--json] [--pb-url <url>]\n"
+      "usage: read-comments.mjs [<project>/<slug> | <slug>] [--since <ISO>] [--new] [--all]\n" +
+        "                         [--consume] [--resolve <id,id,...>] [--json] [--pb-url <url>]\n"
     );
     return;
   }
   const cfg = loadConfig();
   const pbUrl = args.pbUrl || cfg.pbUrl || DEFAULT_PB_URL;
+
+  // --resolve is a pure write operation on record ids; no doc needed
+  if (args.resolve) {
+    if (!cfg.pbToken) {
+      process.stderr.write("error: --resolve needs pbToken in config.json\n");
+      process.exit(2);
+    }
+    const ids = args.resolve.split(",").map((s) => s.trim()).filter(Boolean);
+    let ok = 0;
+    for (const id of ids) {
+      if (await patchComment(pbUrl, cfg.pbToken, id, { resolved: true, consumed: true })) ok++;
+    }
+    process.stdout.write(`Resolved ${ok}/${ids.length} comment${ids.length === 1 ? "" : "s"}.\n`);
+    process.exit(ok === ids.length ? 0 : 1);
+  }
+
   const docId = resolveDocId(args.doc);
   if (!docId) {
     process.stderr.write("error: a doc id or slug is required (e.g. pracino/auth-flow or auth-flow)\n");
@@ -149,10 +244,20 @@ async function main() {
 
   let items;
   try {
-    items = await fetchComments(pbUrl, docId, args.since);
+    items = await fetchComments(pbUrl, docId, args);
   } catch (e) {
     process.stderr.write(`error: ${e.message}\n`);
     process.exit(1);
+  }
+
+  if (args.consume) {
+    if (!cfg.pbToken) {
+      process.stderr.write("error: --consume needs pbToken in config.json\n");
+      process.exit(2);
+    }
+    for (const c of items.filter((c) => !c.consumed)) {
+      if (await patchComment(pbUrl, cfg.pbToken, c.id, { consumed: true })) c.consumed = true;
+    }
   }
 
   const groups = groupByAnchor(items);
@@ -161,7 +266,8 @@ async function main() {
     return;
   }
   if (items.length === 0) {
-    process.stdout.write(`No comments on ${docId}${args.since ? ` since ${args.since}` : ""}.\n`);
+    const scope = args.newOnly ? "new " : args.all ? "" : "open ";
+    process.stdout.write(`No ${scope}comments on ${docId}${args.since ? ` since ${args.since}` : ""}.\n`);
     return;
   }
   process.stdout.write(renderMarkdown(docId, groups, items.length) + "\n");

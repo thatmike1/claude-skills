@@ -54,7 +54,19 @@
             ".cmt-thread{display:flex;flex-direction:column;gap:.6rem;max-height:240px;overflow:auto;margin-bottom:.6rem}",
             ".cmt-item .who{font:600 .78rem/1.2 var(--sans);color:var(--text-strong,#f4ecda)}",
             ".cmt-item .when{font:.66rem/1 var(--sans);color:var(--text-faint,#7e745c);margin-left:.4rem}",
+            ".cmt-item .tag{font:600 .6rem/1 var(--sans);letter-spacing:.06em;text-transform:uppercase;",
+            "color:var(--text-faint,#7e745c);border:1px solid var(--hairline,#3b3326);border-radius:3px;",
+            "padding:.1rem .3rem;margin-left:.4rem;vertical-align:middle}",
             ".cmt-item .body{font:.85rem/1.5 var(--sans);color:var(--text,#e5dbc8);margin-top:.15rem;white-space:pre-wrap}",
+            ".cmt-item.reply{margin-left:1rem;padding-left:.6rem;border-left:2px solid var(--hairline,#3b3326)}",
+            ".cmt-item.resolved{opacity:.5}",
+            ".cmt-item .cmt-reply{font:.68rem/1 var(--sans);color:var(--text-faint,#7e745c);",
+            "background:none;border:none;padding:0;margin-top:.2rem;cursor:pointer;text-decoration:underline}",
+            ".cmt-pop select{width:100%;box-sizing:border-box;background:var(--surface,#1d1914);",
+            "border:1px solid var(--hairline,#3b3326);border-radius:4px;color:var(--text,#e5dbc8);",
+            "font:.8rem/1.4 var(--sans);padding:.4rem .5rem;margin-bottom:.45rem}",
+            ".cmt-replying{font:.72rem/1.4 var(--sans);color:var(--text-faint,#7e745c);margin:0 0 .45rem}",
+            ".cmt-replying a{color:var(--accent,#c8553d);cursor:pointer}",
             ".cmt-pop input,.cmt-pop textarea{width:100%;box-sizing:border-box;background:var(--surface,#1d1914);",
             "border:1px solid var(--hairline,#3b3326);border-radius:4px;color:var(--text,#e5dbc8);",
             "font:.85rem/1.4 var(--sans);padding:.45rem .55rem;margin-bottom:.45rem}",
@@ -90,11 +102,19 @@
     }
 
     /** create one comment; resolves to the saved record, rejects on HTTP error. */
-    function post(anchor, author, body) {
+    function post(anchor, author, body, audience, parentId) {
+        var row = {
+            doc_id: docId,
+            anchor_id: anchor,
+            author: author,
+            body: body,
+            audience: audience,
+        };
+        if (parentId) row.parent_id = parentId;
         return fetch(API, {
             method: "POST",
             headers: { "Content-Type": "application/json", Accept: "application/json" },
-            body: JSON.stringify({ doc_id: docId, anchor_id: anchor, author: author, body: body }),
+            body: JSON.stringify(row),
         }).then(function (r) {
             if (!r.ok) return Promise.reject(r);
             return r.json();
@@ -137,6 +157,48 @@
         return d.innerHTML;
     }
 
+    /** one rendered comment row; replies get an indented modifier class. */
+    function itemHtml(c, isReply) {
+        var cls = "cmt-item" + (isReply ? " reply" : "") + (c.resolved ? " resolved" : "");
+        var tags = "";
+        if (c.audience === "human") tags += '<span class="tag">for human</span>';
+        if (c.resolved) tags += '<span class="tag">resolved</span>';
+        return (
+            '<div class="' +
+            cls +
+            '"><div><span class="who">' +
+            esc(c.author) +
+            '</span><span class="when">' +
+            fmt(c.created) +
+            "</span>" +
+            tags +
+            '</div><div class="body">' +
+            esc(c.body) +
+            '</div><button class="cmt-reply" data-id="' +
+            esc(c.id) +
+            '" data-author="' +
+            esc(c.author) +
+            '">Reply</button></div>'
+        );
+    }
+
+    /** flatten a thread into root/reply rows (replies attach under their parent). */
+    function threadHtml(list) {
+        var ids = {};
+        list.forEach(function (c) {
+            ids[c.id] = true;
+        });
+        var out = [];
+        list.forEach(function (c) {
+            if (c.parent_id && ids[c.parent_id]) return; // rendered under its parent
+            out.push(itemHtml(c, false));
+            list.forEach(function (r) {
+                if (r.parent_id === c.id) out.push(itemHtml(r, true));
+            });
+        });
+        return out.join("");
+    }
+
     function openThread(block, anchor, pin) {
         close();
         var list = byAnchor[anchor] || [];
@@ -145,29 +207,27 @@
         var thread =
             '<div class="cmt-thread">' +
             (list.length
-                ? list
-                      .map(function (c) {
-                          return (
-                              '<div class="cmt-item"><div><span class="who">' +
-                              esc(c.author) +
-                              '</span><span class="when">' +
-                              fmt(c.created) +
-                              '</span></div><div class="body">' +
-                              esc(c.body) +
-                              "</div></div>"
-                          );
-                      })
-                      .join("")
+                ? threadHtml(list)
                 : '<div class="cmt-item"><div class="body" style="color:var(--text-faint)">No comments yet.</div></div>') +
             "</div>";
         var name = localStorage.getItem("readout_author") || "";
+        var audience = localStorage.getItem("readout_audience") || "agent";
         pop.innerHTML =
             "<h4>Comments</h4>" +
             thread +
             '<p class="err" style="display:none"></p>' +
+            '<p class="cmt-replying" style="display:none">Replying to <span class="to"></span> — <a class="cmt-unreply">cancel</a></p>' +
             '<input class="cmt-name" maxlength="80" placeholder="Your name" value="' +
             esc(name) +
             '" />' +
+            '<select class="cmt-audience">' +
+            '<option value="agent"' +
+            (audience === "agent" ? " selected" : "") +
+            ">For the agent</option>" +
+            '<option value="human"' +
+            (audience === "human" ? " selected" : "") +
+            ">For a human</option>" +
+            "</select>" +
             '<textarea class="cmt-body" maxlength="4000" placeholder="Leave a comment"></textarea>' +
             '<div class="row"><button class="ghost cmt-cancel">Cancel</button><button class="cmt-send">Comment</button></div>';
         document.body.appendChild(pop);
@@ -177,8 +237,23 @@
         var bodyEl = pop.querySelector(".cmt-body");
         var nameEl = pop.querySelector(".cmt-name");
         var errEl = pop.querySelector(".err");
+        var audEl = pop.querySelector(".cmt-audience");
+        var replyingEl = pop.querySelector(".cmt-replying");
+        var replyTo = null;
         bodyEl.focus();
         pop.querySelector(".cmt-cancel").onclick = close;
+        pop.querySelector(".cmt-unreply").onclick = function () {
+            replyTo = null;
+            replyingEl.style.display = "none";
+        };
+        Array.prototype.forEach.call(pop.querySelectorAll(".cmt-reply"), function (btn) {
+            btn.onclick = function () {
+                replyTo = btn.getAttribute("data-id");
+                replyingEl.querySelector(".to").textContent = btn.getAttribute("data-author");
+                replyingEl.style.display = "block";
+                bodyEl.focus();
+            };
+        });
         pop.querySelector(".cmt-send").onclick = function () {
             var author = nameEl.value.trim();
             var body = bodyEl.value.trim();
@@ -189,14 +264,15 @@
                 return;
             }
             localStorage.setItem("readout_author", author);
+            localStorage.setItem("readout_audience", audEl.value);
             var btn = pop.querySelector(".cmt-send");
             btn.disabled = true;
             var prev = btn.textContent;
             btn.textContent = "Sending";
-            post(anchor, author, body)
+            post(anchor, author, body, audEl.value, replyTo)
                 .then(function (saved) {
                     (byAnchor[anchor] = byAnchor[anchor] || []).push(saved);
-                    markPin(pin, byAnchor[anchor].length);
+                    markPin(pin, openCount(anchor));
                     openThread(block, anchor, pin); // reopen with the refreshed thread
                 })
                 .catch(function () {
@@ -216,6 +292,13 @@
             left = window.scrollX + Math.max(12, r.right - 300);
         pop.style.top = top + "px";
         pop.style.left = left + "px";
+    }
+
+    /** unresolved comments on an anchor — what the pin badge counts. */
+    function openCount(anchor) {
+        return (byAnchor[anchor] || []).filter(function (c) {
+            return !c.resolved;
+        }).length;
     }
 
     function markPin(pin, count) {
@@ -242,7 +325,7 @@
                 openThread(block, anchor, pin);
             };
             block.appendChild(pin);
-            var existing = (byAnchor[anchor] || []).length;
+            var existing = openCount(anchor);
             if (existing) markPin(pin, existing);
         });
     }
