@@ -1,6 +1,6 @@
 ---
 name: readout
-description: Generate, update, and publish a "readout" — an MDX-authored, themed session document (walkthrough, plan, comparison, investigation, changelog) compiled to HTML and published to readout.ssscribe.app, where teammates leave anchored comments the agent reads back into the session. Successor to the artifact skill, built for sharing. Use when the user asks to "make/create/publish a readout", wants session output as a shareable link, asks to update an existing readout, asks to read/check comments on a readout, or asks to change the readout theme.
+description: Generate, update, and publish a "readout" — an MDX-authored, themed session document (walkthrough, plan, comparison, investigation, changelog) compiled to HTML and published to readout.ssscribe.app, where teammates leave anchored comments the agent reads back into the session. Successor to the artifact skill, built for sharing. Use when the user asks to "make/create/publish a readout", wants session output as a shareable link, asks to update an existing readout, or asks to read/check comments on a readout.
 ---
 
 # Readout
@@ -12,8 +12,8 @@ one origin. Reviewers pin comments to any block; you read them back with a scrip
 
 ## Paths & config
 
-- Read `config.json` next to this SKILL.md: `root` (default `~/git/readouts`), `theme`
-  (default `dossier`), `publicBaseUrl`, `pbUrl`, `pbToken`, `deployCmd`.
+- Read `config.json` next to this SKILL.md: `root` (default `~/git/readouts`),
+  `publicBaseUrl`, `pbUrl`, `pbToken`, `deployCmd`.
 - Project name: `basename "$(git -C . rev-parse --show-toplevel 2>/dev/null || pwd)"`.
 - Source: `<root>/<project>/<slug>.mdx` (slug = kebab-case of the title). Compiled HTML
   lands next to it; galleries and `_shared/` assets are managed by the scripts.
@@ -27,14 +27,19 @@ one origin. Reviewers pin comments to any block; you read them back with a scrip
    `lead`, `version`, `date`). Available components: `Section` (auto-numbered), `KeyPoints`,
    `Callouts`/`Callout` (success|info|warning|danger), `Chips`/`Chip` (blocker|risk|fyi),
    `Code` / fenced blocks, `Diagram` (mermaid), `DataTable` (+`Mark`), `History`/`Entry`.
+   For review/recap readouts: `Diff` (`patch` = one full-file git diff with headers, not
+   a bare hunk — or `oldText`+`newText`; opt. `filename`/`split`) shows a change; `Diagram html={…}` swaps mermaid for rich HTML
+   (helpers `diagram-panel`/`-lane`/`-layer`/`-arrow`/`-label`) for swimlanes and layers;
+   `Checklist`/`Check done` for verification; `Timeline`/`Event` (`time`, `title`) for
+   chronology; `StatTiles`/`Stat` (`label`, `value`, `delta?`, `trend?`=up|down|flat) for
+   a KPI row; `FileTree` (`paths={[{path, status, note}]}`) for a touched-files map.
    Plain markdown works everywhere. Never use emoji as icons.
 2. **Publish:** `node <skill-dir>/scripts/publish.mjs <slug> --note "<what changed>"`.
    It compiles (fix your MDX if the compile step fails and re-run), refreshes `_shared`,
    rebuilds galleries, rsyncs to the server, and records the version in PocketBase
    (skipped with a warning when `pbToken` is empty). Compile alone:
    `node <skill-dir>/scripts/compile.mjs <file.mdx>`.
-3. **Hand over the printed URL** — that link is the deliverable. Optionally also open
-   the local HTML.
+3. **Hand over the printed URL** — that link is the deliverable.
 
 ## Update (living document)
 
@@ -45,54 +50,49 @@ existing comment threads detach.
 
 ## Comments (the feedback loop)
 
-Reviewers hover a block on the published page and pin a comment (no login; name is
-remembered locally). Each comment routes to an audience (**for the agent** — default —
-or **for a human**) and can reply to another comment. Read them back:
+Reviewers hover a block on the published page and pin a comment (no login). Each routes
+to an audience (**for the agent** — default — or **for a human**) and can reply to another.
+Read them back:
 
 ```bash
 node <skill-dir>/scripts/read-comments.mjs [<project>/<slug> | <slug>] \
   [--since <ISO>] [--new] [--all] [--consume] [--json]
 ```
 
-Default output is unresolved comments only, threaded, each with its record id.
-`--new` narrows to comments you haven't consumed yet; `--all` includes resolved ones.
-Workflow (writes need `pbToken`): pass `--consume` to mark what you just read as seen,
-and after addressing a comment mark it resolved:
-
-```bash
-node <skill-dir>/scripts/read-comments.mjs --resolve <id>[,<id>...]
-```
+Default output is unresolved comments only, threaded, each with its record id. `--new`
+narrows to comments you haven't consumed yet; `--all` includes resolved ones. Writes need
+`pbToken`: pass `--consume` to mark what you read as seen, and after addressing one mark it
+resolved with `read-comments.mjs --resolve <id>[,<id>...]`.
 
 Comments tagged `[for human]` are not yours to resolve — surface them to the user.
-Anchors map to the document: `masthead`, `s-<section-slug>`, or
-`<section-slug>-<type>-<n>` (callout|diagram|code|table|keypoints, ordinal within the
-section). When the user asks "any comments on the readout?", run the script and act on
-what it returns. There is no notification path — check when asked or before updating.
+Anchors map to the document: `masthead`, `s-<section-slug>`, or `<section-slug>-<type>-<n>`
+(type = callout|diagram|code|table|keypoints|diff|checklist|timeline|stattiles|filetree,
+ordinal in the section). When the user asks "any comments?", run the script and act on
+what it returns. No notification path — check when asked or before updating.
 
 ## Version history
 
 Each publish stores the full MDX snapshot in the `readout_versions` collection
 (`doc_id = <project>/<slug>`). To inspect or restore, fetch versions from
 `<pbUrl>/api/collections/readout_versions/records?filter=(doc_id='<id>')&sort=-version`
-and write the `mdx` field back to the source file. This replaces v1's local git repo.
+and write the `mdx` field back to the source file.
 
-## Themes
+## Theme
 
-Same four stylesheets as the artifact skill (`assets/themes/`): **dossier** (default),
-**editorial**, **terminal**, **brutalist**. All style one class vocabulary, so the theme
-is a global swap: set `"theme"` in `config.json` and re-run publish — it copies
-`themes/<name>.css` over `_shared/style.css` for the whole site.
+One stylesheet with light+dark token sets — no theme to pick or configure. It defaults
+to the reader's OS `prefers-color-scheme`; a masthead toggle button flips modes and
+persists the choice in `localStorage`. Publish ships the one stylesheet sitewide.
 
 ## Server
 
 PocketBase on the Hetzner VPS (`readout-pb.service`, port 8091, `/opt/readout`) serves
-`pb_public` at https://readout.ssscribe.app and hosts the two collections. One-time
-setup, collection import, and the `pbToken` minting procedure live in
-`server/setup.md`. The hetzner-vps skill documents the box itself.
+`pb_public` at https://readout.ssscribe.app and hosts the two collections. One-time setup,
+collection import, and the `pbToken` minting procedure live in `server/setup.md`. The
+hetzner-vps skill documents the box itself.
 
 ## Notes
 
 - The compile pipeline has npm deps — run `npm install` in `<skill-dir>` once per machine.
-- `artifact.js` (mermaid theming, highlight.js, sortable/filterable tables) and
+- `artifact.js` (theming, highlight.js, sortable/filterable tables, mode toggle) and
   `comments.js` load on every page; comments no-op when the file is opened from disk.
 - The old artifact skill stays untouched for local-first, zero-dep documents.

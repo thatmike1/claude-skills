@@ -34,7 +34,16 @@
         var v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
         return v || fallback;
     }
-    loadScript("https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js", function () {
+
+    // cached diagram sources: mermaid replaces each .mermaid node's text with an
+    // SVG on first run, so we stash the original source to re-render on a theme
+    // flip. filled once mermaid loads.
+    var mermaidSources = [];
+
+    // initialise mermaid from the *current* CSS custom properties and render
+    // every .mermaid node. re-callable: reads fresh vars each time so a theme
+    // toggle re-themes the diagrams.
+    function initMermaid() {
         if (!window.mermaid) return;
         var bg = cssVar("--bg", "#16120D");
         var surface = cssVar("--surface", "#1F1A13");
@@ -44,6 +53,11 @@
         var text = cssVar("--text", "#F4EFE6");
         var textStrong = cssVar("--text-strong", "#FBF7EF");
         var hairline = cssVar("--hairline", "#352C20");
+        var isDark =
+            (document.documentElement.dataset.theme ||
+                (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches
+                    ? "dark"
+                    : "light")) !== "light";
         window.mermaid.initialize({
             startOnLoad: false,
             theme: "base",
@@ -52,7 +66,7 @@
             // up to fill the column (see .diagram .mermaid svg in the theme)
             flowchart: { nodeSpacing: 45, rankSpacing: 55, padding: 14 },
             themeVariables: {
-                darkMode: true,
+                darkMode: isDark,
                 background: bg,
                 primaryColor: surface2,
                 primaryBorderColor: accent,
@@ -75,7 +89,49 @@
         } catch (e) {
             console.warn("artifact: mermaid render failed", e);
         }
+    }
+
+    loadScript("https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js", function () {
+        if (!window.mermaid) return;
+        // cache each diagram's source before the first run rewrites it to SVG.
+        Array.prototype.slice.call(document.querySelectorAll(".mermaid")).forEach(function (node) {
+            mermaidSources.push({ node: node, src: node.textContent });
+        });
+        initMermaid();
     });
+
+    // re-render every diagram from its cached source (used after a theme flip).
+    function reRenderMermaid() {
+        if (!window.mermaid || !mermaidSources.length) return;
+        mermaidSources.forEach(function (entry) {
+            entry.node.textContent = entry.src;
+            entry.node.removeAttribute("data-processed");
+        });
+        initMermaid();
+    }
+
+    // header theme toggle — flips data-theme (seeding from prefers-color-scheme
+    // when unset), persists it, and re-themes the diagrams. diff blocks and
+    // tables follow color-scheme via CSS, so they need no JS here.
+    function activeTheme() {
+        var t = document.documentElement.dataset.theme;
+        if (t === "light" || t === "dark") return t;
+        return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches
+            ? "dark"
+            : "light";
+    }
+
+    var themeToggle = document.querySelector("button.theme-toggle");
+    if (themeToggle) {
+        themeToggle.addEventListener("click", function () {
+            var next = activeTheme() === "dark" ? "light" : "dark";
+            document.documentElement.dataset.theme = next;
+            try {
+                localStorage.setItem("readout-theme", next);
+            } catch (e) {}
+            reRenderMermaid();
+        });
+    }
 
     // interactive tables — no deps. add class "sortable" to a <table> for
     // click-to-sort headers (mark a column <th data-nosort> to skip it); add

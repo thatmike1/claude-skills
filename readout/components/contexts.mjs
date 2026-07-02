@@ -21,11 +21,30 @@ export const AnchorContext = createContext(null);
 export const CalloutsGroupContext = createContext(false);
 
 /**
+ * two-pass diff registry shared across the warm/real SSR passes. <Diff> reads
+ * it to register its prerender promise on the first pass and to pull the
+ * resolved HTML on the second. null outside a compile (e.g. plain SSR tests
+ * that never mount RootProviders with a registry).
+ */
+export const DiffContext = createContext(null);
+
+/**
  * fresh zeroed per-type counter set for a new anchor scope.
  * @returns {Record<string, number>} counter map
  */
 export function freshCounters() {
-    return { callout: 0, diagram: 0, code: 0, table: 0, keypoints: 0 };
+    return {
+        callout: 0,
+        diagram: 0,
+        code: 0,
+        table: 0,
+        keypoints: 0,
+        diff: 0,
+        checklist: 0,
+        timeline: 0,
+        stattiles: 0,
+        filetree: 0,
+    };
 }
 
 /**

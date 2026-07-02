@@ -117,11 +117,21 @@ try {
     fail("MDX compile failed", err);
 }
 
-let inner;
-try {
-    const tree = h(
+// diff registry shared across both render passes. the async <Diff> component
+// registers a warm-up promise per anchor on pass 1 (each filling results with
+// its prerendered HTML), then reads results to emit the real declarative
+// shadow-DOM block on pass 2. see RootProviders in components/index.mjs.
+const diffRegistry = { promises: new Map(), results: new Map() };
+
+/**
+ * build the full render tree for one pass. anchors are byte-stable across
+ * passes because RootProviders mints a fresh doc/root scope on each call.
+ * @returns {import("react").ReactElement} render tree
+ */
+function buildTree() {
+    return h(
         RootProviders,
-        null,
+        { diffRegistry },
         h(
             "main",
             { className: "page" },
@@ -129,7 +139,19 @@ try {
             h(Content, { components })
         )
     );
-    inner = renderToStaticMarkup(tree);
+}
+
+let inner;
+try {
+    // pass 1 (warm): diffs register their prerender promises into the registry.
+    // with no diffs, this markup is already final and is kept as-is.
+    inner = renderToStaticMarkup(buildTree());
+    if (diffRegistry.promises.size > 0) {
+        // wait for every diff to prerender, then render again for real — the
+        // pass-1 markup (diff placeholders) is discarded.
+        await Promise.all(diffRegistry.promises.values());
+        inner = renderToStaticMarkup(buildTree());
+    }
 } catch (err) {
     fail("MDX render failed", err);
 }
@@ -141,6 +163,7 @@ const html = `<!DOCTYPE html>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>${title}</title>
+<script>try{var t=localStorage.getItem("readout-theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t;}catch(e){}</script>
 <link rel="stylesheet" href="../_shared/style.css" />
 </head>
 <body>
@@ -150,6 +173,12 @@ ${inner}
 </body>
 </html>
 `;
+
+// note: @pierre/diffs embeds an ~8KB icon sprite per diff. we deliberately do
+// NOT dedupe it: each diff renders inside its own declarative shadow root and
+// its icons reference the sprite via <use href="#id">, which SVG scopes to the
+// containing tree — a shared sprite outside the shadow root would not resolve.
+// duplication is the cost of shadow-DOM isolation.
 
 try {
     await writeFile(outputPath, html, "utf8");

@@ -5,7 +5,7 @@ lead: >
   This artifact captures the auth and onboarding flow we worked through this
   session — what the backend does on login, where new users get routed, and the
   open questions still blocking the candidate path.
-version: 3
+version: 4
 date: July 2, 2026
 ---
 
@@ -18,6 +18,15 @@ date: July 2, 2026
 - Guards: `JwtAuthGuard` validates the Bearer token, `RolesGuard` enforces the `@AuthRoles()` decorator.
 
 </KeyPoints>
+
+A KPI row for a recap-style glance at the session:
+
+<StatTiles>
+  <Stat label="Endpoints touched" value="3" />
+  <Stat label="Test coverage" value="72%" delta="+8%" trend="up" />
+  <Stat label="Refresh latency" value="180ms" delta="-40ms" trend="down" />
+  <Stat label="Open blockers" value="1" delta="0" trend="flat" />
+</StatTiles>
 
 Plain paragraphs, **bold**, _italic_, `inline code`, and [links](https://example.com)
 all render normally inside a section.
@@ -52,6 +61,16 @@ A lone callout with a custom label works standalone (no wrapper needed):
 
 </Section>
 
+<Section title="How the session went" intro="The order we uncovered things — login first, routing next, then the wall.">
+
+<Timeline>
+  <Event time="09:15" title="Traced the login exchange">Read `handleOAuth` end to end and confirmed the access + refresh tokens are issued in one pass.</Event>
+  <Event time="10:40" title="Found the routing gap">`nextScreen` was being inferred on the client. Moved the decision server-side so the two tiers can never disagree.</Event>
+  <Event time="11:30" title="Hit the credits blocker">Candidate identity unlock reads a balance from the credits module, which isn't implemented — hard stop for that path.</Event>
+</Timeline>
+
+</Section>
+
 <Section title="Flow" intro="From provider token to landing screen, the backend decides everything in one pass.">
 
 <Diagram code={`flowchart TD
@@ -63,6 +82,57 @@ A lone callout with a custom label works standalone (no wrapper needed):
   E --> F{nextScreen}
   F -->|account_completion| G[Onboarding: role + profile]
   F -->|overview| H[Main app]`} />
+
+For the request path itself, a mermaid flow is too flat — the `html` variant draws the
+layers each hop passes through, as swimlanes with labeled arrows:
+
+<Diagram html={`
+  <div class="diagram-panel">
+    <div class="diagram-lane">
+      <div class="diagram-label">Client</div>
+      <div class="diagram-layer">OAuth redirect</div>
+      <div class="diagram-layer">provider token</div>
+    </div>
+    <div class="diagram-arrow">POST /auth/oauth →</div>
+    <div class="diagram-lane">
+      <div class="diagram-label">Gateway</div>
+      <div class="diagram-layer">JwtAuthGuard</div>
+      <div class="diagram-layer">RolesGuard</div>
+    </div>
+    <div class="diagram-arrow">verified →</div>
+    <div class="diagram-lane">
+      <div class="diagram-label">Auth service</div>
+      <div class="diagram-layer">token exchange</div>
+      <div class="diagram-layer">nextScreen resolver</div>
+    </div>
+  </div>
+`} />
+
+</Section>
+
+<Section title="The change" intro="Routing moved off the client: the resolver now returns nextScreen from the server.">
+
+<Diff
+  filename="src/auth/oauth-handler.ts"
+  oldText={`export async function handleOAuth(dto: OAuthDto) {
+  const profile = await verifyProviderToken(dto.provider, dto.token);
+  const user = await users.upsertFromProvider(profile);
+  const tokens = issueTokens(user);
+  return { ...tokens };
+}`}
+  newText={`export async function handleOAuth(dto: OAuthDto) {
+  const profile = await verifyProviderToken(dto.provider, dto.token);
+  const user = await users.upsertFromProvider(profile);
+  const tokens = issueTokens(user);
+  return {
+    ...tokens,
+    nextScreen: user.profileComplete ? "overview" : "account_completion",
+  };
+}`}
+/>
+
+The block also accepts a unified `patch` string (a full `git diff`, file headers and all)
+instead of `oldText`/`newText`, plus a `split` prop for side-by-side.
 
 </Section>
 
@@ -86,6 +156,18 @@ characters awkward to fence:
 <Code lang="bash" code={`curl -s -X POST https://api.example.com/auth/oauth \\
   -H "Content-Type: application/json" \\
   -d '{"provider":"google","token":"..."}'`} />
+
+</Section>
+
+<Section title="Touched files" intro="What moved this session, nested by directory and tagged by change kind.">
+
+<FileTree paths={[
+  { path: "src/auth/oauth-handler.ts", status: "modified", note: "nextScreen resolved server-side" },
+  { path: "src/auth/tokens.ts", status: "modified", note: "refresh rotation stub" },
+  { path: "src/onboarding/account-completion.controller.ts", status: "added", note: "role + profile in one request" },
+  { path: "src/onboarding/account-completion.dto.ts", status: "added", note: "combined payload" },
+  { path: "src/credits/placeholder.ts", status: "removed", note: "dead stub deleted" },
+]} />
 
 </Section>
 
@@ -120,6 +202,23 @@ A markdown GFM table also works — pass it as children:
 
 </Section>
 
+<Section title="Verification" intro="What we actually checked before calling the login path stable.">
+
+<Checklist>
+  <Check done>OAuth token exchange returns access + refresh tokens</Check>
+  <Check done>`nextScreen` is computed server-side, never inferred by the client</Check>
+  <Check done>Both guards run before the handler (verified with a forged Bearer token)</Check>
+  <Check>Refresh-token rotation covered by an integration test</Check>
+  <Check>Candidate unlock path wired to the credits module</Check>
+</Checklist>
+
+A GFM task list gets re-tagged into the same checklist styling:
+
+- [x] Manual login round-trip against staging
+- [ ] Load test the token endpoint at 100 rps
+
+</Section>
+
 <Section title="Open questions" intro="Three decisions still need an owner before the candidate path can ship.">
 
 1. Should refresh-token rotation invalidate the old token immediately or after a grace window?
@@ -129,6 +228,7 @@ A markdown GFM table also works — pass it as children:
 </Section>
 
 <History session="example-session-id">
+  <Entry v="4" d="July 2, 2026">Added session timeline, the nextScreen diff, a layered request-path diagram, verification checklist, KPI tiles, and touched-files map.</Entry>
   <Entry v="3" d="July 2, 2026">Added flow diagram and open questions.</Entry>
   <Entry v="2" d="July 2, 2026">Documented guards and nextScreen routing.</Entry>
   <Entry v="1" d="July 2, 2026">Initial capture of the auth exchange.</Entry>

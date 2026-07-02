@@ -8,8 +8,8 @@
  * flow:
  *   1. load config.json next to SKILL.md (see config.json.example)
  *   2. resolve the target readout (named slug, else most-recent .mdx in project)
- *   3. refresh <root>/_shared/ from the skill's assets (themes, artifact.js,
- *      comments.js; style.css = active theme)
+ *   3. refresh <root>/_shared/ from the skill's assets (style.css, artifact.js,
+ *      comments.js)
  *   4. compile the .mdx to .html via the compile CLI
  *   5. rebuild the project + root galleries
  *   6. deploy via config.deployCmd ({root} substituted) unless --no-deploy
@@ -81,7 +81,6 @@ if (missing.length) {
 }
 
 const root = expandHome(cfg.root);
-const theme = cfg.theme || "dossier";
 const publicBaseUrl = cfg.publicBaseUrl.replace(/\/$/, "");
 const pbUrl = cfg.pbUrl.replace(/\/$/, "");
 
@@ -127,25 +126,14 @@ console.log(`publish: target ${docId}`);
 // ── refresh _shared from the skill's assets ──────────────────────────────────
 const assets = join(skillDir, "assets");
 const outShared = join(root, "_shared");
-const outThemes = join(outShared, "themes");
-mkdirSync(outThemes, { recursive: true });
+mkdirSync(outShared, { recursive: true });
 
-const themesDir = join(assets, "themes");
-if (!existsSync(themesDir)) fail(`skill assets/themes not found at ${themesDir}`);
-for (const f of readdirSync(themesDir)) {
-    if (f.endsWith(".css")) copyFileSync(join(themesDir, f), join(outThemes, f));
-}
-
-const activeTheme = join(themesDir, `${theme}.css`);
-if (!existsSync(activeTheme)) fail(`theme "${theme}" has no ${theme}.css in ${themesDir}`);
-copyFileSync(activeTheme, join(outShared, "style.css"));
-
-for (const a of ["artifact.js", "comments.js"]) {
+for (const a of ["style.css", "artifact.js", "comments.js"]) {
     const src = join(assets, a);
     if (!existsSync(src)) fail(`skill asset ${a} not found at ${src}`);
     copyFileSync(src, join(outShared, a));
 }
-console.log(`publish: refreshed ${outShared} (theme ${theme})`);
+console.log(`publish: refreshed ${outShared}`);
 
 // ── compile ──────────────────────────────────────────────────────────────────
 const compileBin = process.env.READOUT_COMPILE_BIN || join(skillDir, "scripts", "compile.mjs");
