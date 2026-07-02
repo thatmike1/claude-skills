@@ -24,6 +24,15 @@ if (!dir || !root) {
 
 const SKIP_DIRS = new Set(["_shared", "_previews"]);
 
+// unlock shells of password-protected readouts carry this marker; they are
+// left out of galleries entirely so no title/lead/count metadata leaks
+const PROTECTED_MARKER = 'name="readout-protected"';
+
+/** true when the file is a protected readout's unlock shell */
+function isProtected(file) {
+    return readFileSync(file, "utf8").includes(PROTECTED_MARKER);
+}
+
 /** decodes the handful of HTML entities our own templates emit */
 function decode(s) {
     return s
@@ -66,6 +75,7 @@ const cards = [];
 for (const e of entries) {
     if (!e.isFile() || !e.name.endsWith(".html") || e.name === "index.html") continue;
     const file = join(dir, e.name);
+    if (isProtected(file)) continue;
     cards.push({ ...readMeta(file), href: e.name, mtime: statSync(file).mtimeMs, kind: "page" });
 }
 
@@ -75,7 +85,10 @@ for (const e of entries) {
     const idx = join(dir, e.name, "index.html");
     if (!existsSync(idx)) continue;
     const count = readdirSync(join(dir, e.name)).filter(
-        (f) => f.endsWith(".html") && f !== "index.html",
+        (f) =>
+            f.endsWith(".html") &&
+            f !== "index.html" &&
+            !isProtected(join(dir, e.name, f)),
     ).length;
     cards.push({
         title: e.name,

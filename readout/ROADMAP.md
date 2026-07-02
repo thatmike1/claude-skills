@@ -7,12 +7,18 @@ value-for-effort; the comparison table at the bottom is the source for most of t
 
 Published readouts are public-with-the-link. Some content shouldn't be.
 
-- Cheapest: Caddy `basic_auth` on `readout.ssscribe.app` (one shared password for
-  reviewers) — zero code, all-or-nothing.
-- Better: per-project gating. PocketBase already fronts every request; a small
-  `pb_hooks` JS route could require a signed cookie for configured project prefixes
-  while leaving others public. Comments API stays same-origin either way.
-- Decide: is the unit of privacy the whole site, a project, or a single readout?
+Shipped 2026-07-02: per-readout encrypt-at-publish. `publish.mjs --password <pw>`
+encrypts the compiled HTML (PBKDF2-SHA256 600k → AES-256-GCM, WebCrypto) and ships a
+static unlock shell + ciphertext (`scripts/protect.mjs`) — zero server changes,
+browser-side decryption, `#pw=` fragment auto-unlock. Protected readouts: no comments
+widget, skipped by galleries (cards and counts), version snapshots stored as encrypted
+envelopes (`protect.mjs decrypt` restores). `protected: true` frontmatter guards
+against plaintext republish. Rejected: JS-only gate (view-source defeats it), Caddy
+`basic_auth` (all-or-nothing), PB-hook cookie auth (needs login page + password store).
+
+- Remaining follow-up: per-doc comments-API gating via a `pb_hooks` route, so
+  protected readouts can regain the comment loop without leaking discussion through
+  the publicly-readable `readout_comments` API.
 
 ## 2. More MDX components (by use-case)
 
@@ -84,7 +90,7 @@ with `--new`, `--all`, `--consume`, and `--resolve <ids>`.
 | Agent feedback loop | `read-comments.mjs` (poll) | MCP `get-plan-feedback` with consumed/resolved bookkeeping |
 | Versions | full MDX snapshot per publish in PocketBase | version list + restore in their app; granular source patches by stable block id (`patch-visual-plan-source`) |
 | Theming | one stylesheet, light+dark token sets, OS-default with a persisted masthead toggle (custom per-project branding = roadmap #7) | one product look, but a real themeable renderer: `--wf-*` tokens, dark mode, and a sketch/clean (rough.js) toggle |
-| Sharing controls | public link (auth gating = roadmap #1) | visibility scopes + per-user shares |
+| Sharing controls | public link, or per-readout password (encrypt-at-publish, roadmap #1) | visibility scopes + per-user shares |
 | Editing by reviewers | none (comments only) | reviewers can edit blocks in the hosted editor |
 
 The durable differences to keep (not gaps): self-hosted and account-free viewing.

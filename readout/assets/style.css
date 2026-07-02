@@ -553,6 +553,25 @@ footer h2 { font-size: 1.2rem; margin-bottom: var(--s-4); }
   .page.split section > .main:only-of-type { max-width: none; }
 }
 
+/* ---- unlock shell (protected readouts) --------------------- */
+.unlock-page { display: flex; flex-direction: column; justify-content: center; min-height: 60vh; max-width: 34rem; }
+.unlock-form { display: flex; gap: var(--s-3); align-items: stretch; }
+.unlock-input {
+  flex: 1 1 auto; min-width: 0; font: inherit; color: var(--text-strong);
+  background: var(--surface); border: 1px solid var(--hairline); border-radius: var(--radius-sm);
+  padding: var(--s-2) var(--s-3);
+}
+.unlock-input:focus { outline: none; border-color: var(--accent-border); box-shadow: 0 0 0 3px var(--accent-tint); }
+.unlock-button {
+  flex: 0 0 auto; font: inherit; font-weight: 600; cursor: pointer;
+  color: var(--accent-strong); background: var(--accent-tint);
+  border: 1px solid var(--accent-border); border-radius: var(--radius-sm);
+  padding: var(--s-2) var(--s-4); transition: background .15s ease, color .15s ease;
+}
+.unlock-button:hover { background: var(--accent); color: var(--bg); }
+.unlock-button:disabled { opacity: 0.6; cursor: wait; }
+.unlock-error { margin: var(--s-4) 0 0; font-size: var(--fs-meta); color: #dc2626; }
+
 /* ---- print ------------------------------------------------ */
 @media print {
   :root {

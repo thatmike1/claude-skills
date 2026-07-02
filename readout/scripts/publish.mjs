@@ -18,15 +18,26 @@
  *
  * usage:
  *   node scripts/publish.mjs [slug] [--note "what changed"] [--no-deploy]
+ *                            [--password <pw>]
+ *
+ * --password (or READOUT_PASSWORD env) publishes the readout protected:
+ * the compiled HTML is encrypted at publish time (see protect.mjs) and the
+ * served file is a static unlock shell + ciphertext. protected readouts get
+ * no comments widget, are skipped by galleries, and their version snapshots
+ * are stored encrypted. the password is never stored — pass it again on
+ * every republish. mark the source with `protected: true` in the frontmatter
+ * so a publish without the password fails instead of shipping plaintext.
  */
 import {
     readFileSync,
+    writeFileSync,
     existsSync,
     mkdirSync,
     copyFileSync,
     readdirSync,
     statSync,
 } from "node:fs";
+import { encryptToEnvelope, buildUnlockShell } from "./protect.mjs";
 import { dirname, join, basename } from "node:path";
 import { fileURLToPath } from "node:url";
 import { execSync, spawnSync } from "node:child_process";
@@ -51,12 +62,15 @@ function fail(msg) {
 let slugArg = null;
 let note = "publish";
 let deploy = true;
+let password = process.env.READOUT_PASSWORD || "";
 const argv = process.argv.slice(2);
 for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--no-deploy") deploy = false;
     else if (a === "--note") note = argv[++i] ?? note;
     else if (a.startsWith("--note=")) note = a.slice("--note=".length);
+    else if (a === "--password") password = argv[++i] ?? "";
+    else if (a.startsWith("--password=")) password = a.slice("--password=".length);
     else if (!a.startsWith("-") && !slugArg) slugArg = a;
     else fail(`unexpected argument "${a}"`);
 }
@@ -123,6 +137,24 @@ const htmlFile = join(projDir, `${slug}.html`);
 
 console.log(`publish: target ${docId}`);
 
+// ── protection guard ─────────────────────────────────────────────────────────
+// `protected: true` in the frontmatter marks a source as password-protected;
+// refusing to publish it without a password prevents an accidental plaintext
+// republish (the password itself is never stored anywhere).
+const mdxSource = readFileSync(mdxFile, "utf8");
+const fmBlock = mdxSource.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+const markedProtected = /^\s*protected:\s*true\s*$/m.test(fmBlock?.[1] ?? "");
+if (markedProtected && !password) {
+    fail(
+        `${slug}.mdx is marked "protected: true" — pass --password (or set READOUT_PASSWORD) to publish it`,
+    );
+}
+if (password && !markedProtected) {
+    console.warn(
+        `publish: warning — publishing protected, but ${slug}.mdx lacks "protected: true" in its frontmatter; add it so a future publish without the password fails instead of shipping plaintext`,
+    );
+}
+
 // ── refresh _shared from the skill's assets ──────────────────────────────────
 const assets = join(skillDir, "assets");
 const outShared = join(root, "_shared");
@@ -142,6 +174,23 @@ if (compiled.status !== 0) {
     fail(`compile failed (exit ${compiled.status ?? "signal"}) for ${mdxFile}`);
 }
 if (!existsSync(htmlFile)) fail(`compile did not produce ${htmlFile}`);
+
+// ── encrypt (protected readouts) ─────────────────────────────────────────────
+if (password) {
+    let html = readFileSync(htmlFile, "utf8");
+    // drop the comments widget: the readout_comments API is publicly readable,
+    // so review discussion on a protected page would leak through it even with
+    // an encrypted page. per-doc API gating is a follow-up (ROADMAP #1).
+    const commentsTag = /<script src="[^"]*comments\.js"><\/script>\s*/;
+    if (commentsTag.test(html)) {
+        html = html.replace(commentsTag, "");
+    } else {
+        console.warn("publish: comments.js tag not found in compiled html — nothing to strip");
+    }
+    const envelope = await encryptToEnvelope(html, password);
+    writeFileSync(htmlFile, buildUnlockShell(envelope), "utf8");
+    console.log(`publish: encrypted ${slug}.html (unlock shell + AES-GCM ciphertext)`);
+}
 
 // ── rebuild galleries ─────────────────────────────────────────────────────────
 const galleryBin = join(skillDir, "scripts", "build-gallery.mjs");
@@ -190,7 +239,12 @@ async function recordVersion() {
     }
 
     try {
-        const mdx = readFileSync(mdxFile, "utf8");
+        // readout_versions is publicly readable — a plaintext snapshot would
+        // leak a protected readout's source, so store it as an encrypted
+        // envelope instead (decrypt with: protect.mjs decrypt --password).
+        const mdx = password
+            ? JSON.stringify(await encryptToEnvelope(mdxSource, password))
+            : mdxSource;
         const res = await fetch(`${pbUrl}/api/collections/readout_versions/records`, {
             method: "POST",
             headers,
@@ -208,6 +262,11 @@ async function recordVersion() {
 }
 
 // ── report ────────────────────────────────────────────────────────────────────
-console.log(`\n✓ published ${docId}`);
+console.log(`\n✓ published ${docId}${password ? " (protected)" : ""}`);
 console.log(`  ${publicBaseUrl}/${project}/${slug}.html`);
-console.log(`  ${publicBaseUrl}/${project}/index.html`);
+if (password) {
+    console.log(`  share (auto-unlock): ${publicBaseUrl}/${project}/${slug}.html#pw=${encodeURIComponent(password)}`);
+    console.log("  note: not listed in galleries; comments disabled; republish requires the password");
+} else {
+    console.log(`  ${publicBaseUrl}/${project}/index.html`);
+}

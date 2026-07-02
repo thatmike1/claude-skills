@@ -41,6 +41,23 @@ one origin. Reviewers pin comments to any block; you read them back with a scrip
    `node <skill-dir>/scripts/compile.mjs <file.mdx>`.
 3. **Hand over the printed URL** — that link is the deliverable.
 
+## Protected readouts (password)
+
+Publish with `--password <pw>` (or `READOUT_PASSWORD` env) to gate a readout: the
+compiled HTML is encrypted at publish time (PBKDF2-SHA256 → AES-256-GCM) and served
+as a static unlock shell — decryption happens in the reader's browser, plaintext
+never reaches the server. Share either the bare URL (reader types the password) or
+`<url>#pw=<password>` for auto-unlock (fragments never leave the browser).
+
+- Add `protected: true` to the frontmatter — publish then refuses to run without the
+  password, so an accidental plaintext republish can't happen.
+- The password is stored nowhere; every republish needs it again. Ask the user for it
+  rather than inventing one silently.
+- Trade-offs, applied automatically: no comments widget (the comments API is public),
+  skipped by galleries (title/lead would leak), version snapshots stored encrypted —
+  restore via `node <skill-dir>/scripts/protect.mjs decrypt --password <pw> <file>`
+  with the snapshot's `mdx` field as input.
+
 ## Update (living document)
 
 Re-runs edit the existing `.mdx` in place — same path, no new file. Bump `version` in
