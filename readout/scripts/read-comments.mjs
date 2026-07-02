@@ -12,6 +12,7 @@
  *   --consume           mark the listed comments as consumed (needs pbToken)
  *   --resolve <ids>     mark comma-separated comment ids resolved (needs pbToken;
  *                       no doc argument required)
+ *   --password <pw>     decrypt comments on a protected readout (or READOUT_PASSWORD)
  *   --json              raw JSON output
  *   --pb-url <url>      override the PocketBase base URL
  *
@@ -27,9 +28,10 @@
  * zero npm dependencies — Node 22 built-ins only (global fetch).
  */
 import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname, join, basename } from "node:path";
 import { execSync } from "node:child_process";
+import { deriveCommentKeys, decryptComment, isCommentEnvelope } from "./protect.mjs";
 
 const SKILL_DIR = dirname(dirname(fileURLToPath(import.meta.url)));
 const DEFAULT_PB_URL = "https://readout.ssscribe.app";
@@ -45,6 +47,7 @@ function parseArgs(argv) {
     consume: false,
     resolve: null,
     pbUrl: null,
+    password: process.env.READOUT_PASSWORD || null,
   };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
@@ -54,6 +57,8 @@ function parseArgs(argv) {
     else if (a === "--consume") out.consume = true;
     else if (a === "--resolve") out.resolve = argv[++i];
     else if (a === "--since") out.since = argv[++i];
+    else if (a === "--password") out.password = argv[++i];
+    else if (a.startsWith("--password=")) out.password = a.slice("--password=".length);
     else if (a === "--pb-url") out.pbUrl = argv[++i];
     else if (a === "--help" || a === "-h") out.help = true;
     else if (!a.startsWith("--") && out.doc === null) out.doc = a;
@@ -149,6 +154,38 @@ async function patchComment(pbUrl, token, id, body) {
   return true;
 }
 
+/**
+ * decrypt encrypted-comment records in place: recover real author/body/anchor
+ * from each ciphertext body. plaintext records pass through untouched (a doc is
+ * normally all-or-nothing, but mixed history is handled). records that fail to
+ * decrypt — posted under a previous password, or junk — are dropped and counted.
+ * @param {object[]} items fetched records
+ * @param {string} password readout password
+ * @param {string} docId "<project>/<slug>" (keys derive from it)
+ * @returns {Promise<{items: object[], undecryptable: number}>} usable records + skip count
+ */
+export async function decryptItems(items, password, docId) {
+  const keys = await deriveCommentKeys(password, docId);
+  const out = [];
+  let undecryptable = 0;
+  for (const c of items) {
+    if (!isCommentEnvelope(c.body)) {
+      out.push(c);
+      continue;
+    }
+    try {
+      const p = await decryptComment(keys, JSON.parse(c.body));
+      c.author = p.author;
+      c.body = p.body;
+      c.anchor_id = p.anchor;
+      out.push(c);
+    } catch {
+      undecryptable++;
+    }
+  }
+  return { items: out, undecryptable };
+}
+
 /** group comments by anchor_id, preserving created order within each group. */
 function groupByAnchor(items) {
   const groups = {};
@@ -214,7 +251,7 @@ async function main() {
   if (args.help) {
     process.stdout.write(
       "usage: read-comments.mjs [<project>/<slug> | <slug>] [--since <ISO>] [--new] [--all]\n" +
-        "                         [--consume] [--resolve <id,id,...>] [--json] [--pb-url <url>]\n"
+        "                         [--consume] [--resolve <id,id,...>] [--password <pw>] [--json] [--pb-url <url>]\n"
     );
     return;
   }
@@ -250,6 +287,23 @@ async function main() {
     process.exit(1);
   }
 
+  // encrypted comments (protected readouts): bodies are ciphertext until we
+  // derive the key from the password. without one, refuse to dump ciphertext.
+  let undecryptable = 0;
+  const encryptedCount = items.filter((c) => isCommentEnvelope(c.body)).length;
+  if (encryptedCount > 0) {
+    if (!args.password) {
+      process.stdout.write(
+        `This readout has ${encryptedCount} encrypted comment${encryptedCount === 1 ? "" : "s"}. ` +
+          `Re-run with --password <pw> (or set READOUT_PASSWORD) to read ${encryptedCount === 1 ? "it" : "them"}.\n`,
+      );
+      return;
+    }
+    const res = await decryptItems(items, args.password, docId);
+    items = res.items;
+    undecryptable = res.undecryptable;
+  }
+
   if (args.consume) {
     if (!cfg.pbToken) {
       process.stderr.write("error: --consume needs pbToken in config.json\n");
@@ -262,15 +316,19 @@ async function main() {
 
   const groups = groupByAnchor(items);
   if (args.json) {
-    process.stdout.write(JSON.stringify({ docId, total: items.length, groups }, null, 2) + "\n");
+    process.stdout.write(JSON.stringify({ docId, total: items.length, undecryptable, groups }, null, 2) + "\n");
     return;
   }
+  const skipNote = undecryptable
+    ? `\n\n_Skipped ${undecryptable} undecryptable comment${undecryptable === 1 ? "" : "s"} (likely posted under a previous password)._`
+    : "";
   if (items.length === 0) {
     const scope = args.newOnly ? "new " : args.all ? "" : "open ";
-    process.stdout.write(`No ${scope}comments on ${docId}${args.since ? ` since ${args.since}` : ""}.\n`);
+    process.stdout.write(`No ${scope}comments on ${docId}${args.since ? ` since ${args.since}` : ""}.${skipNote}\n`);
     return;
   }
-  process.stdout.write(renderMarkdown(docId, groups, items.length) + "\n");
+  process.stdout.write(renderMarkdown(docId, groups, items.length) + skipNote + "\n");
 }
 
-main();
+const isCli = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
+if (isCli) main();

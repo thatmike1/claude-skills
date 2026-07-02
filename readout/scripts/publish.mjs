@@ -178,14 +178,13 @@ if (!existsSync(htmlFile)) fail(`compile did not produce ${htmlFile}`);
 // ── encrypt (protected readouts) ─────────────────────────────────────────────
 if (password) {
     let html = readFileSync(htmlFile, "utf8");
-    // drop the comments widget: the readout_comments API is publicly readable,
-    // so review discussion on a protected page would leak through it even with
-    // an encrypted page. per-doc API gating is a follow-up (ROADMAP #1).
-    const commentsTag = /<script src="[^"]*comments\.js"><\/script>\s*/;
-    if (commentsTag.test(html)) {
-        html = html.replace(commentsTag, "");
-    } else {
-        console.warn("publish: comments.js tag not found in compiled html — nothing to strip");
+    // keep comments.js, but switch it to encrypted mode: the readout_comments
+    // API is publicly readable, so the widget must encrypt every body and hash
+    // every anchor with a key derived from this password (see comments.js). the
+    // meta tag is the signal; it rides inside the ciphertext, invisible pre-unlock.
+    const encMeta = '<meta name="readout-comments" content="encrypted" />';
+    if (!html.includes(encMeta)) {
+        html = html.replace(/<\/head>/i, `${encMeta}</head>`);
     }
     const envelope = await encryptToEnvelope(html, password);
     writeFileSync(htmlFile, buildUnlockShell(envelope), "utf8");
@@ -266,7 +265,7 @@ console.log(`\n✓ published ${docId}${password ? " (protected)" : ""}`);
 console.log(`  ${publicBaseUrl}/${project}/${slug}.html`);
 if (password) {
     console.log(`  share (auto-unlock): ${publicBaseUrl}/${project}/${slug}.html#pw=${encodeURIComponent(password)}`);
-    console.log("  note: not listed in galleries; comments disabled; republish requires the password");
+    console.log("  note: not listed in galleries; comments are end-to-end encrypted (read with: read-comments.mjs --password); republish requires the password");
 } else {
     console.log(`  ${publicBaseUrl}/${project}/index.html`);
 }

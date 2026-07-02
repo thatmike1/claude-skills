@@ -15,7 +15,14 @@ import {
     useAnchor,
 } from "./contexts.mjs";
 import { findChildElement, kebabCase, langLabel, toText } from "./util.mjs";
-import { calloutIcon, moonIcon, sunIcon, versionIcon } from "./icons.mjs";
+import {
+    calloutIcon,
+    docIcon,
+    folderIcon,
+    moonIcon,
+    sunIcon,
+    versionIcon,
+} from "./icons.mjs";
 
 /**
  * pierre diff SSR theme options: follow the page's color-scheme with zero JS
@@ -684,6 +691,260 @@ export function Entry({ v, d, children }) {
 }
 
 /**
+ * marker component for one DocShelf entry. it never renders on its own — the
+ * parent <DocShelf> introspects its props (path/title/note) and children to
+ * build the tree + doc panes. returning null keeps a stray <Doc> harmless if a
+ * user drops one outside a shelf.
+ * @returns {null} nothing
+ */
+export function Doc() {
+    return null;
+}
+
+/**
+ * classify a file path into a DocShelf icon kind by extension: "text" (prose),
+ * "data" (structured config) or "code" (everything else with a known code-ish
+ * or unknown extension).
+ * @param {string} path repo-relative path
+ * @returns {string} text|data|code
+ */
+function docKind(path) {
+    const ext = (String(path).split(".").pop() || "").toLowerCase();
+    if (["md", "mdx", "markdown", "txt", "text", "rst", "adoc"].includes(ext)) return "text";
+    if (["json", "yaml", "yml", "toml", "csv", "tsv", "xml", "env", "ini", "lock"].includes(ext)) {
+        return "data";
+    }
+    return "code";
+}
+
+/**
+ * split a doc body's rendered children into a leading run (before the first
+ * `h2`) and a list of `{ heading, body }` groups, one per `h2`. used to wrap
+ * each h2 section in a collapsible <details> so long docs stay skimmable.
+ * @param {import("react").ReactNode} children rendered doc body nodes
+ * @returns {{ lead: import("react").ReactNode[], groups: Array<{ heading: import("react").ReactNode, body: import("react").ReactNode[] }> }} split
+ */
+function groupByHeadings(children) {
+    const lead = [];
+    const groups = [];
+    let current = null;
+    Children.forEach(children, (child) => {
+        if (isValidElement(child) && child.type === "h2") {
+            current = { heading: child.props ? child.props.children : null, body: [] };
+            groups.push(current);
+            return;
+        }
+        if (current) current.body.push(child);
+        else lead.push(child);
+    });
+    return { lead, groups };
+}
+
+/**
+ * render one doc pane's body: the leading run verbatim, then each h2 group as a
+ * native <details> (first open, rest collapsed) so the headings stay visible
+ * while their content folds away. no data-anchor on the inner collapsibles —
+ * only the pane itself is commentable.
+ * @param {import("react").ReactNode} children rendered doc body nodes
+ * @returns {import("react").ReactElement} .ds-docbody
+ */
+function DocBody({ children }) {
+    const { lead, groups } = groupByHeadings(children);
+    const parts = [];
+    if (lead.length) {
+        parts.push(h("div", { className: "ds-lead", key: "lead" }, lead));
+    }
+    groups.forEach((group, i) => {
+        parts.push(
+            h(
+                "details",
+                { className: "ds-group", key: `g${i}`, ...(i === 0 ? { open: true } : {}) },
+                h(
+                    "summary",
+                    { className: "ds-summary" },
+                    h("span", { className: "ds-group-title" }, group.heading),
+                    h("span", { className: "ds-caret", "aria-hidden": "true" })
+                ),
+                h("div", { className: "ds-group-body" }, group.body)
+            )
+        );
+    });
+    return h("div", { className: "ds-docbody" }, parts);
+}
+
+/**
+ * nest a flat list of doc entries into a directory tree keyed by path segment.
+ * leaf segments carry the doc's pane id/title/note/kind; intermediate segments
+ * are directories. mirrors buildFileTree but for full doc panes.
+ * @param {Array<{ path: string, id: string, title: string, note?: string, kind: string }>} docs entries
+ * @returns {{ children: Map<string, object> }} root tree node
+ */
+function buildDocTree(docs) {
+    const root = { children: new Map() };
+    for (const doc of docs) {
+        const parts = String(doc.path || "")
+            .split("/")
+            .filter(Boolean);
+        let node = root;
+        parts.forEach((part, i) => {
+            if (!node.children.has(part)) {
+                node.children.set(part, { name: part, children: new Map() });
+            }
+            node = node.children.get(part);
+            if (i === parts.length - 1) node.doc = doc;
+        });
+    }
+    return root;
+}
+
+/**
+ * render one DocShelf tree node: a directory (span + nested list) or a file
+ * leaf (a <button> that switches the active pane, carrying data-ds-target).
+ * @param {{ name: string, children: Map<string, object>, doc?: object }} node tree node
+ * @param {string} activeId id of the pane active by default
+ * @returns {import("react").ReactElement} li.ds-node
+ */
+function renderDocNode(node, activeId) {
+    const isFile = node.doc != null && node.children.size === 0;
+    if (isFile) {
+        const { id, title, note, kind } = node.doc;
+        const active = id === activeId;
+        return h(
+            "li",
+            { className: "ds-node ds-file" },
+            h(
+                "button",
+                {
+                    type: "button",
+                    className: active ? "ds-filebtn active" : "ds-filebtn",
+                    "data-ds-target": id,
+                    "aria-selected": active ? "true" : "false",
+                    title: node.doc.path,
+                },
+                docIcon(kind),
+                h("span", { className: "ds-fname" }, node.name),
+                note ? h("span", { className: "ds-fnote" }, note) : null
+            )
+        );
+    }
+    return h(
+        "li",
+        { className: "ds-node ds-dir" },
+        h(
+            "span",
+            { className: "ds-dirname" },
+            folderIcon(),
+            h("span", { className: "ds-dirlabel" }, node.name)
+        ),
+        renderDocList(node, null, "children", activeId)
+    );
+}
+
+/**
+ * render a doc-tree node's children as a <ul>. the root list carries `ds-tree`;
+ * nested directory lists are unclassed.
+ * @param {{ children: Map<string, object> }} node tree node
+ * @param {string|null} className list class (ds-tree at the top level)
+ * @param {string} key react key
+ * @param {string} activeId default-active pane id
+ * @returns {import("react").ReactElement} ul
+ */
+function renderDocList(node, className, key, activeId) {
+    const items = [];
+    for (const child of node.children.values()) {
+        items.push(cloneElement(renderDocNode(child, activeId), { key: child.name }));
+    }
+    return h("ul", { className: className || undefined, key }, items);
+}
+
+/**
+ * document browser block, in the spirit of a file-tree viewer: a directory tree
+ * of documents on the left, the selected document rendered on the right, one
+ * visible at a time (switching is plain JS in artifact.js, no reload). each
+ * <Doc> child supplies `path` (required, shown in the tree and grouped by
+ * directory), optional `title` and `note`, and its already-authored MDX body as
+ * children. every pane carries a stable comment anchor `doc-<kebab-of-path>`;
+ * inner h2 groups fold via <details> and are not separately anchored.
+ * @param {{ children?: import("react").ReactNode }} props props
+ * @returns {import("react").ReactElement} .docshelf
+ */
+export function DocShelf({ children }) {
+    const docs = [];
+    Children.forEach(children, (child) => {
+        if (!isValidElement(child) || child.type !== Doc) return;
+        const props = child.props || {};
+        const path = String(props.path || "");
+        const id = `doc-${kebabCase(path)}`;
+        const filename = path.split("/").filter(Boolean).pop() || path;
+        docs.push({
+            path,
+            id,
+            title: props.title || filename,
+            note: props.note || null,
+            kind: docKind(path),
+            body: props.children,
+        });
+    });
+
+    if (docs.length === 0) return null;
+
+    const activeId = docs[0].id;
+    const tree = buildDocTree(docs);
+
+    const panes = docs.map((doc) => {
+        const active = doc.id === activeId;
+        return h(
+            "article",
+            {
+                key: doc.id,
+                className: active ? "ds-doc" : "ds-doc ds-hidden",
+                "data-ds-id": doc.id,
+                "data-anchor": doc.id,
+                "aria-hidden": active ? undefined : "true",
+            },
+            h(
+                "header",
+                { className: "ds-dochead" },
+                h(
+                    "div",
+                    { className: "ds-dochead-titles" },
+                    h("span", { className: "ds-path" }, doc.path),
+                    h("h3", { className: "ds-title" }, doc.title),
+                    doc.note ? h("p", { className: "ds-note" }, doc.note) : null
+                ),
+                h(
+                    "button",
+                    {
+                        type: "button",
+                        className: "ds-expand-all",
+                        "data-ds-expand": "",
+                        "aria-label": "expand or collapse all sections",
+                    },
+                    "Expand all"
+                )
+            ),
+            h(DocBody, null, doc.body)
+        );
+    });
+
+    return h(
+        "div",
+        { className: "docshelf breakout", "data-ds-shelf": "" },
+        h(
+            "aside",
+            { className: "ds-sidebar", "aria-label": "Documents" },
+            h(
+                "div",
+                { className: "ds-sidebar-sticky" },
+                h("div", { className: "ds-sidebar-head" }, "Documents"),
+                renderDocList(tree, "ds-tree", "root", activeId)
+            )
+        ),
+        h("div", { className: "ds-main" }, panes)
+    );
+}
+
+/**
  * component map handed to the MDX runtime. custom components are referenced by
  * name in MDX; `pre` overrides fenced code blocks into the .codewrap shape.
  */
@@ -706,6 +967,8 @@ export const components = {
     StatTiles,
     Stat,
     FileTree,
+    DocShelf,
+    Doc,
     History,
     Entry,
     pre: Pre,

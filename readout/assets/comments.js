@@ -34,6 +34,128 @@
 
     var API = location.origin + "/api/collections/readout_comments/records";
 
+    // ---- encrypted mode (protected readouts) --------------------------------
+    // a protected readout carries <meta name="readout-comments" content="encrypted">
+    // inside its (decrypted) HTML. in that mode the public comments API must only
+    // ever see ciphertext: bodies are AES-GCM encrypted and anchors HMAC-hashed
+    // with keys derived from the readout password. the unlock shell stashed that
+    // password in sessionStorage on unlock; without it we do NOT activate (no
+    // pins) and NEVER post plaintext. crypto here mirrors scripts/protect.mjs
+    // exactly (salt string, 600000 iterations, 512-bit split, HMAC anchors).
+    var encMeta = document.querySelector('meta[name="readout-comments"][content="encrypted"]');
+    var encrypted = !!encMeta;
+    var password = null;
+    if (encrypted) {
+        try {
+            password = sessionStorage.getItem("readout-pw:" + docId);
+        } catch (e) {
+            /* sessionStorage unavailable */
+        }
+        if (!password) return; // locked: no key in this tab — stay a clean document
+    }
+    // keys are expensive (PBKDF2); derive once and reuse the cached promise.
+    var keysPromise = encrypted ? deriveCommentKeys(password, docId) : null;
+
+    function b64enc(buf) {
+        var b = new Uint8Array(buf),
+            s = "";
+        for (var i = 0; i < b.length; i++) s += String.fromCharCode(b[i]);
+        return btoa(s);
+    }
+    function b64dec(str) {
+        var bin = atob(str),
+            out = new Uint8Array(bin.length);
+        for (var i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+        return out;
+    }
+
+    /** derive the AES (bodies) + HMAC (anchors) keys from password + docId. */
+    function deriveCommentKeys(pw, doc) {
+        var te = new TextEncoder();
+        return crypto.subtle
+            .importKey("raw", te.encode(pw), "PBKDF2", false, ["deriveBits"])
+            .then(function (km) {
+                return crypto.subtle.deriveBits(
+                    {
+                        name: "PBKDF2",
+                        salt: te.encode("readout-comments|" + doc),
+                        iterations: 600000,
+                        hash: "SHA-256",
+                    },
+                    km,
+                    512
+                );
+            })
+            .then(function (bits) {
+                var b = new Uint8Array(bits);
+                return Promise.all([
+                    crypto.subtle.importKey(
+                        "raw",
+                        b.slice(0, 32),
+                        { name: "AES-GCM", length: 256 },
+                        false,
+                        ["encrypt", "decrypt"]
+                    ),
+                    crypto.subtle.importKey(
+                        "raw",
+                        b.slice(32, 64),
+                        { name: "HMAC", hash: "SHA-256" },
+                        false,
+                        ["sign"]
+                    ),
+                ]);
+            })
+            .then(function (k) {
+                return { aesKey: k[0], macKey: k[1] };
+            });
+    }
+
+    /** encrypt a {author, body, anchor} payload into an {enc,iv,data} envelope. */
+    function encryptComment(keys, payload) {
+        var iv = crypto.getRandomValues(new Uint8Array(12));
+        return crypto.subtle
+            .encrypt(
+                { name: "AES-GCM", iv: iv },
+                keys.aesKey,
+                new TextEncoder().encode(JSON.stringify(payload))
+            )
+            .then(function (ct) {
+                return { enc: 1, iv: b64enc(iv), data: b64enc(ct) };
+            });
+    }
+
+    /** decrypt an {enc,iv,data} envelope back to {author, body, anchor}. */
+    function decryptComment(keys, env) {
+        return crypto.subtle
+            .decrypt({ name: "AES-GCM", iv: b64dec(env.iv) }, keys.aesKey, b64dec(env.data))
+            .then(function (pt) {
+                return JSON.parse(new TextDecoder().decode(pt));
+            });
+    }
+
+    /** deterministic opaque anchor id "enc-<32 hex>" = HMAC(realAnchor). */
+    function hashAnchor(keys, realAnchor) {
+        return crypto.subtle
+            .sign("HMAC", keys.macKey, new TextEncoder().encode(realAnchor))
+            .then(function (sig) {
+                var b = new Uint8Array(sig),
+                    hex = "";
+                for (var i = 0; i < b.length; i++) hex += b[i].toString(16).padStart(2, "0");
+                return "enc-" + hex.slice(0, 32);
+            });
+    }
+
+    /** whether a stored body is an encrypted-comment envelope. */
+    function isEnvelope(body) {
+        if (typeof body !== "string" || body[0] !== "{") return false;
+        try {
+            var o = JSON.parse(body);
+            return o && o.enc === 1 && typeof o.iv === "string" && typeof o.data === "string";
+        } catch (e) {
+            return false;
+        }
+    }
+
     // ---- minimal, theme-aware styling (reads the active theme's CSS vars) ----
     function injectStyle() {
         var css = [
@@ -101,16 +223,8 @@
         });
     }
 
-    /** create one comment; resolves to the saved record, rejects on HTTP error. */
-    function post(anchor, author, body, audience, parentId) {
-        var row = {
-            doc_id: docId,
-            anchor_id: anchor,
-            author: author,
-            body: body,
-            audience: audience,
-        };
-        if (parentId) row.parent_id = parentId;
+    /** POST a prepared row; resolves to the saved record, rejects on HTTP error. */
+    function send(row) {
         return fetch(API, {
             method: "POST",
             headers: { "Content-Type": "application/json", Accept: "application/json" },
@@ -118,6 +232,75 @@
         }).then(function (r) {
             if (!r.ok) return Promise.reject(r);
             return r.json();
+        });
+    }
+
+    /**
+     * create one comment, resolving to a DISPLAY-ready record (real author/body/
+     * anchor). in encrypted mode the wire row carries only ciphertext (body =
+     * envelope, author = "enc", anchor_id = HMAC); audience/parent_id stay plain.
+     */
+    function post(anchor, author, body, audience, parentId) {
+        if (!encrypted) {
+            var row = {
+                doc_id: docId,
+                anchor_id: anchor,
+                author: author,
+                body: body,
+                audience: audience,
+            };
+            if (parentId) row.parent_id = parentId;
+            return send(row);
+        }
+        return keysPromise.then(function (keys) {
+            return Promise.all([
+                hashAnchor(keys, anchor),
+                encryptComment(keys, { author: author, body: body, anchor: anchor }),
+            ]).then(function (res) {
+                var row = {
+                    doc_id: docId,
+                    anchor_id: res[0],
+                    author: "enc",
+                    body: JSON.stringify(res[1]),
+                    audience: audience,
+                };
+                if (parentId) row.parent_id = parentId;
+                return send(row).then(function (saved) {
+                    // present the record locally in cleartext; the server kept ciphertext.
+                    saved.author = author;
+                    saved.body = body;
+                    saved.anchor_id = anchor;
+                    return saved;
+                });
+            });
+        });
+    }
+
+    /**
+     * normalise fetched rows for display. plaintext mode is identity; encrypted
+     * mode decrypts each body, recovers the real anchor, and drops any record
+     * that fails to decrypt (wrong/old password, or spam posted without the key).
+     */
+    function prepareRows(rows) {
+        if (!encrypted) return Promise.resolve(rows);
+        return keysPromise.then(function (keys) {
+            return Promise.all(
+                rows.map(function (c) {
+                    if (!isEnvelope(c.body)) return null;
+                    return decryptComment(keys, JSON.parse(c.body))
+                        .then(function (p) {
+                            c.author = p.author;
+                            c.body = p.body;
+                            c.anchor_id = p.anchor;
+                            return c;
+                        })
+                        .catch(function () {
+                            return null;
+                        });
+                })
+            ).then(function (list) {
+                return list.filter(Boolean);
+            });
         });
     }
 
@@ -332,6 +515,7 @@
 
     injectStyle();
     fetchAll()
+        .then(prepareRows)
         .then(function (rows) {
             rows.forEach(function (c) {
                 (byAnchor[c.anchor_id] = byAnchor[c.anchor_id] || []).push(c);

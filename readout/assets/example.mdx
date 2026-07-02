@@ -219,6 +219,77 @@ A GFM task list gets re-tagged into the same checklist styling:
 
 </Section>
 
+<Section title="Reference docs" intro="The supporting documents produced alongside the code — browse them in one place.">
+
+<DocShelf>
+  <Doc path="docs/auth/oauth-flow.md" title="OAuth flow" note="the exchange, end to end">
+
+    The OAuth flow is the backbone of the session. This document walks the
+    request from the provider redirect through to the landing screen.
+
+    ## Provider redirect
+
+    The client kicks off the flow by redirecting to the provider. On return it
+    holds a short-lived provider token, never a long-lived credential.
+
+    - The redirect URI is allow-listed per environment.
+    - State is a signed nonce, checked on return to block CSRF.
+
+    ## Token exchange
+
+    `POST /auth/oauth` verifies the provider token server-side, upserts the user,
+    and issues a JWT access + refresh pair in a single pass.
+
+    ```typescript
+    const profile = await verifyProviderToken(dto.provider, dto.token);
+    const user = await users.upsertFromProvider(profile);
+    const tokens = issueTokens(user);
+    ```
+
+    ## Routing decision
+
+    The response carries `nextScreen`, computed on the server. The client must
+    never infer it — the two tiers can otherwise disagree.
+
+    <Callout type="info">`nextScreen` is `account_completion` until the profile is complete, then `overview`.</Callout>
+
+    ## Refresh rotation
+
+    Refresh tokens rotate on use. The open question is whether the old token is
+    invalidated immediately or after a short grace window — see the gaps doc.
+
+  </Doc>
+  <Doc path="docs/auth/guards.md" title="Auth guards">
+
+    Two guards run before every protected handler.
+
+    ## JwtAuthGuard
+
+    Validates the Bearer token and attaches the decoded user to the request.
+
+    ## RolesGuard
+
+    Enforces the `@AuthRoles()` decorator against the user's role claim.
+
+  </Doc>
+  <Doc path="docs/legal/gdpr-gaps.md" title="GDPR gaps" note="open compliance items">
+
+    Outstanding data-protection items uncovered while tracing the auth path.
+
+    ## Retention
+
+    Refresh-token records currently have no TTL. They should expire and be purged
+    on a schedule.
+
+    ## Right to erasure
+
+    A user-deletion path must cascade to issued tokens and the audit log.
+
+  </Doc>
+</DocShelf>
+
+</Section>
+
 <Section title="Open questions" intro="Three decisions still need an owner before the candidate path can ship.">
 
 1. Should refresh-token rotation invalidate the old token immediately or after a grace window?

@@ -32,7 +32,11 @@ one origin. Reviewers pin comments to any block; you read them back with a scrip
    (helpers `diagram-panel`/`-lane`/`-layer`/`-arrow`/`-label`) for swimlanes and layers;
    `Checklist`/`Check done` for verification; `Timeline`/`Event` (`time`, `title`) for
    chronology; `StatTiles`/`Stat` (`label`, `value`, `delta?`, `trend?`=up|down|flat) for
-   a KPI row; `FileTree` (`paths={[{path, status, note}]}`) for a touched-files map.
+   a KPI row; `FileTree` (`paths={[{path, status, note}]}`) for a touched-files map;
+   `DocShelf`/`Doc` (`path` required, `title?`, `note?`; children = the doc's markdown)
+   for embedding several full documents — file-tree sidebar, one doc visible at a time,
+   h2 sections collapsible (first open), per-doc expand-all. Anchor per pane:
+   `doc-<kebab-of-path>`.
    Plain markdown works everywhere. Never use emoji as icons.
 2. **Publish:** `node <skill-dir>/scripts/publish.mjs <slug> --note "<what changed>"`.
    It compiles (fix your MDX if the compile step fails and re-run), refreshes `_shared`,
@@ -53,9 +57,15 @@ never reaches the server. Share either the bare URL (reader types the password) 
   password, so an accidental plaintext republish can't happen.
 - The password is stored nowhere; every republish needs it again. Ask the user for it
   rather than inventing one silently.
-- Trade-offs, applied automatically: no comments widget (the comments API is public),
-  skipped by galleries (title/lead would leak), version snapshots stored encrypted —
-  restore via `node <skill-dir>/scripts/protect.mjs decrypt --password <pw> <file>`
+- Comments still work, end-to-end encrypted: the widget (active only after the reader
+  unlocks the page in that tab) encrypts bodies and hashes anchors with keys derived
+  from the same password, so the public comments API stores only ciphertext. Read them
+  with `read-comments.mjs --password <pw>` (or `READOUT_PASSWORD`). Changing the
+  password orphans earlier comments — widget and CLI skip them and the CLI reports the
+  count. Anyone with the URL can still post junk ciphertext; timestamps/counts are visible.
+- Remaining trade-offs, applied automatically: skipped by galleries (title/lead would
+  leak), version snapshots stored encrypted — restore via
+  `node <skill-dir>/scripts/protect.mjs decrypt --password <pw> <file>`
   with the snapshot's `mdx` field as input.
 
 ## Update (living document)

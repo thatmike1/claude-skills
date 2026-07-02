@@ -95,6 +95,132 @@ export async function decryptEnvelope(envelope, password) {
     return new TextDecoder().decode(plaintext);
 }
 
+// ── comment crypto ───────────────────────────────────────────────────────────
+// end-to-end encryption for comments on protected readouts. keys derive
+// DETERMINISTICALLY from the same password plus the docId, so every republish
+// (and the read-comments CLI) reaches the identical keys without storing them.
+// the browser widget (assets/comments.js) reimplements this exact scheme; keep
+// the two in lockstep — salt string, iteration count, 512-bit split, HMAC.
+
+/** literal author stored on encrypted records (real author lives in ciphertext) */
+export const ENCRYPTED_AUTHOR = "enc";
+
+/** prefix on hashed anchor ids so tooling recognises encrypted-comment records */
+export const ENCRYPTED_ANCHOR_PREFIX = "enc-";
+
+/**
+ * the PBKDF2 salt for a doc's comment keys: a fixed namespace plus the docId,
+ * as raw utf-8 bytes. identical in the browser widget.
+ * @param {string} docId "<project>/<slug>" comment scope
+ * @returns {Uint8Array} salt bytes
+ */
+function commentSalt(docId) {
+    return new TextEncoder().encode("readout-comments|" + docId);
+}
+
+/**
+ * derives the comment AES-GCM key (bodies) and HMAC-SHA-256 key (anchors) from
+ * a password + docId. one PBKDF2 run yields 512 bits, split 256/256.
+ * @param {string} password readout password
+ * @param {string} docId "<project>/<slug>" comment scope
+ * @returns {Promise<{aesKey: CryptoKey, macKey: CryptoKey}>} derived keys
+ */
+export async function deriveCommentKeys(password, docId) {
+    const km = await subtle.importKey(
+        "raw",
+        new TextEncoder().encode(password),
+        "PBKDF2",
+        false,
+        ["deriveBits"],
+    );
+    const bits = new Uint8Array(
+        await subtle.deriveBits(
+            { name: "PBKDF2", salt: commentSalt(docId), iterations: KDF_ITERATIONS, hash: "SHA-256" },
+            km,
+            512,
+        ),
+    );
+    const aesKey = await subtle.importKey(
+        "raw",
+        bits.slice(0, 32),
+        { name: "AES-GCM", length: 256 },
+        false,
+        ["encrypt", "decrypt"],
+    );
+    const macKey = await subtle.importKey(
+        "raw",
+        bits.slice(32, 64),
+        { name: "HMAC", hash: "SHA-256" },
+        false,
+        ["sign"],
+    );
+    return { aesKey, macKey };
+}
+
+/**
+ * encrypts a comment payload into a compact envelope stored in the `body` field.
+ * @param {{aesKey: CryptoKey}} keys derived comment keys
+ * @param {{author: string, body: string, anchor: string}} payload cleartext comment
+ * @returns {Promise<{enc: number, iv: string, data: string}>} envelope (base64 fields)
+ */
+export async function encryptComment(keys, payload) {
+    const iv = randomBytes(12);
+    const ciphertext = await subtle.encrypt(
+        { name: "AES-GCM", iv },
+        keys.aesKey,
+        new TextEncoder().encode(JSON.stringify(payload)),
+    );
+    const b64 = (buf) => Buffer.from(buf).toString("base64");
+    return { enc: 1, iv: b64(iv), data: b64(ciphertext) };
+}
+
+/**
+ * decrypts a comment envelope back to its payload. throws on wrong key / tamper.
+ * @param {{aesKey: CryptoKey}} keys derived comment keys
+ * @param {{iv: string, data: string}} envelope encrypted body envelope
+ * @returns {Promise<{author: string, body: string, anchor: string}>} cleartext comment
+ */
+export async function decryptComment(keys, envelope) {
+    const b64 = (s) => new Uint8Array(Buffer.from(s, "base64"));
+    const plaintext = await subtle.decrypt(
+        { name: "AES-GCM", iv: b64(envelope.iv) },
+        keys.aesKey,
+        b64(envelope.data),
+    );
+    return JSON.parse(new TextDecoder().decode(plaintext));
+}
+
+/**
+ * deterministic opaque anchor id for an encrypted comment: HMAC of the real
+ * anchor, hex-truncated. lets the widget/CLI group by anchor without decrypting.
+ * @param {{macKey: CryptoKey}} keys derived comment keys
+ * @param {string} realAnchor the compile-time data-anchor value
+ * @returns {Promise<string>} "enc-" + 32 hex chars
+ */
+export async function hashAnchor(keys, realAnchor) {
+    const sig = new Uint8Array(
+        await subtle.sign("HMAC", keys.macKey, new TextEncoder().encode(realAnchor)),
+    );
+    let hex = "";
+    for (const b of sig) hex += b.toString(16).padStart(2, "0");
+    return ENCRYPTED_ANCHOR_PREFIX + hex.slice(0, 32);
+}
+
+/**
+ * whether a stored `body` string is an encrypted-comment envelope.
+ * @param {string} body raw record body
+ * @returns {boolean} true if it parses to an {enc:1} envelope
+ */
+export function isCommentEnvelope(body) {
+    if (typeof body !== "string" || body[0] !== "{") return false;
+    try {
+        const o = JSON.parse(body);
+        return o && o.enc === 1 && typeof o.iv === "string" && typeof o.data === "string";
+    } catch {
+        return false;
+    }
+}
+
 /**
  * builds the static unlock shell page around an envelope. the shell reuses the
  * shared stylesheet tokens, supports #pw=... fragment auto-unlock and manual
@@ -133,6 +259,10 @@ ${PROTECTED_MARKER}
 <script>
 (function () {
   var env = JSON.parse(document.getElementById("readout-payload").textContent);
+  // docId computed identically to comments.js so the inner page's widget can
+  // read back the password we stash on unlock (sessionStorage, this tab only).
+  var docId = location.pathname.replace(/^\\/+/, "").replace(/\\.html$/i, "");
+  if (!docId) docId = "index";
   var form = document.getElementById("unlock-form");
   var input = document.getElementById("unlock-pw");
   var btn = document.getElementById("unlock-btn");
@@ -165,6 +295,9 @@ ${PROTECTED_MARKER}
       btn.textContent = "Unlock";
       return false;
     }
+    // hand the verified password to the inner page's comment widget (this tab
+    // only). must happen BEFORE document.write replaces the document.
+    try { sessionStorage.setItem("readout-pw:" + docId, pw); } catch (e) {}
     document.open();
     document.write(html);
     document.close();

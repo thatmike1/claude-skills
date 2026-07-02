@@ -103,6 +103,80 @@ export function moonIcon() {
 }
 
 /**
+ * folder glyph for DocShelf directory rows in the file tree.
+ * @returns {import("react").ReactElement} svg element
+ */
+export function folderIcon() {
+    return h(
+        "svg",
+        {
+            className: "ds-ico ds-ico-dir",
+            width: "15",
+            height: "15",
+            viewBox: "0 0 24 24",
+            strokeWidth: 1.7,
+            "aria-hidden": "true",
+            ...STROKE,
+        },
+        h("path", {
+            d: "M3 6.5a2 2 0 0 1 2-2h3.6a2 2 0 0 1 1.5.7l1 1.2a2 2 0 0 0 1.5.6H19a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z",
+        })
+    );
+}
+
+/**
+ * document glyph for DocShelf file rows, varied by content kind: "text" (lined
+ * page), "data" (braces) or "code" (angle brackets). the folded corner is
+ * shared; the inner marks distinguish the kind.
+ * @param {string} kind text|data|code
+ * @returns {import("react").ReactElement} svg element
+ */
+export function docIcon(kind) {
+    const common = {
+        className: `ds-ico ds-ico-file ds-ico-${kind}`,
+        width: "15",
+        height: "15",
+        viewBox: "0 0 24 24",
+        strokeWidth: 1.7,
+        "aria-hidden": "true",
+        ...STROKE,
+    };
+    const page = h("path", {
+        key: "page",
+        d: "M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z",
+    });
+    const fold = h("path", { key: "fold", d: "M14 3v5h5" });
+    if (kind === "code") {
+        return h(
+            "svg",
+            common,
+            page,
+            fold,
+            h("path", { key: "a", d: "M10.5 12.5 9 14l1.5 1.5" }),
+            h("path", { key: "b", d: "M13.5 12.5 15 14l-1.5 1.5" })
+        );
+    }
+    if (kind === "data") {
+        return h(
+            "svg",
+            common,
+            page,
+            fold,
+            h("path", { key: "a", d: "M11 12c-1 0-1.3.5-1.3 1.3S9.4 15 8.7 15c.7 0 1 .4 1 1.2S10 17 11 17" }),
+            h("path", { key: "b", d: "M13 12c1 0 1.3.5 1.3 1.3s.3 1.2 1 1.2c-.7 0-1 .4-1 1.2S14 17 13 17" })
+        );
+    }
+    return h(
+        "svg",
+        common,
+        page,
+        fold,
+        h("path", { key: "a", d: "M8.5 13h5" }),
+        h("path", { key: "b", d: "M8.5 16h7" })
+    );
+}
+
+/**
  * gear glyph shown inside the masthead .version-chip.
  * @returns {import("react").ReactElement} svg element
  */

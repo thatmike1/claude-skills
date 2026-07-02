@@ -196,4 +196,70 @@
     }
 
     enhanceTables();
+
+    // docshelf — a document browser: click a file in the tree to swap the
+    // visible pane, and an expand/collapse-all toggle per doc. no deps.
+    function activateDoc(shelf, id) {
+        var buttons = shelf.querySelectorAll(".ds-filebtn");
+        Array.prototype.forEach.call(buttons, function (btn) {
+            var on = btn.getAttribute("data-ds-target") === id;
+            btn.classList.toggle("active", on);
+            btn.setAttribute("aria-selected", on ? "true" : "false");
+        });
+        var docs = shelf.querySelectorAll(".ds-doc");
+        Array.prototype.forEach.call(docs, function (doc) {
+            var on = doc.getAttribute("data-ds-id") === id;
+            doc.classList.toggle("ds-hidden", !on);
+            if (on) doc.removeAttribute("aria-hidden");
+            else doc.setAttribute("aria-hidden", "true");
+        });
+    }
+
+    // sync one doc's expand-all button label to whether any group is closed.
+    function syncExpandLabel(doc) {
+        var btn = doc.querySelector("[data-ds-expand]");
+        if (!btn) return;
+        var groups = doc.querySelectorAll("details.ds-group");
+        if (!groups.length) {
+            btn.style.display = "none";
+            return;
+        }
+        var anyClosed = Array.prototype.some.call(groups, function (g) {
+            return !g.open;
+        });
+        btn.textContent = anyClosed ? "Expand all" : "Collapse all";
+    }
+
+    function enhanceDocShelves() {
+        document.querySelectorAll("[data-ds-shelf]").forEach(function (shelf) {
+            shelf.querySelectorAll(".ds-filebtn").forEach(function (btn) {
+                btn.addEventListener("click", function () {
+                    activateDoc(shelf, btn.getAttribute("data-ds-target"));
+                });
+            });
+            shelf.querySelectorAll(".ds-doc").forEach(function (doc) {
+                syncExpandLabel(doc);
+                var btn = doc.querySelector("[data-ds-expand]");
+                if (btn) {
+                    btn.addEventListener("click", function () {
+                        var groups = doc.querySelectorAll("details.ds-group");
+                        var expand = Array.prototype.some.call(groups, function (g) {
+                            return !g.open;
+                        });
+                        Array.prototype.forEach.call(groups, function (g) {
+                            g.open = expand;
+                        });
+                        syncExpandLabel(doc);
+                    });
+                }
+                doc.querySelectorAll("details.ds-group").forEach(function (g) {
+                    g.addEventListener("toggle", function () {
+                        syncExpandLabel(doc);
+                    });
+                });
+            });
+        });
+    }
+
+    enhanceDocShelves();
 })();

@@ -449,6 +449,153 @@ pre code { background: none; color: inherit; padding: 0; border: none; border-ra
 .ft-item.renamed > .ft-name { color: var(--warn); }
 .ft-item.renamed > .ft-name::after { content: "\00a0\2192"; color: var(--warn); font-family: var(--mono); }
 
+/* ---- docshelf (document browser) -------------------------- */
+/* two panes: a directory tree of documents on the left, the active
+   document on the right. one doc visible at a time (artifact.js swaps
+   .ds-hidden); each doc's h2 sections fold via native <details>. */
+.docshelf {
+  margin: var(--s-6) 0;
+  display: grid;
+  grid-template-columns: minmax(190px, 250px) minmax(0, 1fr);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+  background: var(--bg);
+}
+
+/* sidebar: the surface-filled left column spans the full shelf height (its
+   divider runs the whole way down); the tree inside sticks so it stays
+   reachable while a long doc scrolls */
+.ds-sidebar {
+  min-width: 0;
+  background: var(--surface);
+  border-right: 1px solid var(--hairline);
+  border-radius: var(--radius) 0 0 var(--radius);
+}
+.ds-sidebar-sticky {
+  position: sticky;
+  top: var(--s-4);
+  max-height: calc(100vh - 2 * var(--s-4));
+  overflow: auto;
+  padding: var(--s-4);
+}
+.ds-sidebar-head {
+  font-size: 0.7rem; font-weight: 600; letter-spacing: 0.07em; text-transform: uppercase;
+  color: var(--text-faint); padding: 0 var(--s-2) var(--s-3);
+}
+
+/* tree lists */
+.ds-tree, .ds-tree ul { list-style: none; margin: 0; padding: 0; }
+.ds-tree ul { padding-left: 0.85rem; border-left: 1px solid var(--hairline-soft); margin-left: 0.55rem; }
+.ds-node { margin: 0; padding: 0; }
+
+/* directory row */
+.ds-dirname {
+  display: flex; align-items: center; gap: var(--s-2); padding: 0.28rem var(--s-2);
+  font-family: var(--mono); font-size: 0.8rem; font-weight: 600; color: var(--text-strong);
+}
+.ds-dirname .ds-ico { flex: 0 0 auto; color: var(--text-faint); }
+.ds-dirlabel { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* file row — a full-width switch button */
+.ds-filebtn {
+  display: flex; align-items: center; gap: var(--s-2); width: 100%; text-align: left;
+  padding: 0.3rem var(--s-2); margin: 0.05rem 0; border: 1px solid transparent;
+  border-radius: var(--radius-sm); background: none; color: var(--text); cursor: pointer;
+  font-family: var(--mono); font-size: 0.8rem; line-height: 1.35;
+  transition: background .13s ease, color .13s ease, border-color .13s ease;
+}
+.ds-filebtn .ds-ico { flex: 0 0 auto; margin-top: 0.12rem; color: var(--text-faint); transition: color .13s ease; }
+/* filenames wrap rather than truncate, so near-identical long names stay
+   tellable apart by their differing tail (the full path is also on the button
+   title); the icon pins to the top so it lines up with the first line */
+.ds-filebtn { align-items: flex-start; }
+.ds-fname { min-width: 0; overflow-wrap: anywhere; word-break: break-word; }
+.ds-fnote { display: none; }
+.ds-filebtn:hover { background: var(--surface-2); color: var(--text-strong); }
+.ds-filebtn:hover .ds-ico { color: var(--text-muted); }
+.ds-filebtn:focus-visible { outline: none; border-color: var(--accent-border); box-shadow: 0 0 0 3px var(--accent-tint); }
+.ds-filebtn.active {
+  background: var(--accent-tint); color: var(--accent-strong); border-color: var(--accent-border); font-weight: 600;
+}
+.ds-filebtn.active .ds-ico { color: var(--accent); }
+
+/* main pane */
+.ds-main { min-width: 0; padding: var(--s-6) var(--s-8); }
+.ds-doc { min-width: 0; }
+.ds-doc.ds-hidden { display: none; }
+
+/* doc header */
+.ds-dochead {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: var(--s-4);
+  padding-bottom: var(--s-4); margin-bottom: var(--s-6); border-bottom: 1px solid var(--hairline);
+}
+.ds-dochead-titles { min-width: 0; }
+.ds-path { display: block; font-family: var(--mono); font-size: 0.72rem; color: var(--text-faint); word-break: break-all; }
+.ds-title { margin: 0.15rem 0 0; font-size: 1.2rem; line-height: 1.25; letter-spacing: -0.01em; color: var(--text-strong); }
+.ds-note { margin: 0.35rem 0 0; font-size: 0.9rem; line-height: 1.5; color: var(--text-muted); text-wrap: pretty; }
+.ds-expand-all {
+  flex: 0 0 auto; font-family: var(--sans); font-size: 0.72rem; font-weight: 600; letter-spacing: 0.03em;
+  color: var(--text-muted); background: var(--surface); border: 1px solid var(--hairline);
+  border-radius: var(--radius-sm); padding: 0.3rem 0.6rem; cursor: pointer; white-space: nowrap;
+  transition: background .13s ease, color .13s ease, border-color .13s ease;
+}
+.ds-expand-all:hover { background: var(--surface-2); color: var(--text-strong); border-color: var(--accent-border); }
+
+/* leading content (before the first h2) reads as normal prose */
+.ds-lead { margin-bottom: var(--s-4); }
+.ds-lead > :last-child { margin-bottom: 0; }
+
+/* h2 groups fold via <details>; the summary is the always-visible heading */
+.ds-group { border-top: 1px solid var(--hairline-soft); }
+.ds-group:first-of-type { border-top: none; }
+.ds-summary {
+  display: flex; align-items: center; gap: var(--s-3); padding: var(--s-4) 0; cursor: pointer;
+  list-style: none; user-select: none;
+}
+.ds-summary::-webkit-details-marker { display: none; }
+.ds-summary:focus-visible { outline: none; }
+.ds-summary:focus-visible .ds-group-title { color: var(--accent-strong); }
+.ds-group-title {
+  flex: 1 1 auto; min-width: 0; font-weight: 620; font-size: 1.05rem; letter-spacing: -0.01em;
+  color: var(--text-strong); transition: color .13s ease;
+}
+.ds-summary:hover .ds-group-title { color: var(--accent-strong); }
+/* caret: a chevron that rotates open */
+.ds-caret {
+  flex: 0 0 auto; width: 0.5rem; height: 0.5rem; margin-right: 0.15rem;
+  border-right: 1.5px solid var(--text-faint); border-bottom: 1.5px solid var(--text-faint);
+  transform: rotate(-45deg); transition: transform .16s ease, border-color .13s ease;
+}
+.ds-group[open] > .ds-summary .ds-caret { transform: rotate(45deg); }
+.ds-summary:hover .ds-caret { border-color: var(--accent); }
+.ds-group-body { padding: 0 0 var(--s-6) 0.85rem; border-left: 1px solid var(--hairline-soft); margin-left: 0.2rem; }
+.ds-group-body > :last-child { margin-bottom: 0; }
+
+/* breakout blocks inside a doc pane must not escape it — they already have a
+   comfortable width here, so pin them to the pane column */
+.docshelf .ds-doc .breakout {
+  width: 100%; min-width: 0; max-width: 100%; position: static; left: auto; transform: none;
+}
+
+@media (max-width: 720px) {
+  .docshelf { display: block; }
+  /* sidebar collapses to a horizontal file switcher: flatten the nesting and
+     hide directory labels (the full path shows in each doc header) */
+  .ds-sidebar {
+    position: static; max-height: none; border-right: none; border-bottom: 1px solid var(--hairline);
+    border-radius: var(--radius) var(--radius) 0 0; overflow-x: auto;
+  }
+  /* flatten the whole tree (directory <li>s and their <ul>s dissolve) so every
+     file button becomes a direct flex item in one horizontal scroll row */
+  .ds-tree { display: flex; flex-wrap: nowrap; gap: var(--s-2); }
+  .ds-tree ul, .ds-node.ds-dir { display: contents; }
+  .ds-dirname { display: none; }
+  .ds-node.ds-file { flex: 0 0 auto; }
+  .ds-filebtn { margin: 0; white-space: nowrap; }
+  .ds-fname { overflow: visible; }
+  .ds-main { padding: var(--s-6) var(--s-4); }
+}
+
 /* ---- tables ----------------------------------------------- */
 .tablewrap { margin: var(--s-6) 0; overflow-x: auto; }
 table { width: 100%; border-collapse: collapse; font-size: 0.94rem; }
@@ -583,7 +730,15 @@ footer h2 { font-size: 1.2rem; margin-bottom: var(--s-4); }
   .theme-toggle, .artifact-nav, .table-filter { display:none !important; }
   .cmt-pin { display:none !important; }
   table.sortable thead th { cursor:auto; }
-  .card, .callout, .codewrap, .diffwrap, .diagram, .stat, .filetree, .tablewrap, .version-chip { border-color:#ccc !important; box-shadow:none !important; }
+  .card, .callout, .codewrap, .diffwrap, .diagram, .stat, .filetree, .tablewrap, .version-chip, .docshelf { border-color:#ccc !important; box-shadow:none !important; }
   .page.split section { display:block; }
   .page.split section > .rail { margin-top:var(--s-6); }
+  /* docshelf prints as a plain stack: no sidebar, every doc and every group
+     fully expanded so nothing is hidden on paper */
+  .docshelf { display:block; }
+  .ds-sidebar, .ds-expand-all, .ds-caret { display:none !important; }
+  .ds-main { padding:0 !important; }
+  .ds-doc.ds-hidden { display:block !important; }
+  .ds-doc + .ds-doc { margin-top:var(--s-8); padding-top:var(--s-8); border-top:1px solid #ccc; }
+  .ds-group-body { display:block !important; }
 }
