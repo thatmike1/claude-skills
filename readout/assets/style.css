@@ -1,7 +1,7 @@
 /* ============================================================
    READOUT — single stylesheet
    One clean, product-doc surface (Linear / Vercel / Pierre
-   lineage): neutral grounds, one restrained indigo accent,
+   lineage): neutral grounds, one restrained green accent,
    hairline borders, tight sans typography, an 8px rhythm.
    Light is the primary design target; dark derives from the
    same token names. Theme is chosen by `color-scheme` +
@@ -25,12 +25,12 @@
   --text-muted:    #71717a;
   --text-faint:    #a1a1aa;
 
-  /* accent — restrained indigo */
-  --accent:        #4f46e5;
-  --accent-strong: #4338ca;
-  --accent-dim:    #6366f1;
-  --accent-tint:   rgba(79, 70, 229, 0.08);
-  --accent-border: rgba(79, 70, 229, 0.28);
+  /* accent — atreo green in both modes; hover darkens on white */
+  --accent:        #15c955;
+  --accent-strong: #0a8a41;
+  --accent-dim:    #48e07f;
+  --accent-tint:   rgba(21, 201, 85, 0.09);
+  --accent-border: rgba(21, 201, 85, 0.32);
 
   /* semantic */
   --ok:     #16a34a; --ok-tint: rgba(22,163,74,0.09);  --ok-border: rgba(22,163,74,0.30);
@@ -66,7 +66,8 @@
   --s-1:.25rem; --s-2:.5rem; --s-3:.75rem; --s-4:1rem; --s-6:1.5rem;
   --s-8:2rem; --s-12:3rem; --s-16:4rem;
 
-  --measure: 720px;
+  --measure: 820px;
+  --breakout-w: 1080px;
   --radius: 8px;
   --radius-sm: 6px;
 }
@@ -87,11 +88,11 @@
     --text-muted:    #a1a1aa;
     --text-faint:    #71717a;
 
-    --accent:        #818cf8;
-    --accent-strong: #a5b4fc;
-    --accent-dim:    #6366f1;
-    --accent-tint:   rgba(129, 140, 248, 0.14);
-    --accent-border: rgba(129, 140, 248, 0.34);
+    --accent:        #15c955;
+    --accent-strong: #48e07f;
+    --accent-dim:    #0ea24e;
+    --accent-tint:   rgba(21, 201, 85, 0.13);
+    --accent-border: rgba(21, 201, 85, 0.34);
 
     --ok:     #4ade80; --ok-tint: rgba(74,222,128,0.12);  --ok-border: rgba(74,222,128,0.32);
     --info:   #60a5fa; --info-tint: rgba(96,165,250,0.12); --info-border: rgba(96,165,250,0.32);
@@ -127,11 +128,11 @@
   --text-muted:    #a1a1aa;
   --text-faint:    #71717a;
 
-  --accent:        #818cf8;
-  --accent-strong: #a5b4fc;
-  --accent-dim:    #6366f1;
-  --accent-tint:   rgba(129, 140, 248, 0.14);
-  --accent-border: rgba(129, 140, 248, 0.34);
+  --accent:        #15c955;
+  --accent-strong: #48e07f;
+  --accent-dim:    #0ea24e;
+  --accent-tint:   rgba(21, 201, 85, 0.13);
+  --accent-border: rgba(21, 201, 85, 0.34);
 
   --ok:     #4ade80; --ok-tint: rgba(74,222,128,0.12);  --ok-border: rgba(74,222,128,0.32);
   --info:   #60a5fa; --info-tint: rgba(96,165,250,0.12); --info-border: rgba(96,165,250,0.32);
@@ -161,6 +162,8 @@
 html { -webkit-text-size-adjust: 100%; }
 body {
   margin: 0;
+  /* wide blocks scroll internally; the page itself never scrolls sideways */
+  overflow-x: clip;
   background-color: var(--bg);
   color: var(--text);
   font-family: var(--sans);
@@ -171,6 +174,15 @@ body {
 }
 .page { max-width: var(--measure); margin: 0 auto; padding: clamp(2.5rem,6vw,4.5rem) clamp(1.25rem,5vw,2rem) 5rem; }
 .breakout { width: 100%; max-width: 100%; }
+/* on the plain page, breakout blocks may escape the prose measure — but only
+   as far as their content needs (short code stays at column width), capped at
+   --breakout-w / the viewport. (the split layout spans grid columns instead) */
+.page:not(.split) .breakout {
+  width: fit-content;
+  min-width: 100%;
+  max-width: min(var(--breakout-w), calc(100vw - 4rem));
+  position: relative; left: 50%; transform: translateX(-50%);
+}
 
 p { margin: 0 0 var(--s-4); }
 a { color: var(--accent); text-decoration: none; border-bottom: 1px solid var(--accent-border); transition: color .15s ease, border-color .15s ease; }
@@ -346,17 +358,29 @@ pre code { background: none; color: inherit; padding: 0; border: none; border-ra
   background: var(--surface-2); border: 1px solid var(--hairline); border-radius: var(--radius);
   padding: var(--s-4); display: flex; flex-direction: column; gap: var(--s-3);
 }
-/* a lane: horizontal row of items (flows left-to-right) */
+/* a lane: label column + row of equal-width boxes. labels share a fixed
+   column so boxes align vertically across lanes. */
 .diagram-lane { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-3); }
+.diagram-lane > .diagram-label { flex: 0 0 var(--diagram-label-w, 7rem); }
 /* a layer: a stacked box within a panel/lane */
 .diagram-layer {
-  flex: 1 1 auto; min-width: 0; background: var(--surface); border: 1px solid var(--hairline);
+  flex: 1 1 0; min-width: 0; background: var(--surface); border: 1px solid var(--hairline);
   border-radius: var(--radius-sm); padding: var(--s-3) var(--s-4); font-size: 0.9rem; color: var(--text);
+  text-align: center;
 }
 .diagram-layer.accent { border-color: var(--accent-border); background: var(--accent-tint); color: var(--accent-strong); }
-/* an arrow: a connector between items */
-.diagram-arrow { flex: 0 0 auto; color: var(--text-faint); font-size: 1.1rem; line-height: 1; user-select: none; }
-.diagram-arrow::before { content: "\2192"; }
+/* an arrow: a connector row between lanes (flow runs downward); indented
+   past the label column so it aligns with the boxes */
+.diagram-arrow {
+  display: flex; align-items: center; gap: 0.5rem;
+  margin-left: calc(var(--diagram-label-w, 7rem) + var(--s-3));
+  font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.04em; text-transform: uppercase;
+  color: var(--text-faint); user-select: none;
+}
+.diagram-arrow::before { content: "\2193"; font-size: 0.95rem; line-height: 1; }
+/* an arrow inside a lane connects horizontally instead */
+.diagram-lane > .diagram-arrow { margin-left: 0; flex: 0 0 auto; }
+.diagram-lane > .diagram-arrow::before { content: "\2192"; }
 /* a label: small muted caption */
 .diagram-label { font-family: var(--mono); font-size: 0.7rem; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-faint); }
 
@@ -406,7 +430,10 @@ pre code { background: none; color: inherit; padding: 0; border: none; border-ra
 .filetree ul { list-style: none; margin: 0; padding: 0; }
 .filetree ul.ft-root { padding-left: 0; }
 .filetree ul ul { padding-left: 1.1rem; border-left: 1px solid var(--hairline-soft); margin-left: 0.35rem; }
-.filetree li.ft-item { margin: 0; padding: 0.14rem 0; display: flex; align-items: baseline; gap: var(--s-2); line-height: 1.5; }
+/* one node per line; the nested ul inside a dir's li drops to its own
+   indented block below the dir name */
+.filetree li.ft-item { margin: 0; padding: 0.14rem 0; line-height: 1.5; }
+.filetree li.ft-item > .ft-name { margin-right: var(--s-2); }
 .ft-name { font-family: var(--mono); font-size: 0.86rem; color: var(--text); }
 .ft-dir > .ft-name { color: var(--text-strong); font-weight: 600; }
 .ft-dir > .ft-name::before { content: "\1F4C1\00a0"; }

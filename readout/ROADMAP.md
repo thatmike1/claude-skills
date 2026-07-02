@@ -29,7 +29,9 @@ Remaining blocks from BuilderIO's catalog worth adding:
 - ~~Higher-fidelity diagrams via a `<Diagram html={...}>` variant with helper classes
   (panels, lanes, layers, arrows, labels) for swimlanes and layered stacks, without
   abandoning mermaid for simple flows.~~ Shipped 2026-07-02.
-- `<AnnotatedCode>` — line-annotated code for review readouts.
+- `<AnnotatedCode>` — line-annotated code for review readouts. Should extend to
+  `<Diff>` too: visual-plan anchors margin annotations to individual diff lines,
+  which is the strongest part of its diff presentation.
 - `<QuestionForm>` — open questions with options; answers post into
   `readout_comments` under the question's anchor, so the existing readback loop
   collects decisions, not just prose comments.
