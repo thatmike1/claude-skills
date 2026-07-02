@@ -1,0 +1,8 @@
+{
+  "root": "~/git/readouts",
+  "theme": "dossier",
+  "publicBaseUrl": "https://readout.ssscribe.app",
+  "pbUrl": "https://readout.ssscribe.app",
+  "pbToken": "",
+  "deployCmd": "rsync -az --delete --exclude='*.mdx' --exclude='.git' {root}/ readout-deploy:/opt/readout/pb_public/"
+}

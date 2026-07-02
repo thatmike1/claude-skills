@@ -1,0 +1,204 @@
+[
+    {
+        "id": "readout_comments_col",
+        "name": "readout_comments",
+        "type": "base",
+        "system": false,
+        "listRule": "",
+        "viewRule": "",
+        "createRule": "",
+        "updateRule": null,
+        "deleteRule": null,
+        "fields": [
+            {
+                "id": "readout_comments_id",
+                "name": "id",
+                "type": "text",
+                "system": true,
+                "required": true,
+                "presentable": false,
+                "hidden": false,
+                "primaryKey": true,
+                "min": 15,
+                "max": 15,
+                "pattern": "^[a-z0-9]+$",
+                "autogeneratePattern": "[a-z0-9]{15}"
+            },
+            {
+                "id": "readout_comments_doc_id",
+                "name": "doc_id",
+                "type": "text",
+                "system": false,
+                "required": true,
+                "presentable": false,
+                "hidden": false,
+                "primaryKey": false,
+                "min": 1,
+                "max": 200,
+                "pattern": ""
+            },
+            {
+                "id": "readout_comments_anchor_id",
+                "name": "anchor_id",
+                "type": "text",
+                "system": false,
+                "required": true,
+                "presentable": false,
+                "hidden": false,
+                "primaryKey": false,
+                "min": 1,
+                "max": 200,
+                "pattern": ""
+            },
+            {
+                "id": "readout_comments_author",
+                "name": "author",
+                "type": "text",
+                "system": false,
+                "required": true,
+                "presentable": false,
+                "hidden": false,
+                "primaryKey": false,
+                "min": 1,
+                "max": 80,
+                "pattern": ""
+            },
+            {
+                "id": "readout_comments_body",
+                "name": "body",
+                "type": "text",
+                "system": false,
+                "required": true,
+                "presentable": false,
+                "hidden": false,
+                "primaryKey": false,
+                "min": 1,
+                "max": 4000,
+                "pattern": ""
+            },
+            {
+                "id": "readout_comments_created",
+                "name": "created",
+                "type": "autodate",
+                "system": false,
+                "presentable": false,
+                "hidden": false,
+                "onCreate": true,
+                "onUpdate": false
+            },
+            {
+                "id": "readout_comments_updated",
+                "name": "updated",
+                "type": "autodate",
+                "system": false,
+                "presentable": false,
+                "hidden": false,
+                "onCreate": true,
+                "onUpdate": true
+            }
+        ],
+        "indexes": [
+            "CREATE INDEX `idx_readout_comments_doc` ON `readout_comments` (`doc_id`, `created`)"
+        ]
+    },
+    {
+        "id": "readout_versions_col",
+        "name": "readout_versions",
+        "type": "base",
+        "system": false,
+        "listRule": "",
+        "viewRule": "",
+        "createRule": null,
+        "updateRule": null,
+        "deleteRule": null,
+        "fields": [
+            {
+                "id": "readout_versions_id",
+                "name": "id",
+                "type": "text",
+                "system": true,
+                "required": true,
+                "presentable": false,
+                "hidden": false,
+                "primaryKey": true,
+                "min": 15,
+                "max": 15,
+                "pattern": "^[a-z0-9]+$",
+                "autogeneratePattern": "[a-z0-9]{15}"
+            },
+            {
+                "id": "readout_versions_doc_id",
+                "name": "doc_id",
+                "type": "text",
+                "system": false,
+                "required": true,
+                "presentable": false,
+                "hidden": false,
+                "primaryKey": false,
+                "min": 1,
+                "max": 200,
+                "pattern": ""
+            },
+            {
+                "id": "readout_versions_version",
+                "name": "version",
+                "type": "number",
+                "system": false,
+                "required": true,
+                "presentable": false,
+                "hidden": false,
+                "primaryKey": false,
+                "onlyInt": true
+            },
+            {
+                "id": "readout_versions_note",
+                "name": "note",
+                "type": "text",
+                "system": false,
+                "required": false,
+                "presentable": false,
+                "hidden": false,
+                "primaryKey": false,
+                "min": 0,
+                "max": 500,
+                "pattern": ""
+            },
+            {
+                "id": "readout_versions_mdx",
+                "name": "mdx",
+                "type": "text",
+                "system": false,
+                "required": false,
+                "presentable": false,
+                "hidden": false,
+                "primaryKey": false,
+                "min": 0,
+                "max": 500000,
+                "pattern": ""
+            },
+            {
+                "id": "readout_versions_created",
+                "name": "created",
+                "type": "autodate",
+                "system": false,
+                "presentable": false,
+                "hidden": false,
+                "onCreate": true,
+                "onUpdate": false
+            },
+            {
+                "id": "readout_versions_updated",
+                "name": "updated",
+                "type": "autodate",
+                "system": false,
+                "presentable": false,
+                "hidden": false,
+                "onCreate": true,
+                "onUpdate": true
+            }
+        ],
+        "indexes": [
+            "CREATE INDEX `idx_readout_versions_doc` ON `readout_versions` (`doc_id`, `version`)"
+        ]
+    }
+]

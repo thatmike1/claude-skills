@@ -1,0 +1,135 @@
+---
+title: "Auth & Onboarding |Session Walkthrough|"
+eyebrow: Session Walkthrough
+lead: >
+  This artifact captures the auth and onboarding flow we worked through this
+  session — what the backend does on login, where new users get routed, and the
+  open questions still blocking the candidate path.
+version: 3
+date: July 2, 2026
+---
+
+<Section title="Summary" intro="The login exchange is stable; routing and the candidate unlock path still have gaps.">
+
+<KeyPoints>
+
+- OAuth provider token is exchanged at `POST /auth/oauth`; the backend verifies it and issues JWT access + refresh tokens.
+- The response field `nextScreen` routes the user to either `account_completion` or `overview`.
+- Guards: `JwtAuthGuard` validates the Bearer token, `RolesGuard` enforces the `@AuthRoles()` decorator.
+
+</KeyPoints>
+
+Plain paragraphs, **bold**, _italic_, `inline code`, and [links](https://example.com)
+all render normally inside a section.
+
+### A third-level heading
+
+1. Ordered lists work too.
+2. As do plain bullet lists outside `KeyPoints`.
+
+> Blockquotes render with the theme's blockquote styling.
+
+</Section>
+
+<Section title="What changed" intro="Four moving parts shifted this session — one landed, two are watch-items, one is a hard blocker.">
+
+<Callouts>
+  <Callout type="success">Account-completion endpoint now accepts role + profile in a single request.</Callout>
+  <Callout type="info"><code>nextScreen</code> is computed server-side — the client should never infer it.</Callout>
+  <Callout type="warning">Refresh-token rotation isn't covered by tests yet.</Callout>
+  <Callout type="danger">Candidate identity unlock still depends on the credits module, which is unimplemented.</Callout>
+</Callouts>
+
+A lone callout with a custom label works standalone (no wrapper needed):
+
+<Callout type="info" label="Heads up">Single callouts wrap themselves in a `.callouts` row automatically.</Callout>
+
+<Chips>
+  <Chip type="blocker" />
+  <Chip type="risk" />
+  <Chip type="fyi" />
+</Chips>
+
+</Section>
+
+<Section title="Flow" intro="From provider token to landing screen, the backend decides everything in one pass.">
+
+<Diagram code={`flowchart TD
+  A[OAuth provider token] --> B[POST /auth/oauth]
+  B --> C{User exists?}
+  C -->|no| D[Create user]
+  C -->|yes| E[Issue JWT access + refresh]
+  D --> E
+  E --> F{nextScreen}
+  F -->|account_completion| G[Onboarding: role + profile]
+  F -->|overview| H[Main app]`} />
+
+</Section>
+
+<Section title="Key code" intro="Enums are const objects with inferred union types, never the enum keyword.">
+
+A plain fenced code block renders through the same `.codewrap` structure:
+
+```typescript
+// enums are const objects with inferred union types, never the `enum` keyword
+export const UserRoleEnum = {
+  Candidate: "candidate",
+  Company: "company",
+} as const;
+
+export type UserRole = (typeof UserRoleEnum)[keyof typeof UserRoleEnum];
+```
+
+The explicit `<Code>` component is equivalent, useful when the source contains
+characters awkward to fence:
+
+<Code lang="bash" code={`curl -s -X POST https://api.example.com/auth/oauth \\
+  -H "Content-Type: application/json" \\
+  -d '{"provider":"google","token":"..."}'`} />
+
+</Section>
+
+<Section title="Plan support" intro="Artifact generation is gated to the workspace tiers — not the consumer plans.">
+
+A props-driven table with sortable headers, a live filter, and mark cells:
+
+<DataTable
+  sortable
+  filter="Filter plans…"
+  nosort={["Artifacts"]}
+  headers={["Plan", "Artifacts", "Notes"]}
+  rows={[
+    ["Free", <Mark no />, "not available"],
+    ["Pro", <Mark no />, "consumer tier, excluded"],
+    ["Max", <Mark no />, "consumer tier, excluded"],
+    ["Team", <Mark yes />, "on by default"],
+    ["Enterprise", <Mark yes />, "admin-enabled"],
+  ]}
+/>
+
+A markdown GFM table also works — pass it as children:
+
+<DataTable sortable>
+
+| Guard | Purpose | Tested |
+| ----- | ------- | ------ |
+| JwtAuthGuard | validates the Bearer token | yes |
+| RolesGuard | enforces `@AuthRoles()` | partial |
+
+</DataTable>
+
+</Section>
+
+<Section title="Open questions" intro="Three decisions still need an owner before the candidate path can ship.">
+
+1. Should refresh-token rotation invalidate the old token immediately or after a grace window?
+2. Where does the credits balance get checked — guard or use-case?
+3. Does `account_completion` need to be idempotent if the client retries?
+
+</Section>
+
+<History session="example-session-id">
+  <Entry v="3" d="July 2, 2026">Added flow diagram and open questions.</Entry>
+  <Entry v="2" d="July 2, 2026">Documented guards and nextScreen routing.</Entry>
+  <Entry v="1" d="July 2, 2026">Initial capture of the auth exchange.</Entry>
+</History>

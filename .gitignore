@@ -5,3 +5,4 @@ node_modules/
 morning/config.json
 invoice-subjects/config.json
 artifact/config.json
+readout/config.json

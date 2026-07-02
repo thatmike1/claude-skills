@@ -1,0 +1,6 @@
+{
+    "name": "readout",
+    "version": "1.0.0",
+    "description": "Generate, update, and publish a readout — an MDX-authored, themed session document compiled to HTML and published to readout.ssscribe.app with anchored teammate comments the agent reads back. Successor to the artifact skill, built for sharing. Use when the user asks to make/create/publish a readout, wants session output as a shareable link, asks to update an existing readout, or asks to read comments on one.",
+    "skills": "."
+}
