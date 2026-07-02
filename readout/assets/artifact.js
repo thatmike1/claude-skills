@@ -262,4 +262,100 @@
     }
 
     enhanceDocShelves();
+
+    // section rail — a fixed table-of-contents on the right margin that
+    // scrollspy-highlights the section currently near the top of the viewport.
+    // built from the page's <section data-anchor="s-…"> blocks; no compile step
+    // and no deps. CSS hides it below the width where the margin has room.
+    function escapeHtml(s) {
+        var d = document.createElement("div");
+        d.textContent = s == null ? "" : s;
+        return d.innerHTML;
+    }
+
+    function buildSectionRail() {
+        var page = document.querySelector("main.page");
+        if (!page) return;
+        var sections = Array.prototype.filter.call(page.children, function (el) {
+            return (
+                el.tagName === "SECTION" &&
+                (el.getAttribute("data-anchor") || "").indexOf("s-") === 0
+            );
+        });
+        if (sections.length < 2) return; // a single section isn't worth a rail
+
+        var items = "";
+        sections.forEach(function (sec) {
+            if (!sec.id) sec.id = sec.getAttribute("data-anchor");
+            var h2 = sec.querySelector("h2");
+            var title = "";
+            if (h2) {
+                var clone = h2.cloneNode(true);
+                var marker = clone.querySelector(".marker");
+                if (marker) marker.remove();
+                title = clone.textContent.trim();
+            }
+            if (!title) return;
+            items +=
+                '<li><a href="#' +
+                sec.id +
+                '" data-toc="' +
+                sec.id +
+                '">' +
+                escapeHtml(title) +
+                "</a></li>";
+        });
+
+        var nav = document.createElement("nav");
+        nav.className = "readout-toc";
+        nav.setAttribute("aria-label", "On this readout");
+        nav.innerHTML =
+            '<p class="toc-head">On this readout</p><ul class="toc-list">' + items + "</ul>";
+        document.body.appendChild(nav);
+
+        var byId = {};
+        Array.prototype.forEach.call(nav.querySelectorAll("a[data-toc]"), function (a) {
+            byId[a.getAttribute("data-toc")] = a;
+            // smooth scroll without leaving a #hash jump in history
+            a.addEventListener("click", function (e) {
+                var target = document.getElementById(a.getAttribute("data-toc"));
+                if (!target) return;
+                e.preventDefault();
+                target.scrollIntoView({ behavior: "smooth", block: "start" });
+            });
+        });
+
+        var current = null;
+        function setActive(id) {
+            if (id === current) return;
+            if (current && byId[current]) byId[current].classList.remove("active");
+            current = id;
+            if (byId[id]) byId[id].classList.add("active");
+        }
+        setActive(sections[0].id);
+
+        // a section becomes active when it crosses into the top band of the
+        // viewport; pick the topmost such section so the highlight tracks reading
+        // position. keeps the last active when scrolled into the footer.
+        var visible = {};
+        var obs = new IntersectionObserver(
+            function (entries) {
+                entries.forEach(function (en) {
+                    visible[en.target.id] = en.isIntersecting;
+                });
+                for (var i = 0; i < sections.length; i++) {
+                    if (visible[sections[i].id]) {
+                        setActive(sections[i].id);
+                        return;
+                    }
+                }
+            },
+            { rootMargin: "-12% 0px -72% 0px", threshold: 0 }
+        );
+        sections.forEach(function (s) {
+            obs.observe(s);
+        });
+    }
+
+    buildSectionRail();
 })();

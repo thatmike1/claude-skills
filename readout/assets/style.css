@@ -456,10 +456,18 @@ pre code { background: none; color: inherit; padding: 0; border: none; border-ra
 .docshelf {
   margin: var(--s-6) 0;
   display: grid;
-  grid-template-columns: minmax(190px, 250px) minmax(0, 1fr);
+  grid-template-columns: minmax(230px, 300px) minmax(0, 1fr);
   border: 1px solid var(--hairline);
   border-radius: var(--radius);
   background: var(--bg);
+}
+/* the shelf is the showpiece block — force it wider than the standard breakout
+   measure so the tree and doc pane both get room. an explicit width (not the
+   base rule's fit-content) is required: the shelf's content is all wrappable
+   text, so fit-content would collapse it back to the prose measure. */
+.page:not(.split) .docshelf.breakout {
+  width: min(1260px, calc(100vw - 4rem));
+  max-width: min(1260px, calc(100vw - 4rem));
 }
 
 /* sidebar: the surface-filled left column spans the full shelf height (its
@@ -490,7 +498,7 @@ pre code { background: none; color: inherit; padding: 0; border: none; border-ra
 
 /* directory row */
 .ds-dirname {
-  display: flex; align-items: center; gap: var(--s-2); padding: 0.28rem var(--s-2);
+  display: flex; align-items: center; gap: var(--s-1); padding: 0.28rem var(--s-2);
   font-family: var(--mono); font-size: 0.8rem; font-weight: 600; color: var(--text-strong);
 }
 .ds-dirname .ds-ico { flex: 0 0 auto; color: var(--text-faint); }
@@ -498,7 +506,7 @@ pre code { background: none; color: inherit; padding: 0; border: none; border-ra
 
 /* file row — a full-width switch button */
 .ds-filebtn {
-  display: flex; align-items: center; gap: var(--s-2); width: 100%; text-align: left;
+  display: flex; align-items: center; gap: var(--s-1); width: 100%; text-align: left;
   padding: 0.3rem var(--s-2); margin: 0.05rem 0; border: 1px solid transparent;
   border-radius: var(--radius-sm); background: none; color: var(--text); cursor: pointer;
   font-family: var(--mono); font-size: 0.8rem; line-height: 1.35;
@@ -699,6 +707,50 @@ footer h2 { font-size: 1.2rem; margin-bottom: var(--s-4); }
   .page.split section > .rail { margin-top: var(--s-8); }
   .page.split section > .main:only-of-type { max-width: none; }
 }
+
+/* ---- section rail (scrollspy TOC) ------------------------- */
+/* fixed in the right margin near the viewport edge; hidden until the viewport
+   is wide enough to hold both the content and the rail's lane. tracks the
+   section near the top. --toc-reserve is the horizontal space kept clear on the
+   right so breakouts (which punch past --measure) never run under the rail. */
+:root { --toc-reserve: 472px; }
+.readout-toc {
+  position: fixed;
+  top: 50%;
+  right: 2rem;
+  transform: translateY(-50%);
+  width: 180px;
+  max-height: 74vh;
+  overflow-y: auto;
+  z-index: 20;
+  display: none;
+  font-family: var(--sans);
+}
+@media (min-width: 1300px) {
+  .readout-toc { display: block; }
+  /* keep breakouts (and the wide docshelf) clear of the rail lane */
+  .page:not(.split) .breakout { max-width: min(var(--breakout-w), calc(100vw - var(--toc-reserve))); }
+  .page:not(.split) .docshelf.breakout {
+    width: clamp(var(--measure), calc(100vw - var(--toc-reserve)), 1260px);
+    max-width: clamp(var(--measure), calc(100vw - var(--toc-reserve)), 1260px);
+  }
+}
+@media print { .readout-toc { display: none !important; } }
+.toc-head {
+  margin: 0 0 var(--s-3); padding-left: 0.9rem;
+  font-size: 0.68rem; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase;
+  color: var(--text-faint);
+}
+.toc-list { list-style: none; margin: 0; padding: 0; border-left: 1px solid var(--hairline); }
+.toc-list a {
+  display: block; padding: 0.32rem 0.9rem; margin-left: -1px;
+  border-left: 2px solid transparent;
+  font-size: 0.82rem; line-height: 1.4; color: var(--text-faint); text-decoration: none;
+  transition: color .13s ease, border-color .13s ease;
+}
+.toc-list a:hover { color: var(--text); }
+.toc-list a.active { color: var(--text-strong); border-left-color: var(--accent); font-weight: 500; }
+section[data-anchor^="s-"] { scroll-margin-top: 2rem; }
 
 /* ---- unlock shell (protected readouts) --------------------- */
 .unlock-page { display: flex; flex-direction: column; justify-content: center; min-height: 60vh; max-width: 34rem; }
