@@ -111,12 +111,19 @@ function formatDate(date) {
 }
 
 /** gathers Claude Code sessions using shared parser + formatter modules. */
-async function gatherClaudeCodeSessions(fromDate, toDate, projectPath) {
+async function gatherClaudeCodeSessions(mode, fromDate, toDate, projectPath) {
+  // in global mode, project is only used to order the current project's sessions first;
+  // filtering by it would silently reduce global to repo mode
+  const filterProject = mode === 'repo' ? projectPath : null;
   const sessions = await discoverSessions({
     from: fromDate,
     to: toDate,
-    ...(projectPath ? { project: projectPath } : {}),
+    ...(filterProject ? { project: filterProject } : {}),
   });
+
+  if (mode === 'global' && projectPath) {
+    sessions.sort((a, b) => (b.project === projectPath ? 1 : 0) - (a.project === projectPath ? 1 : 0));
+  }
 
   if (sessions.length === 0) return '*No Claude Code sessions found for this date range.*\n';
 
@@ -133,8 +140,9 @@ async function gatherClaudeCodeSessions(fromDate, toDate, projectPath) {
 }
 
 /** gathers Codex sessions using shared parser modules. */
-async function gatherCodexSessions(fromDate, toDate, projectPath) {
-  const sessions = await discoverCodexSessions(fromDate, toDate, projectPath);
+async function gatherCodexSessions(mode, fromDate, toDate, projectPath) {
+  const filterProject = mode === 'repo' ? projectPath : null;
+  const sessions = await discoverCodexSessions(fromDate, toDate, filterProject);
   if (sessions.length === 0) return '*No Codex sessions found matching the filters.*\n';
 
   const lines = [`## Codex Sessions (${sessions.length})`, ''];
@@ -211,7 +219,9 @@ function getRepoType(repoPath) {
 function getGitLog(repoPath, fromDate, toDate) {
   try {
     const log = execSync(
-      `git -C "${repoPath}" log --oneline --no-merges --since="${fromDate}" --until="${toDate}T23:59:59"${CONFIG.gitAuthor ? ` --author="${CONFIG.gitAuthor}"` : ''} 2>/dev/null`,
+      // bare dates in --since are parsed as "that date at the current time of day",
+      // so an evening run would miss the whole day without the explicit T00:00:00
+      `git -C "${repoPath}" log --all --oneline --no-merges --since="${fromDate}T00:00:00" --until="${toDate}T23:59:59"${CONFIG.gitAuthor ? ` --author="${CONFIG.gitAuthor}"` : ''} 2>/dev/null`,
       { encoding: 'utf-8', timeout: 5000 }
     ).trim();
     return log || null;
@@ -340,10 +350,10 @@ async function main() {
   console.log(`**Mode:** ${opts.mode}${opts.project ? ` | **Project:** ${opts.project}` : ''}`);
   console.log('');
 
-  const ccOutput = await gatherClaudeCodeSessions(fromDate, toDate, opts.project);
+  const ccOutput = await gatherClaudeCodeSessions(opts.mode, fromDate, toDate, opts.project);
   console.log(ccOutput);
 
-  const codexOutput = await gatherCodexSessions(fromDate, toDate, opts.project);
+  const codexOutput = await gatherCodexSessions(opts.mode, fromDate, toDate, opts.project);
   console.log(codexOutput);
 
   console.log('## Git Activity\n');
