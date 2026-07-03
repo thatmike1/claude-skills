@@ -9,6 +9,7 @@ import { SETUP_FIELDS } from "./setup-fields.js";
  * skills without an entry fall back to a truncated frontmatter description.
  */
 const SHORT_BLURBS = {
+    readout: "Publish session docs to the web — MDX-authored, themed, anchored comments",
     morning: "Daily briefing — aggregates CC/Codex sessions, git, memory into a morning plan",
     evening: "End-of-day receipts — proves what actually got done today",
     goblin: "Neurodivergent thought structuring — braindumps, decompose, estimate, decide",
@@ -34,23 +35,25 @@ export const SKILL_DEPENDENCIES = { evening: "morning" };
 
 /** preferred display order; discovered skills not listed here sort after, alphabetically */
 const DISPLAY_ORDER = [
+    "readout",
     "morning",
     "evening",
-    "goblin",
-    "invoice-subjects",
-    "ai-cv-scanner",
-    "cc-audit",
     "scan",
-    "artifact",
+    "goblin",
     "live-prompt",
     "afk-prompt",
+    "cc-audit",
+    "artifact",
     "panels",
     "detective",
     "punchy",
+    "invoice-subjects",
+    "ai-cv-scanner",
 ];
 
 /** tiny flavor glyph per skill shown in the picker */
 const GLYPHS = {
+    readout: "❖",
     morning: "☀",
     evening: "☾",
     goblin: "♟",
