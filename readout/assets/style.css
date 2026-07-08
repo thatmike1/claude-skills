@@ -352,6 +352,14 @@ pre code { background: none; color: inherit; padding: 0; border: none; border-ra
 
 /* ---- rich (agent-authored) diagrams ----------------------- */
 .diagram.diagram-rich { text-align: left; padding: var(--s-6); overflow-x: auto; }
+/* rich diagrams are width-seeking like the docshelf: their content is all
+   wrappable text, so the base breakout rule's fit-content would collapse them
+   back to the prose measure (see the docshelf note below). size to content and
+   cap at the breakout width — busy panels get room, simple ones stay compact. */
+.page:not(.split) .diagram-rich.breakout {
+  width: max-content;
+  max-width: min(var(--breakout-w), calc(100vw - 4rem));
+}
 .diagram-canvas { display: flex; flex-direction: column; gap: var(--s-4); min-width: 0; }
 /* a panel: a bordered surface card grouping related content */
 .diagram-panel {
@@ -364,7 +372,7 @@ pre code { background: none; color: inherit; padding: 0; border: none; border-ra
 .diagram-lane > .diagram-label { flex: 0 0 var(--diagram-label-w, 7rem); }
 /* a layer: a stacked box within a panel/lane */
 .diagram-layer {
-  flex: 1 1 0; min-width: 0; background: var(--surface); border: 1px solid var(--hairline);
+  flex: 1 1 7rem; min-width: 0; overflow-wrap: break-word; background: var(--surface); border: 1px solid var(--hairline);
   border-radius: var(--radius-sm); padding: var(--s-3) var(--s-4); font-size: 0.9rem; color: var(--text);
   text-align: center;
 }
@@ -392,9 +400,17 @@ pre code { background: none; color: inherit; padding: 0; border: none; border-ra
   border-radius: var(--radius-sm); background: var(--surface); display: inline-flex; align-items: center; justify-content: center;
   font-size: 0.8rem; line-height: 1; color: transparent;
 }
+.checklist li.check .body { flex: 1 1 auto; min-width: 0; }
 .checklist li.check.done .box { border-color: var(--accent); background: var(--accent); color: var(--bg); }
 .checklist li.check.done .box::before { content: "\2713"; }
 .checklist li.check.done { color: var(--text-muted); text-decoration: line-through; text-decoration-color: var(--text-faint); }
+/* interactive state, added by artifact.js — static (no-JS) rendering is untouched */
+.checklist li.check[role="checkbox"] { cursor: pointer; }
+.checklist li.check[role="checkbox"] .box { transition: border-color 0.12s ease, background 0.12s ease; }
+.checklist li.check[role="checkbox"]:hover .box { border-color: var(--accent); }
+.checklist li.check[role="checkbox"]:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: var(--radius-sm); }
+.checklist li.check[role="checkbox"]:focus:not(:focus-visible) { outline: none; }
+@media (prefers-reduced-motion: reduce) { .checklist li.check[role="checkbox"] .box { transition: none; } }
 
 /* ---- timeline --------------------------------------------- */
 .timeline { list-style: none; padding-left: 0; margin: var(--s-6) 0; }
@@ -730,6 +746,7 @@ footer h2 { font-size: 1.2rem; margin-bottom: var(--s-4); }
   .readout-toc { display: block; }
   /* keep breakouts (and the wide docshelf) clear of the rail lane */
   .page:not(.split) .breakout { max-width: min(var(--breakout-w), calc(100vw - var(--toc-reserve))); }
+  .page:not(.split) .diagram-rich.breakout { max-width: min(var(--breakout-w), calc(100vw - var(--toc-reserve))); }
   .page:not(.split) .docshelf.breakout {
     width: clamp(var(--measure), calc(100vw - var(--toc-reserve)), 1260px);
     max-width: clamp(var(--measure), calc(100vw - var(--toc-reserve)), 1260px);

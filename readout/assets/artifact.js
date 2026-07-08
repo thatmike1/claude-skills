@@ -263,6 +263,72 @@
 
     enhanceDocShelves();
 
+    // interactive checklists — upgrade each authored li.check into a real
+    // toggleable checkbox. the authored `done` class is the default; a viewer's
+    // toggle overrides it and persists per document + item in localStorage, so
+    // "verify these" checklists actually hold their ticks across reloads. pure
+    // progressive enhancement: no-JS pages keep the static rendering.
+    function checkKey(s) {
+        // djb2 → base36, stable per item text so reordering doesn't scramble state
+        var h = 5381,
+            i = s.length;
+        while (i) h = (h * 33) ^ s.charCodeAt(--i);
+        return (h >>> 0).toString(36);
+    }
+
+    function enhanceChecklists() {
+        var store;
+        try {
+            store = window.localStorage;
+        } catch (e) {
+            store = null;
+        }
+        var docKey = "readout-check:" + location.pathname + ":";
+        document.querySelectorAll("ul.checklist").forEach(function (list) {
+            var anchor = list.getAttribute("data-anchor") || "checklist";
+            list.querySelectorAll("li.check").forEach(function (item) {
+                var body = item.querySelector(".body");
+                var text = (body ? body.textContent : item.textContent).trim();
+                var key = docKey + anchor + ":" + checkKey(text);
+                var saved = store ? store.getItem(key) : null;
+                if (saved === "1") item.classList.add("done");
+                else if (saved === "0") item.classList.remove("done");
+
+                item.setAttribute("role", "checkbox");
+                item.setAttribute("tabindex", "0");
+                item.setAttribute(
+                    "aria-checked",
+                    item.classList.contains("done") ? "true" : "false"
+                );
+
+                function toggle() {
+                    var done = !item.classList.contains("done");
+                    item.classList.toggle("done", done);
+                    item.setAttribute("aria-checked", done ? "true" : "false");
+                    if (store) {
+                        try {
+                            store.setItem(key, done ? "1" : "0");
+                        } catch (e) {}
+                    }
+                }
+
+                item.addEventListener("click", function (e) {
+                    // don't hijack clicks on links inside the item body
+                    if (e.target.closest && e.target.closest("a")) return;
+                    toggle();
+                });
+                item.addEventListener("keydown", function (e) {
+                    if (e.key === " " || e.key === "Enter") {
+                        e.preventDefault();
+                        toggle();
+                    }
+                });
+            });
+        });
+    }
+
+    enhanceChecklists();
+
     // section rail — a fixed table-of-contents on the right margin that
     // scrollspy-highlights the section currently near the top of the viewport.
     // built from the page's <section data-anchor="s-…"> blocks; no compile step

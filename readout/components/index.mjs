@@ -399,7 +399,7 @@ function taskItemToCheck(li) {
         "li",
         { className: done ? "check done" : "check" },
         h("span", { className: "box", key: "box" }),
-        rest
+        h("span", { className: "body", key: "body" }, rest)
     );
 }
 
@@ -433,7 +433,7 @@ export function Check({ done, children }) {
         "li",
         { className: done ? "check done" : "check" },
         h("span", { className: "box", key: "box" }),
-        children
+        h("span", { className: "body", key: "body" }, children)
     );
 }
 
