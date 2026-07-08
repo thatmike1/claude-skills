@@ -12,7 +12,7 @@
  * snapshot fetched from PocketBase):
  *   node protect.mjs decrypt --password <pw> [file]   (reads stdin if no file)
  */
-import { readFileSync } from "node:fs";
+import { readFileSync, realpathSync } from "node:fs";
 import { webcrypto } from "node:crypto";
 import { pathToFileURL } from "node:url";
 
@@ -325,8 +325,14 @@ ${PROTECTED_MARKER}
 }
 
 // ── CLI: decrypt an envelope (protected version snapshots) ───────────────────
-const isCli =
-    process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
+// resolve argv[1] through symlinks so a symlinked skill dir still matches
+// import.meta.url, which node canonicalizes to the real path — otherwise the CLI silently no-ops.
+let isCli = false;
+try {
+    isCli = Boolean(process.argv[1]) && import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href;
+} catch {
+    /* argv[1] unreadable — treat as not directly invoked */
+}
 
 if (isCli) {
     const argv = process.argv.slice(2);

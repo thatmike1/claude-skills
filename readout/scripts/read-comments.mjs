@@ -27,7 +27,7 @@
  *
  * zero npm dependencies — Node 22 built-ins only (global fetch).
  */
-import { readFileSync } from "node:fs";
+import { readFileSync, realpathSync } from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname, join, basename } from "node:path";
 import { execSync } from "node:child_process";
@@ -330,5 +330,12 @@ async function main() {
   process.stdout.write(renderMarkdown(docId, groups, items.length) + skipNote + "\n");
 }
 
-const isCli = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
+// resolve argv[1] through symlinks so a symlinked skill dir (.claude/skills -> git/claude-skills)
+// still matches import.meta.url, which node canonicalizes to the real path — otherwise main() never runs.
+let isCli = false;
+try {
+  isCli = Boolean(process.argv[1]) && import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href;
+} catch {
+  /* argv[1] unreadable — treat as not directly invoked */
+}
 if (isCli) main();
