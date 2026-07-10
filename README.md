@@ -34,6 +34,8 @@ A collection of custom skills for [Claude Code](https://docs.anthropic.com/en/do
 | **Meta** | |
 | [cc-audit](#cc-audit) | Audit your Claude Code setup, flag anti-patterns with ranked fixes |
 | [panels / detective / punchy](#engagement-styles) | Rotating response styles that keep output readable |
+| **Frontend** | |
+| [design-styles](#design-styles) | Aesthetic direction + UX baseline: style packs, landing craft, redesign, reviews |
 | **Niche** | |
 | invoice-subjects | Monthly invoice subjects + newsletter blurb from git history (Czech-specific) |
 | ai-cv-scanner | Mine conversation history for AI experience questionnaire answers |
@@ -84,6 +86,17 @@ Analyzes your Claude Code setup and usage patterns — wrong launch directories,
 ### artifact
 
 Readout's predecessor, still useful when you want a local file instead of a published page. Generates a polished single-page HTML document (typography-led, mermaid diagrams, syntax highlighting, version-history footer) into an external artifacts directory. Living document: re-running updates it in place.
+
+### design-styles
+
+Six frontend skills merged into one with internal routing. A thin SKILL.md does a "design read" of the brief, then loads only what the branch needs:
+
+- **Style packs** — high-end agency, editorial minimalist, industrial brutalist (one per project, pack rules win)
+- **landing-craft** — anti-slop methodology for landing pages/portfolios: dials, layout hard rules, AI-tell bans, mechanical pre-flight (distilled from [Leonxlnx/taste-skill](https://github.com/Leonxlnx/taste-skill))
+- **redesign** — audit-first upgrades of existing sites without breaking them
+- **ux + review** — functional UX baseline and a capped, scannable review format (verdict first, `location — problem → fix` one-liners, max 3 P0 / 5 P1 / 5 P2)
+
+Built as the ungated sibling of heavyweight design skills that require per-project setup.
 
 ### engagement styles
 
