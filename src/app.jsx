@@ -14,6 +14,7 @@ import { skillsDir } from "./lib/detect.js";
 
 const REPO_DIR = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const TARGET_DIR = skillsDir();
+const DRY_RUN = process.argv.includes("--dry-run") || process.argv.includes("-n");
 
 /**
  * step machine: select → method → setup (one per selected setup-skill) → install → done.
@@ -69,6 +70,12 @@ function App() {
             <Header />
             <Tagline />
 
+            {DRY_RUN && (
+                <Box marginBottom={1}>
+                    <Text color="yellow">⚠ dry run — previewing changes, nothing will be written</Text>
+                </Box>
+            )}
+
             {setupLog.map((entry) => (
                 <Box key={entry.skill} flexDirection="column" marginBottom={1}>
                     {entry.lines.map((line) => (
@@ -86,6 +93,7 @@ function App() {
                     key={setupQueue[setupIndex].name}
                     skillName={setupQueue[setupIndex].name}
                     repoDir={REPO_DIR}
+                    dryRun={DRY_RUN}
                     onComplete={completeSetup(setupQueue[setupIndex].name)}
                 />
             )}
@@ -95,11 +103,17 @@ function App() {
                     method={method}
                     repoDir={REPO_DIR}
                     targetDir={TARGET_DIR}
+                    dryRun={DRY_RUN}
                     onDone={finishInstall}
                 />
             )}
             {step === "done" && (
-                <Done results={results} targetDir={TARGET_DIR} notes={doneNotes(skills, selected, method)} />
+                <Done
+                    results={results}
+                    targetDir={TARGET_DIR}
+                    dryRun={DRY_RUN}
+                    notes={doneNotes(skills, selected, method)}
+                />
             )}
             {step === "aborted" && <Text dimColor>nothing selected — see you next time.</Text>}
         </Box>

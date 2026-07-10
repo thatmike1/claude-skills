@@ -5,7 +5,7 @@
  * this entry stays a plain .mjs: it guards the environment, bootstraps the npm
  * dependencies on first run, then hands off to the JSX app via tsx.
  *
- * usage: node install.mjs
+ * usage: node install.mjs [--dry-run]
  */
 
 import { existsSync } from "fs";
@@ -14,6 +14,21 @@ import { dirname, join } from "path";
 import { fileURLToPath } from "url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+
+if (process.argv.includes("--help") || process.argv.includes("-h")) {
+    console.log(
+        [
+            "claude-skills installer",
+            "",
+            "usage: node install.mjs [options]",
+            "",
+            "options:",
+            "  -n, --dry-run   preview what would be installed without writing anything",
+            "  -h, --help      show this help",
+        ].join("\n")
+    );
+    process.exit(0);
+}
 
 const nodeMajor = Number(process.versions.node.split(".")[0]);
 if (nodeMajor < 22) {

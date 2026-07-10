@@ -9,7 +9,7 @@ import { SETUP_FIELDS } from "../lib/setup-fields.js";
  * readline UX. dynamic fields (invoice per-repo names) are appended once the
  * base fields are answered.
  */
-export function SkillSetup({ skillName, repoDir, onComplete }) {
+export function SkillSetup({ skillName, repoDir, dryRun = false, onComplete }) {
     const spec = SETUP_FIELDS[skillName];
     const [queue, setQueue] = useState(() => spec.fields.map(resolveDefault));
     const [index, setIndex] = useState(0);
@@ -30,9 +30,9 @@ export function SkillSetup({ skillName, repoDir, onComplete }) {
     useEffect(() => {
         if (finished && !wroteRef.current) {
             wroteRef.current = true;
-            onComplete(spec.write(values, repoDir));
+            onComplete(spec.write(values, repoDir, dryRun));
         }
-    }, [finished, spec, values, repoDir, onComplete]);
+    }, [finished, spec, values, repoDir, dryRun, onComplete]);
 
     // also covers the frame between the last base field and dynamic-field expansion
     if (finished || index >= queue.length) return null;

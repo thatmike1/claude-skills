@@ -20,12 +20,19 @@ function expandHome(p) {
  * theme files are skill-owned and always refreshed; artifact.js is kept if it
  * already exists to preserve user customizations.
  */
-export function writeArtifactConfig(values, repoDir) {
+export function writeArtifactConfig(values, repoDir, dryRun = false) {
     const artifactsRoot = resolve(expandHome(values.artifactsRoot));
     const theme = THEMES.includes(values.theme) ? values.theme : THEMES[0];
     const sharedDir = join(artifactsRoot, "_shared");
     const themesDir = join(sharedDir, "themes");
     const lines = [];
+
+    if (dryRun) {
+        return [
+            `would write artifact/config.json (theme: ${theme})`,
+            `would seed ${sharedDir}/ (artifact.js, themes/, style.css → ${theme})`,
+        ];
+    }
 
     writeFileSync(
         join(repoDir, "artifact", "config.json"),

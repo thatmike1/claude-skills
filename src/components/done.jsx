@@ -12,7 +12,7 @@ const GLYPHS = ["*", "✦", "·", "+", "❋", "○", "✧"];
  * final summary with a short ascii confetti rain — because installing things
  * should feel like something happened. auto-exits after the rain settles.
  */
-export function Done({ results, targetDir, notes }) {
+export function Done({ results, targetDir, dryRun = false, notes }) {
     const { exit } = useApp();
     const [frame, setFrame] = useState(0);
 
@@ -62,8 +62,8 @@ export function Done({ results, targetDir, notes }) {
             )}
 
             <Text bold color="green">
-                ✓ {installed.length} of {entries.length} skill{entries.length === 1 ? "" : "s"} installed to{" "}
-                {targetDir}
+                ✓ {installed.length} of {entries.length} skill{entries.length === 1 ? "" : "s"}{" "}
+                {dryRun ? "would install to" : "installed to"} {targetDir}
             </Text>
 
             {shared?.ok && (
@@ -85,7 +85,11 @@ export function Done({ results, targetDir, notes }) {
             ))}
 
             <Box marginTop={1}>
-                <Text dimColor>restart claude code to pick up the new skills.</Text>
+                <Text dimColor>
+                    {dryRun
+                        ? "dry run — re-run without --dry-run to apply."
+                        : "restart claude code to pick up the new skills."}
+                </Text>
             </Box>
         </Box>
     );

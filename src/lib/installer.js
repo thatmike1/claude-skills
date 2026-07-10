@@ -23,13 +23,22 @@ export function removeExisting(target) {
 }
 
 /** installs a single skill via symlink or copy; returns a structured result for the UI */
-export function installSkill({ repoDir, targetDir, name, method }) {
+export function installSkill({ repoDir, targetDir, name, method, dryRun = false }) {
     const source = join(repoDir, name);
     const target = join(targetDir, name);
 
     if (!existsSync(source)) {
         return { ok: false, error: `skill directory not found: ${source}` };
     }
+
+    // dry run: validate the source, report the plan, touch nothing
+    if (dryRun) {
+        const verb = method === "symlink" ? "would symlink" : "would copy";
+        const replaces =
+            existsSync(target) || isDanglingSymlink(target) ? " (replaces existing)" : "";
+        return { ok: true, label: `${verb}${replaces}`, dryRun: true };
+    }
+
     if (!removeExisting(target)) {
         return { ok: false, error: `could not remove existing install at ${target}` };
     }
@@ -51,8 +60,8 @@ export function installSkill({ repoDir, targetDir, name, method }) {
  * ../../shared/*.mjs, which resolves to <targetDir>/shared. symlink installs
  * resolve through their real path, but we link shared/ anyway for layout parity.
  */
-export function installShared({ repoDir, targetDir, method }) {
-    return installSkill({ repoDir, targetDir, name: "shared", method });
+export function installShared({ repoDir, targetDir, method, dryRun = false }) {
+    return installSkill({ repoDir, targetDir, name: "shared", method, dryRun });
 }
 
 /** true when any selected skill imports from shared/ — installed alongside for both methods */
