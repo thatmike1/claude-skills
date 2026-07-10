@@ -1,6 +1,6 @@
 ---
 name: scan
-description: Scan Claude Code conversations for a date range / project and answer a specific question about them. Searches full message bodies (keyword/regex), lists sessions as a lightweight index, or dumps per-session digests, then reasons over the result. Use when user says scan my chats, scan conversations, find a message where I said X, what did I do in <project> today, search my Claude history, recap a specific project, or asks a question about past Claude Code sessions.
+description: Scan Claude Code conversations for a date range / project and answer a specific question about them. Use when user says scan my chats, scan conversations, find a message where I said X, what did I do in <project> today, search my Claude history, recap a specific project, or asks a question about past Claude Code sessions.
 ---
 
 # /scan

@@ -1,6 +1,6 @@
 ---
 name: live-prompt
-description: Write a copy-paste prompt that hands a task (usually a beads issue) to a fresh Claude instance the user will actively work with, in either collaborative (discuss-approach-first) or off-the-leash (implement-end-to-end) mode. Use when the user says "give me a prompt", "shoot over a prompt", "prompt for <task-id>", "handoff prompt", or wants to start a fresh instance on a task. For unattended runs (user going AFK), use the afk-prompt skill instead.
+description: Write a copy-paste prompt that hands a task (usually a beads issue) to a fresh Claude instance the user will actively work with, in either collaborative (discuss-approach-first) or off-the-leash (implement-end-to-end) mode. Use when the user says "give me a prompt", "prompt for <task-id>", or wants to start a fresh instance on a task. For unattended runs (user going AFK), use the afk-prompt skill instead.
 ---
 
 # Live Prompt

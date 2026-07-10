@@ -1,6 +1,6 @@
 ---
 name: morning
-description: Daily briefing skill that aggregates yesterday's work context from Claude Code conversations, Codex sessions, git history, and memory files into an actionable morning plan with checkboxes, time estimates, and sequencing. Use when user says morning, catch up, recap, start of day, what was I doing, yesterday's context, or wants to review previous day's work before starting.
+description: Daily briefing skill that aggregates yesterday's work context from Claude Code conversations, Codex sessions, git history, and memory files into an actionable morning plan with checkboxes, time estimates, and sequencing. Use when user says morning, start of day, or what was I doing yesterday.
 ---
 
 # /morning
@@ -32,7 +32,7 @@ node <skill-dir>/scripts/gather-context.mjs --mode <repo|global> [--range 1day|3
 - **repo mode**: pass `--project` with the current working directory
 - **global mode**: omit `--project`
 - Script outputs structured markdown with sections for CC sessions, Codex sessions, git activity, memory, and open issues
-- Each CC session now also reports a **Tools** line (e.g. `Bash×67, Edit×10, Agent×1`) and **Model** — use these to tell real building from research/yapping when grouping work streams
+- Each CC session also reports a **Tools** line (e.g. `Bash×67, Edit×10, Agent×1`) and **Model** — use these to tell real building from research/yapping when grouping work streams
 
 ### Step 2: Synthesize
 
@@ -46,6 +46,8 @@ Key synthesis tasks:
 - Add sequencing recommendation and day-fit assessment
 - Flag scope-creep risks with timebox warnings (see goblin patterns)
 
+The briefing is complete only when every session in the gathered context appears in a work stream or is dismissed in a one-liner — no session silently dropped.
+
 Mode-specific details: [references/repo-mode.md](references/repo-mode.md) | [references/global-mode.md](references/global-mode.md)
 
 ### Step 3: Present and refine
@@ -58,9 +60,7 @@ Show the briefing. Ask if the user wants to:
 ## Rules
 
 - No motivational fluff — straight into the plan
-- Every item gets a verb (actionable)
-- Bold the actionable part of each checkbox
 - Max 15 words per bullet point
 - If a session was just yapping/research with no actionable output, summarize in one line, don't list every message
-- Work repos (gitlab remote) come first, personal (github) second
-- If context is thin (few sessions, minimal git), say so — don't hallucinate tasks
+
+Checkbox format, work-repos-first ordering, and thin-context handling live in the references — follow them, don't improvise.
