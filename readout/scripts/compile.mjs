@@ -170,6 +170,7 @@ const html = `<!DOCTYPE html>
 ${inner}
 <script src="../_shared/comments.js"></script>
 <script src="../_shared/artifact.js"></script>
+<script src="../_shared/visits.js"></script>
 </body>
 </html>
 `;

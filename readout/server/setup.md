@@ -7,8 +7,8 @@ the API share an origin, the compiled pages need no injected config and no keys.
 
 ## 1. Import the collections
 
-`pb-collections.json` defines both collections (`readout_comments`,
-`readout_versions`) in the PocketBase v0.23+ import format.
+`pb-collections.json` defines the collections (`readout_comments`,
+`readout_versions`, `readout_visits`) in the PocketBase v0.23+ import format.
 
 1. Open the admin UI: `https://readout.ssscribe.app/_/`.
 2. Go to **Settings → Import collections**.
@@ -24,6 +24,12 @@ Resulting API rules:
 | --- | --- | --- | --- | --- | --- |
 | `readout_comments` | public | public | public | superuser | superuser |
 | `readout_versions` | public | public | superuser | superuser | superuser |
+| `readout_visits` | superuser | superuser | public | superuser | superuser |
+
+`readout_visits` is the visit log written by the `visits.js` beacon (one row
+per tab-session per doc: `doc_id`, `viewer`, `ua`, `referrer`). Reads are
+superuser-only so viewer names never leak to other visitors; `read-visits.mjs`
+reads it with the `pbToken`.
 
 Public rules are the empty string `""` (everyone); superuser-only rules are
 `null`. Comment row shape is enforced by the field `required` + `max`
@@ -42,6 +48,15 @@ collection with the superuser token:
 curl -s -X PATCH "https://readout.ssscribe.app/api/collections/readout_comments" \
   -H "Authorization: <pbToken>" -H "Content-Type: application/json" \
   -d "$(node -e "const c=JSON.parse(require('fs').readFileSync('pb-collections.json','utf8')).find(c=>c.name==='readout_comments');process.stdout.write(JSON.stringify({fields:c.fields,indexes:c.indexes}))")"
+```
+
+To create a NEW collection on a running instance (e.g. `readout_visits` on a
+box that predates it), POST the full definition instead (run from `server/`):
+
+```bash
+curl -s -X POST "https://readout.ssscribe.app/api/collections" \
+  -H "Authorization: <pbToken>" -H "Content-Type: application/json" \
+  -d "$(node -e "const c=JSON.parse(require('fs').readFileSync('pb-collections.json','utf8')).find(c=>c.name==='readout_visits');process.stdout.write(JSON.stringify(c))")"
 ```
 
 ## 2. Superuser token for the publish script
@@ -68,7 +83,32 @@ login. To impersonate without shipping a password, an existing superuser can
 mint a longer-lived token from **Admin UI → Collections → _superusers → (pick
 the account) → Impersonate**, which returns a token with a chosen duration.
 
-## 3. Moderation
+## 3. Caddy access logs (IP-level supplement)
+
+The `visits.js` beacon is the primary who/when source, but only fires when the
+page's JS runs. For a raw request-level record (curl, bots, JS-disabled), turn
+on access logging in the shared Caddy on the VPS — inside the
+`readout.ssscribe.app` site block in `/opt/messscribe/Caddyfile`:
+
+```
+log {
+    output file /data/access-readout.log {
+        roll_size 10MiB
+        roll_keep 5
+    }
+}
+```
+
+Back up the Caddyfile first (`/root/backups/`), then reload:
+`cd /opt/messscribe && docker compose exec caddy caddy reload --config /etc/caddy/Caddyfile`.
+Logs are JSON lines inside the caddy container's `/data` volume. Quick tail:
+
+```bash
+docker compose exec caddy sh -c 'tail -200 /data/access-readout.log' \
+  | jq -r 'select(.request.uri|test("\\.html$|/$")) | [.ts|todate, .request.remote_ip, .request.uri] | @tsv'
+```
+
+## 4. Moderation
 
 There is no public delete rule, so comments can only be removed by a superuser.
 Delete an unwanted comment from **Admin UI → Collections → readout_comments**,

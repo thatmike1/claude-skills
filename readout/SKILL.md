@@ -74,6 +74,18 @@ narrows to comments you haven't consumed yet; `--all` includes resolved ones. Wr
 `pbToken`: pass `--consume` to mark what you read as seen, and after addressing one mark it
 resolved with `read-comments.mjs --resolve <id>[,<id>...]`.
 
+## Visits (who viewed, when)
+
+Every published page beacons one visit per tab-session into `readout_visits` (viewer =
+the name the comment widget remembered, else "anonymous"). Reads need `pbToken`:
+
+```bash
+node <skill-dir>/scripts/read-visits.mjs [<project>/<slug> | <slug>] [--since <ISO>] [--days <n>] [--json]
+```
+
+No doc argument = summary across all docs. Bot user-agents are hidden by default
+(`--bots` includes them). When the user asks "who viewed/opened my readout", run this.
+
 Comments tagged `[for human]` are not yours to resolve — surface them to the user.
 Anchors map to the document: `masthead`, `s-<section-slug>`, or `<section-slug>-<type>-<n>`
 (type = callout|diagram|code|table|keypoints|diff|checklist|timeline|stattiles|filetree,
@@ -89,11 +101,10 @@ hetzner-vps skill documents the box itself.
 
 ## Notes
 
-- Theme: one stylesheet, light+dark via the reader's `prefers-color-scheme` plus a
-  masthead toggle — nothing to pick or configure.
-- Every publish snapshots the full MDX in PocketBase; the restore procedure is in
-  [references/protected.md](references/protected.md).
+- Theme: one stylesheet, light+dark via `prefers-color-scheme` plus a masthead toggle.
+- Every publish snapshots the full MDX in PocketBase (restore procedure:
+  [references/protected.md](references/protected.md)).
 - The compile pipeline has npm deps — run `npm install` in `<skill-dir>` once per machine.
-- `artifact.js` (theming, highlight.js, sortable/filterable tables, mode toggle) and
-  `comments.js` load on every page; comments no-op when the file is opened from disk.
+- `artifact.js` (theming, highlight.js, tables), `comments.js`, and `visits.js` load on
+  every page; comments and visits no-op when the file is opened from disk.
 - The old artifact skill stays untouched for local-first, zero-dep documents.

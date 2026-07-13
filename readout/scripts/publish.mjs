@@ -160,7 +160,7 @@ const assets = join(skillDir, "assets");
 const outShared = join(root, "_shared");
 mkdirSync(outShared, { recursive: true });
 
-for (const a of ["style.css", "artifact.js", "comments.js"]) {
+for (const a of ["style.css", "artifact.js", "comments.js", "visits.js"]) {
     const src = join(assets, a);
     if (!existsSync(src)) fail(`skill asset ${a} not found at ${src}`);
     copyFileSync(src, join(outShared, a));

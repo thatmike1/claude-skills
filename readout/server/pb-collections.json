@@ -242,5 +242,107 @@
         "indexes": [
             "CREATE INDEX `idx_readout_versions_doc` ON `readout_versions` (`doc_id`, `version`)"
         ]
+    },
+    {
+        "id": "readout_visits_col",
+        "name": "readout_visits",
+        "type": "base",
+        "system": false,
+        "listRule": null,
+        "viewRule": null,
+        "createRule": "",
+        "updateRule": null,
+        "deleteRule": null,
+        "fields": [
+            {
+                "id": "readout_visits_id",
+                "name": "id",
+                "type": "text",
+                "system": true,
+                "required": true,
+                "presentable": false,
+                "hidden": false,
+                "primaryKey": true,
+                "min": 15,
+                "max": 15,
+                "pattern": "^[a-z0-9]+$",
+                "autogeneratePattern": "[a-z0-9]{15}"
+            },
+            {
+                "id": "readout_visits_doc_id",
+                "name": "doc_id",
+                "type": "text",
+                "system": false,
+                "required": true,
+                "presentable": false,
+                "hidden": false,
+                "primaryKey": false,
+                "min": 1,
+                "max": 200,
+                "pattern": ""
+            },
+            {
+                "id": "readout_visits_viewer",
+                "name": "viewer",
+                "type": "text",
+                "system": false,
+                "required": true,
+                "presentable": false,
+                "hidden": false,
+                "primaryKey": false,
+                "min": 1,
+                "max": 80,
+                "pattern": ""
+            },
+            {
+                "id": "readout_visits_ua",
+                "name": "ua",
+                "type": "text",
+                "system": false,
+                "required": false,
+                "presentable": false,
+                "hidden": false,
+                "primaryKey": false,
+                "min": 0,
+                "max": 300,
+                "pattern": ""
+            },
+            {
+                "id": "readout_visits_referrer",
+                "name": "referrer",
+                "type": "text",
+                "system": false,
+                "required": false,
+                "presentable": false,
+                "hidden": false,
+                "primaryKey": false,
+                "min": 0,
+                "max": 500,
+                "pattern": ""
+            },
+            {
+                "id": "readout_visits_created",
+                "name": "created",
+                "type": "autodate",
+                "system": false,
+                "presentable": false,
+                "hidden": false,
+                "onCreate": true,
+                "onUpdate": false
+            },
+            {
+                "id": "readout_visits_updated",
+                "name": "updated",
+                "type": "autodate",
+                "system": false,
+                "presentable": false,
+                "hidden": false,
+                "onCreate": true,
+                "onUpdate": true
+            }
+        ],
+        "indexes": [
+            "CREATE INDEX `idx_readout_visits_doc` ON `readout_visits` (`doc_id`, `created`)"
+        ]
     }
 ]
