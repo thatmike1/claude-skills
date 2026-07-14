@@ -632,6 +632,11 @@ pre code { background: none; color: inherit; padding: 0; border: none; border-ra
   max-width: min(var(--breakout-w), calc(100vw - 4rem));
 }
 table { width: 100%; border-collapse: collapse; font-size: 0.94rem; }
+/* inline code in a cell must stay breakable: a long path or identifier is a single
+   unbreakable token, which drags the table's min-content past the breakout width and
+   forces the whole table to scroll sideways. `anywhere` (not break-word) is required —
+   only it feeds back into intrinsic min-content sizing. */
+td code, th code { overflow-wrap: anywhere; }
 thead th { text-align: left; font-weight: 600; font-size: 0.72rem; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-muted); padding: 0.5rem 1rem 0.6rem; border-bottom: 1px solid var(--hairline); }
 tbody td { padding: 0.7rem 1rem; border-bottom: 1px solid var(--hairline-soft); color: var(--text); vertical-align: middle; }
 tbody tr:last-child td { border-bottom: none; }
