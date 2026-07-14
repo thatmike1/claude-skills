@@ -622,13 +622,13 @@ pre code { background: none; color: inherit; padding: 0; border: none; border-ra
 
 /* ---- tables ----------------------------------------------- */
 .tablewrap { margin: var(--s-6) 0; overflow-x: auto; }
-/* tables are width-seeking like the docshelf and rich diagrams: their cells are
-   wrappable prose, so the base breakout rule's fit-content collapses them back to
-   the prose measure and the columns squish. size to content and cap at the breakout
-   width — dense tables get room, short ones stay compact. the inner table is
-   width:100%, so it fills the wrapper and text wraps rather than scrolling. */
+/* tables take the full breakout width like the docshelf: their cells are wrappable
+   prose, so the base rule's fit-content collapses them back to the prose measure and
+   the columns squish. an explicit width is required — intrinsic sizing (max-content)
+   overshoots the cap and leaves the content scrolling inside a clamped box. the inner
+   table is width:100%, so it fills the wrapper and text wraps instead of scrolling. */
 .page:not(.split) .tablewrap.breakout {
-  width: max-content;
+  width: min(var(--breakout-w), calc(100vw - 4rem));
   max-width: min(var(--breakout-w), calc(100vw - 4rem));
 }
 table { width: 100%; border-collapse: collapse; font-size: 0.94rem; }
@@ -756,7 +756,10 @@ footer h2 { font-size: 1.2rem; margin-bottom: var(--s-4); }
   /* keep breakouts (and the wide docshelf) clear of the rail lane */
   .page:not(.split) .breakout { max-width: min(var(--breakout-w), calc(100vw - var(--toc-reserve))); }
   .page:not(.split) .diagram-rich.breakout { max-width: min(var(--breakout-w), calc(100vw - var(--toc-reserve))); }
-  .page:not(.split) .tablewrap.breakout { max-width: min(var(--breakout-w), calc(100vw - var(--toc-reserve))); }
+  .page:not(.split) .tablewrap.breakout {
+    width: clamp(var(--measure), calc(100vw - var(--toc-reserve)), var(--breakout-w));
+    max-width: clamp(var(--measure), calc(100vw - var(--toc-reserve)), var(--breakout-w));
+  }
   .page:not(.split) .docshelf.breakout {
     width: clamp(var(--measure), calc(100vw - var(--toc-reserve)), 1260px);
     max-width: clamp(var(--measure), calc(100vw - var(--toc-reserve)), 1260px);
