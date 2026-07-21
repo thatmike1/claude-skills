@@ -21,30 +21,31 @@ In repo mode, go deeper on the single project:
 
 ## Output Adjustments
 
-- Use more granular blocks (smaller subtasks, more detail per item)
-- Include branch names in block headers where relevant: `**Block 1: Rebase feature/14 onto main**`
+- One stream per branch/topic, branch name in the header: `## UC-8 accept invitation (feature/55) — in review`
 - If multiple sessions exist for the same branch, merge their context into one coherent narrative rather than listing per-session
-- Cross-reference git commits with session discussions — if a commit was made during a session, note it as done
+- Cross-reference git commits with session discussions — commits made during a session are done work, told as prose
+- Ship state per branch comes from the Branch status section plus the MR/PR lookup (Step 2)
 
 ## Example
 
 ```markdown
 # Morning Briefing — yesterday
 
-## pracino — in progress
+## UC-8 accept invitation (feature/55) — in review
 
-**Where you left off:** UC-1.1 address wiring blocked by backend; pivoted to setting up macOS VM for iOS testing. UC-2 company profile screen implementation started in Codex.
+Fixed the three remaining bugs (resume-after-sign-in, accept redirect, terminal-screen exit) and verified on the S24 plus an iOS sim smoke pass. MR !142 is open, pipeline green, description updated.
 
-- [ ] **Block 1: UC-1.1 address wiring** (est. 30-45min, blocked by BE push)
-  - [ ] **Check if BE pushed** address refactor branch
-  - [ ] Rebase feature/14 onto main if new changes available
-  - [ ] Wire address fields to real API shape
-- [ ] **Block 2: UC-2 company profile** (est. 1-2hr)
-  - [ ] **Review Codex implementation** from yesterday's session
-  - [ ] Run typecheck and fix compiler errors
-  - [ ] Test on Android emulator
-- [ ] **Block 3: iOS testing setup** (est. 30min, low priority)
-  - [ ] Boot macOS VM (already downloaded/configured)
-  - [ ] Verify Xcode + simulator work
-- [x] ~~GitLab issue 569~~ (done: Austrian locale support committed and pushed)
+- [ ] **Chase review** on MR !142, self-merge if approved (est. 10min)
+- [ ] **Close bd bugs** and update the UC-8 epic (est. 10min)
+
+## Map stress test (branch 200) — shipped
+
+Payload fix and marker-cap raise merged yesterday afternoon. Nothing left; pracino-oss tracks the BE follow-up.
+
+## UC-2 company profile — in progress
+
+Codex produced a first implementation of the profile screen; untested, typecheck not run.
+
+- [ ] **Review Codex implementation** and run typecheck (est. 45-60min)
+- [ ] **Test on Android emulator** (est. 15min)
 ```

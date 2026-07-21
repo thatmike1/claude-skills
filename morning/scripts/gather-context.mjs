@@ -230,6 +230,65 @@ function getGitLog(repoPath, fromDate, toDate) {
   }
 }
 
+/** fetches origin, then reports ship state per branch active since fromDate */
+function getBranchStatus(repoPath, fromDate) {
+  const git = (cmd, timeout = 5000) =>
+    execSync(`git -C "${repoPath}" ${cmd} 2>/dev/null`, { encoding: 'utf-8', timeout }).trim();
+
+  try {
+    // stale local refs are the main source of wrong ship-state claims
+    let fetched = true;
+    try {
+      git('fetch --quiet origin', 20000);
+    } catch {
+      fetched = false;
+    }
+
+    let mainRef = null;
+    for (const ref of ['origin/main', 'origin/master', 'origin/develop']) {
+      try {
+        git(`rev-parse --verify -q ${ref}`);
+        mainRef = ref;
+        break;
+      } catch {}
+    }
+
+    const refs = git(
+      'for-each-ref refs/heads --format="%(refname:short)|%(committerdate:iso8601)|%(upstream:short)|%(upstream:track)"'
+    );
+    if (!refs) return null;
+
+    const lines = [];
+    for (const row of refs.split('\n')) {
+      const [name, date, upstream, track] = row.split('|');
+      if (!date || date.slice(0, 10) < fromDate) continue;
+
+      let merged = false;
+      if (mainRef) {
+        try {
+          git(`merge-base --is-ancestor "${name}" ${mainRef}`);
+          merged = true;
+        } catch {}
+      }
+
+      let state;
+      if (merged) state = `merged into ${mainRef}`;
+      else if (track === '[gone]') state = 'upstream gone — likely squash-merged and deleted on remote';
+      else if (!upstream) state = 'unpushed (no upstream)';
+      else if (track) state = `${track.replace(/[[\]]/g, '')} of ${upstream}`;
+      else state = `in sync with ${upstream}`;
+
+      lines.push(`- ${name}: ${state}`);
+    }
+
+    if (lines.length === 0) return null;
+    if (!fetched) lines.unshift('*(fetch failed — state may be stale)*');
+    return lines.join('\n');
+  } catch {
+    return null;
+  }
+}
+
 /** gathers git activity across repos */
 function gatherGitActivity(mode, fromDate, toDate, projectPath) {
   const lines = [];
@@ -243,6 +302,13 @@ function gatherGitActivity(mode, fromDate, toDate, projectPath) {
       lines.push('```');
       lines.push(log);
       lines.push('```');
+      lines.push('');
+    }
+
+    const status = getBranchStatus(projectPath, fromDate);
+    if (status) {
+      lines.push('### Branch status');
+      lines.push(status);
       lines.push('');
     }
   } else {

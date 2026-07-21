@@ -21,31 +21,30 @@ In global mode, go broader — high-level overview across projects:
 
 ## Output Adjustments
 
-- Use coarser blocks (higher level, fewer subtasks per project)
-- Keep each project section to 3-5 items max — this is an overview, not a deep dive
+- Coarser than repo mode: one short paragraph + max 3 checkboxes per project — this is an overview, not a deep dive
 - Lead with work projects, personal projects go in a separate section at the end
 - If a project only had minor activity (1 short session, few commits), summarize in one line
 - Include a "time split" summary: "~60% pracino, ~30% b2b-3d-planner, ~10% personal"
+- The script skips Branch status in global mode — ship state still needs the MR/PR lookup (Step 2) before any push/MR action
 
 ## Example
 
 ```markdown
 # Morning Briefing — Friday-Sunday
 
-## b2b-3d-planner — done
+## b2b-3d-planner — shipped
 
-**Where you left off:** Issue 569 (Austrian locale) completed, committed, pushed. PR review comments addressed.
+Issue 569 (Austrian locale) merged Friday, review comments addressed.
 
-- [x] ~~Issue 569: Austrian locale support~~ (done Friday)
-- [ ] **Check if PM deployed** to staging
+- [ ] **Check staging deploy** with PM (est. 5min)
 
 ## pracino — in progress
 
-**Where you left off:** UC-1.1 blocked by BE, started UC-2 in Codex. iOS testing setup partially done (macOS VM ready, need to boot and verify).
+UC-1.1 address wiring is blocked on the BE push. UC-2 got a first Codex implementation, still unreviewed. iOS VM is configured but never booted.
 
-- [ ] **UC-1.1: Check BE status** and continue if unblocked
-- [ ] **UC-2: Review and test** Codex implementation
-- [ ] **iOS VM: First boot** and simulator check (low priority)
+- [ ] **Check BE status**, continue UC-1.1 if unblocked
+- [ ] **Review and test** UC-2 Codex implementation
+- [ ] **Boot iOS VM** and verify simulator (filler)
 
 ## Personal
 
@@ -53,6 +52,6 @@ In global mode, go broader — high-level overview across projects:
 
 ---
 **Today's budget:** ~6-7hrs focused work
-**Suggested sequence:** Check BE status first (2min), then UC-2 review (biggest chunk), b2b deploy check (5min), iOS as filler
+**Suggested sequence:** BE check first (2min), UC-2 review as the main chunk, iOS as filler
 **Time split Friday-Sunday:** ~50% pracino, ~40% b2b-3d-planner, ~10% aw-watcher-git
 ```

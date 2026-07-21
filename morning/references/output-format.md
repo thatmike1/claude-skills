@@ -1,50 +1,57 @@
 # Output Format
 
-The briefing follows this template. Adapt sections based on available data — skip sections with no content rather than showing empty placeholders.
+A briefing is prose with a few actions — not a task tree. Each stream reads like a colleague catching you up: a short paragraph of what happened and where things stand, then only the checkboxes you'd actually tick today. Skip sections with no content rather than showing empty placeholders.
 
 ## Template
 
 ```markdown
 # Morning Briefing — [label, e.g. "yesterday" or "Friday-Sunday" or "last 7 days"]
 
-## [Project Name] — [status label]
+## [Stream name] — [ship state / status]
 
-**Where you left off:** [1-sentence summary of last known state]
+[2-4 sentences: where you left off, what got done (commits, MR state), key decisions, blockers. Finished work lives here as prose, never as checked-off boxes.]
 
-- [ ] **Block 1: [name]** (est. Xmin, [risk flag if any])
-  - [ ] [verb] [subtask description]
-  - [ ] [verb] [subtask description]
-- [ ] **Block 2: [name]**
-  - [ ] [verb] [subtask description]
-- [x] ~~Block done yesterday~~ (context: [what was completed])
+- [ ] **[Verb-first action]** (est. X-Ymin, [risk flag if any])
+- [ ] ...
 
-## [Next Project]
+## [Next stream]
 ...
 
 ---
 **Today's budget:** X-Y hrs realistic
 **Suggested sequence:** [one concrete ordering insight]
-**Parking lot:** [items explicitly deferred, out of scope, or blocked]
+**Parking lot:** [deferred, blocked, or scope-creep items — one line each]
 ```
+
+## Next Up (clean slate only)
+
+When every stream is shipped and no actions carry over, replace budget/sequence with a pick-list of next work:
+
+```markdown
+## Next up
+
+Yesterday's streams all shipped. Candidates for today:
+
+1. **[GitLab #N / bd id] [title]** — [one line: why it's a candidate, rough size]
+2. ...
+```
+
+- Max 5 candidates, ordered by your best guess at priority (assigned + labeled in-progress first, then planned, then bd ready work)
+- Recommend one, but the pick is the user's — end by asking which to start
+
 
 ## Status Labels
 
-Use one per work stream:
-- `in progress` — actively being worked on
-- `blocked` — waiting on external dependency
-- `ready for CR` — code complete, needs review
-- `ready to start` — planned but not started yet
-- `research / exploration` — no concrete deliverable yet
-- `done` — completed yesterday, shown for context only
+Ship states from the verify step take precedence for branch-backed streams: `shipped`, `in review`, `unshipped`. For streams without a branch: `in progress`, `blocked`, `ready to start`, `research`.
 
 ## Checkbox Rules
 
-- Parent checkboxes = blocks (logical groups of work)
-- Child checkboxes = individual subtasks
-- Every subtask starts with a verb: implement, fix, test, rebase, wire, update, review, push
-- Bold the actionable part: `- [ ] **Rebase onto main** and resolve conflicts`
-- Already-done items use `[x]` with strikethrough
-- SKIP items (scope creep parked): `- [ ] ~~SKIP: [idea]~~ (reason)`
+A checkbox is an action you'd take today. Everything else is prose.
+
+- Max 4 per stream; `shipped` streams get zero
+- Verb-first, bold the action: `- [ ] **Rebase onto main** and resolve conflicts`
+- Every checkbox must be consistent with the stream's verified ship state
+- Scope-creep ideas go to the parking lot, not into checkboxes
 
 ## Time Estimates
 
