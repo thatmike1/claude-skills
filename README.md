@@ -20,8 +20,7 @@ A collection of custom skills for [Claude Code](https://docs.anthropic.com/en/do
 | Skill | What it does |
 |---|---|
 | **Publish** | |
-| ⭐ [readout](#readout) | Publish session work as a shareable, commentable web page — artifact v2 |
-| [artifact](#artifact) | Local HTML session documents (readout's predecessor) |
+| ⭐ [readout](#readout) | Publish session work as a shareable, commentable web page |
 | **Daily rhythm** | |
 | [morning](#morning--evening) | Daily briefing: yesterday's context → today's actionable plan |
 | [evening](#morning--evening) | End-of-day receipts: what actually got done today |
@@ -82,10 +81,6 @@ Both write a copy-paste prompt that hands a task (usually an issue-tracker ticke
 ### cc-audit
 
 Analyzes your Claude Code setup and usage patterns — wrong launch directories, context bloat, orphaned memories, missing CLAUDE.md files — and produces a severity-ranked report with actionable fixes.
-
-### artifact
-
-Readout's predecessor, still useful when you want a local file instead of a published page. Generates a polished single-page HTML document (typography-led, mermaid diagrams, syntax highlighting, version-history footer) into an external artifacts directory. Living document: re-running updates it in place.
 
 ### design-styles
 
@@ -169,7 +164,6 @@ After installing, restart Claude Code. Skills are available as slash commands:
 /detective            # debugging as a case log
 /punchy               # hot-take-first, minimal — everyday work
 
-/artifact             # local HTML session artifact
 /invoice-subjects     # invoice subjects for a given month
 /ai-cv-scanner        # mine history for AI experience answers
 ```

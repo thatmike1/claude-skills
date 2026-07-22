@@ -15,7 +15,7 @@ ai-cv-scanner/            — mine conversation history for AI experience eviden
 cc-audit/                 — audit CC setup and usage patterns, flag anti-patterns
 live-prompt/              — write handoff prompts for attended fresh-instance sessions (collaborative / off-the-leash)
 afk-prompt/               — write autonomous-run prompts + pick tasks safe to run unattended
-readout/                  — artifact v2: MDX-authored session docs published to readout.ssscribe.app with anchored comments (has npm deps for the MDX compile, like the installer)
+readout/                  — MDX-authored session docs published to readout.ssscribe.app with anchored comments (has npm deps for the MDX compile, like the installer)
 ```
 
 ## Skill Format
