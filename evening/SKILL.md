@@ -34,6 +34,20 @@ Each CC session reports a **Tools** line (e.g. `Edit×12, Write×3, Bash×40, Ag
 - `Skill`/`mcp__*` counts → tooling/infra/automation, the **Invisible work** the "did nothing" feeling erases
 This is the hard signal that turns a "felt unproductive" day into a list of artifacts.
 
+### Step 1b: The hours
+
+```bash
+node <skills-repo>/evening/scripts/compute-hours.mjs [--project <cwd>] [--exclude <this-session-id>] [--json]
+```
+
+Always pass `--exclude` with the current session's id — writing the recap is not work the day should be billed for. Get the id from the transcript path in your own context; skip the flag only if you genuinely can't find it, and say so.
+
+The script slices the day into quarter-hours, counts a quarter-hour as active for a session when it emitted at least one record inside it, then shares each one out among whatever was live in it. Two splits come back: equal shares, and shares weighted by how busy each session was. **They should land close together — a line where they diverge sharply is one to describe rather than quote.** Both sum to the day's real active wall-clock, so they can be logged as-is.
+
+Per-session output gives you the active windows, event count, cwd branch, and how much of the time was background agents. Sessions are not streams: fold several sessions into one stream when they're the same piece of work, and sum their split hours. Do not sum the `solo` column — it double-counts overlap on purpose.
+
+Read the numbers as a floor. Time on a phone, a build the user ran themselves, and thinking away from the keyboard are all invisible to this. Say so once rather than presenting the total as measured fact.
+
 ### Step 2: Synthesize the receipts
 
 Group into a timeline of work streams, then for each stream pull out:
@@ -48,6 +62,7 @@ Group into a timeline of work streams, then for each stream pull out:
 End with 2-4 sentences of honest day assessment:
 
 - Count the receipts ("4 commits, 3 issues closed, 2 filed, 1 skill shipped")
+- Use the hours to explain the day's *feel*, not to grade it — several threads sharing the same quarter-hours is why a full day can read as a blur, and that's a scheduling fact, not a failure
 - Name the day's shape ("scattered morning, locked-in afternoon" is a pattern, not a failure)
 - If the day genuinely was thin, say so plainly and point at the single most useful thing it produced — don't inflate
 - If meta/tooling work dominated, say why it counts (it compounds; tomorrow is faster)

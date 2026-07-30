@@ -3,6 +3,16 @@
 ```markdown
 # Day Receipts — <weekday> <date>
 
+## Hours
+
+<first> → <last>, <active> h active, <idle> h of gaps, up to <n> threads at once.
+
+| Stream | Hours | Log against |
+|---|---|---|
+| <stream name> | <split hours> | <issue id / "own time"> |
+
+<one line naming what the number doesn't see>
+
 ## <Stream name> (e.g. "Pracino — UC-10.1 wrap + demo")
 
 **Shipped**
@@ -28,6 +38,8 @@
 ## Notes
 
 - Omit empty subsections — a stream with only "Shipped" shows only Shipped.
+- The hours table leads because it's the part that can't be reconstructed from memory. Drop it
+  only if the day had a single stream, where a split adds nothing over one number.
 - Streams ordered by significance, not chronology.
 - The verdict is mandatory — it's the entire point of the skill. Write it like a peer
   reviewing the day, not a coach: "that's a real day" or "thin day, but X was worth it",
