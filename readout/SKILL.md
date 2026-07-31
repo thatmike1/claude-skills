@@ -10,6 +10,31 @@ Turn session work into a shareable web page. You author **MDX with JSX component
 instance that serves the site, stores comments, and keeps version history — all on
 one origin. Reviewers pin comments to any block; you read them back with a script.
 
+## Writing
+
+A readout says what is true now: what the change does, what state the work is in, what
+decisions are open. It is read once, skimmed, by a teammate or PM who was not in the
+session. Four things to get right:
+
+- **State, not sequence.** Describe what the change does, not the order you found it in.
+  Commit-by-commit accounts, "first we tried X then Y", and how-the-session-went narration
+  belong in the MR description. Use `Timeline` only where the chronology is the reader's
+  subject (an incident, a rollout), never to recount your own work.
+- **Write the sentence that carries the fact.** A line shaped for impact reads as
+  theatrical, and it drifts: shaping for punch is how a deliberate mock becomes something
+  that "sent into the void". Every claim has to survive a reader who knows the code.
+- **No em-dashes and no "it's X, not Y".** Both are named AI-isms and both get noticed.
+  A full stop or a comma does the same work.
+- **Czech readouts get ordinary Czech**, the words a colleague would say out loud. No
+  literary register, and no direct translation of an English term of art where a normal
+  Czech word exists.
+
+`intro` on a `Section` is one plain sentence saying what the section covers. It is a
+label rather than a hook, and it is optional: leave it off when the title already says it.
+Pick components by what the content is: `assets/example.mdx` shows every callout and chip
+type on one page because it is a catalogue, while a real readout uses the one or two that
+apply, with a `label` naming the actual thing, and often uses none.
+
 ## Paths & config
 
 - Read `config.json` next to this SKILL.md: `root` (default `~/git/readouts`),

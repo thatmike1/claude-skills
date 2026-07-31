@@ -2,9 +2,8 @@
 title: "Auth & Onboarding |Session Walkthrough|"
 eyebrow: Session Walkthrough
 lead: >
-  This artifact captures the auth and onboarding flow we worked through this
-  session — what the backend does on login, where new users get routed, and the
-  open questions still blocking the candidate path.
+  The auth and onboarding flow: what the backend does on login, where new users
+  get routed, and the open questions still blocking the candidate path.
 version: 4
 date: July 2, 2026
 ---
@@ -40,16 +39,18 @@ all render normally inside a section.
 
 </Section>
 
-<Section title="What changed" intro="Four moving parts shifted this session — one landed, two are watch-items, one is a hard blocker.">
+<Section title="What changed" intro="Four things moved in this area: one is done, two need watching, one is blocked.">
 
 <Callouts>
   <Callout type="success">Account-completion endpoint now accepts role + profile in a single request.</Callout>
-  <Callout type="info"><code>nextScreen</code> is computed server-side — the client should never infer it.</Callout>
+  <Callout type="info"><code>nextScreen</code> is computed server-side; the client should never infer it.</Callout>
   <Callout type="warning">Refresh-token rotation isn't covered by tests yet.</Callout>
   <Callout type="danger">Candidate identity unlock still depends on the credits module, which is unimplemented.</Callout>
 </Callouts>
 
-A lone callout with a custom label works standalone (no wrapper needed):
+All four types appear above because this file is a catalogue. A real readout uses the
+one or two that apply. A lone callout with a custom label works standalone (no wrapper
+needed):
 
 <Callout type="info" label="Heads up">Single callouts wrap themselves in a `.callouts` row automatically.</Callout>
 
@@ -61,17 +62,17 @@ A lone callout with a custom label works standalone (no wrapper needed):
 
 </Section>
 
-<Section title="How the session went" intro="The order we uncovered things — login first, routing next, then the wall.">
+<Section title="Rollout timeline" intro="When each part of the auth change reached staging. Use Timeline for a chronology the reader needs, not to recount how the session went.">
 
 <Timeline>
-  <Event time="09:15" title="Traced the login exchange">Read `handleOAuth` end to end and confirmed the access + refresh tokens are issued in one pass.</Event>
-  <Event time="10:40" title="Found the routing gap">`nextScreen` was being inferred on the client. Moved the decision server-side so the two tiers can never disagree.</Event>
-  <Event time="11:30" title="Hit the credits blocker">Candidate identity unlock reads a balance from the credits module, which isn't implemented — hard stop for that path.</Event>
+  <Event time="09:15" title="Token exchange deployed">`handleOAuth` issues the access and refresh pair in one pass.</Event>
+  <Event time="10:40" title="Routing moved server-side">`nextScreen` had been inferred on the client. The server now decides it, so the two tiers cannot disagree.</Event>
+  <Event time="11:30" title="Candidate path stopped">Identity unlock reads a balance from the credits module, which is unimplemented.</Event>
 </Timeline>
 
 </Section>
 
-<Section title="Flow" intro="From provider token to landing screen, the backend decides everything in one pass.">
+<Section title="Flow" intro="From provider token to landing screen. The backend resolves the route in one pass.">
 
 <Diagram code={`flowchart TD
   A[OAuth provider token] --> B[POST /auth/oauth]
@@ -83,7 +84,7 @@ A lone callout with a custom label works standalone (no wrapper needed):
   F -->|account_completion| G[Onboarding: role + profile]
   F -->|overview| H[Main app]`} />
 
-For the request path itself, a mermaid flow is too flat — the `html` variant draws the
+For the request path itself a mermaid flow is too flat. The `html` variant draws the
 layers each hop passes through, as swimlanes with labeled arrows:
 
 <Diagram html={`
@@ -159,7 +160,7 @@ characters awkward to fence:
 
 </Section>
 
-<Section title="Touched files" intro="What moved this session, nested by directory and tagged by change kind.">
+<Section title="Touched files" intro="Files changed, nested by directory and tagged by change kind.">
 
 <FileTree paths={[
   { path: "src/auth/oauth-handler.ts", status: "modified", note: "nextScreen resolved server-side" },
@@ -171,7 +172,7 @@ characters awkward to fence:
 
 </Section>
 
-<Section title="Plan support" intro="Artifact generation is gated to the workspace tiers — not the consumer plans.">
+<Section title="Plan support" intro="Artifact generation is gated to the workspace tiers. Consumer plans are excluded.">
 
 A props-driven table with sortable headers, a live filter, and mark cells:
 
@@ -189,7 +190,7 @@ A props-driven table with sortable headers, a live filter, and mark cells:
   ]}
 />
 
-A markdown GFM table also works — pass it as children:
+A markdown GFM table also works when passed as children:
 
 <DataTable sortable>
 
@@ -202,7 +203,7 @@ A markdown GFM table also works — pass it as children:
 
 </Section>
 
-<Section title="Verification" intro="What we actually checked before calling the login path stable.">
+<Section title="Verification" intro="What was checked before the login path was called stable.">
 
 <Checklist>
   <Check done>OAuth token exchange returns access + refresh tokens</Check>
@@ -219,7 +220,7 @@ A GFM task list gets re-tagged into the same checklist styling:
 
 </Section>
 
-<Section title="Reference docs" intro="The supporting documents produced alongside the code — browse them in one place.">
+<Section title="Reference docs" intro="The supporting documents for this change, in one place.">
 
 <DocShelf>
   <Doc path="docs/auth/oauth-flow.md" title="OAuth flow" note="the exchange, end to end">
@@ -249,14 +250,14 @@ A GFM task list gets re-tagged into the same checklist styling:
     ## Routing decision
 
     The response carries `nextScreen`, computed on the server. The client must
-    never infer it — the two tiers can otherwise disagree.
+    never infer it, because the two tiers can otherwise disagree.
 
     <Callout type="info">`nextScreen` is `account_completion` until the profile is complete, then `overview`.</Callout>
 
     ## Refresh rotation
 
     Refresh tokens rotate on use. The open question is whether the old token is
-    invalidated immediately or after a short grace window — see the gaps doc.
+    invalidated immediately or after a short grace window. See the gaps doc.
 
   </Doc>
   <Doc path="docs/auth/guards.md" title="Auth guards">
@@ -293,7 +294,7 @@ A GFM task list gets re-tagged into the same checklist styling:
 <Section title="Open questions" intro="Three decisions still need an owner before the candidate path can ship.">
 
 1. Should refresh-token rotation invalidate the old token immediately or after a grace window?
-2. Where does the credits balance get checked — guard or use-case?
+2. Where does the credits balance get checked: guard or use-case?
 3. Does `account_completion` need to be idempotent if the client retries?
 
 </Section>
