@@ -1,6 +1,6 @@
 # Output Format
 
-A briefing is prose with a few actions — not a task tree. Each stream reads like a colleague catching you up: a short paragraph of what happened and where things stand, then only the checkboxes you'd actually tick today. Skip sections with no content rather than showing empty placeholders.
+A briefing is prose with a few actions — not a task tree. Each stream states where the work stands now and what is holding it, then carries only the checkboxes you'd actually tick today. Skip sections with no content rather than showing empty placeholders.
 
 ## Template
 
@@ -9,7 +9,7 @@ A briefing is prose with a few actions — not a task tree. Each stream reads li
 
 ## [Stream name] — [ship state / status]
 
-[2-4 sentences: where you left off, what got done (commits, MR state), key decisions, blockers. Finished work lives here as prose, never as checked-off boxes.]
+[Current state: what exists now, its ship state, and what is holding it. Add history only where it changes what to do today — a decision that constrains the next step, an approach already tried and rejected. A shipped stream gets one sentence; a stream nobody can act on today gets one sentence and the reason. Finished work lives here as prose, never as checked-off boxes.]
 
 - [ ] **[Verb-first action]** (est. X-Ymin, [risk flag if any])
 - [ ] ...

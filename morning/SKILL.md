@@ -7,6 +7,8 @@ description: Daily briefing skill that aggregates yesterday's work context from 
 
 Produce an actionable morning briefing by gathering and synthesizing context from the previous workday.
 
+The briefing succeeds when the reader finishes it knowing what state each thing is in and what to do first, and fails when it is thorough enough that reading it becomes its own task. What earns space is what changes today's decision — not what happened yesterday.
+
 ## Mode Detection
 
 | Signal | Mode | Range |
@@ -52,28 +54,27 @@ Read the gathered context and produce a briefing. See [references/output-format.
 
 Key synthesis tasks:
 - Group sessions into **work streams** by project/topic
-- For each stream, tell what happened as prose: work done, decisions made, blockers hit, ship state
+- For each stream, state where it stands now: ship state, what exists, what is holding it
 - Checkboxes only for today's actions, with time estimates where possible
 - Add sequencing recommendation and day-fit assessment
 - Flag scope-creep risks with timebox warnings (see goblin patterns)
 
 **Clean slate:** when every stream is shipped/done and yesterday leaves no real actions, pull next work instead — GitLab issues assigned to the user (`my_issues`, state opened; filter to this project in repo mode) plus `bd ready`. Present as a "Next up" section (see output-format) and let the user pick; don't start anything.
 
-The briefing is complete only when every session in the gathered context appears in a work stream or is dismissed in a one-liner — no session silently dropped.
+Cover every action, not every session. The gathered context is material to select from, not a list to account for — a session that leaves nothing to do today needs no line at all. What must appear is every branch carrying an open action, every decision still owed to someone, and anything settled yesterday that was never written down anywhere.
 
 Mode-specific details: [references/repo-mode.md](references/repo-mode.md) | [references/global-mode.md](references/global-mode.md)
 
-### Step 4: Present and refine
+### Step 4: Present
 
-Show the briefing. Ask if the user wants to:
-- Add context you missed ("oh yeah, I also need to do X")
-- Adjust priorities or skip items
-- Get time estimates refined
+Show the briefing and stop. Where something in it is a guess — an estimate, a priority call, a stream you couldn't classify — say so in the line where it appears, rather than closing with a menu of ways the user could correct you.
 
 ## Rules
 
-- No motivational fluff — straight into the plan
-- Max 15 words per bullet point
-- If a session was just yapping/research with no actionable output, summarize in one line, don't list every message
+- Open with the single thing to do first, before any heading
+- Write each bullet as one plain clause the reader can act on without expanding it
+- A research or discussion session earns a line only where it produced a decision or a thing to do
 
-Checkbox rules, work-repos-first ordering, and thin-context handling live in the references — follow them, don't improvise.
+Checkbox rules, work-repos-first ordering, and thin-context handling live in the references.
+
+If the session carries a standing instruction about how to write — a hook, an output style, an active register skill — it wins over this skill's shape. Keep the ship-state discipline and the actions; give up the format.
