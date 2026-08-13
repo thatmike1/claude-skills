@@ -1,5 +1,14 @@
-import { existsSync, mkdirSync, symlinkSync, unlinkSync, cpSync, lstatSync, rmSync } from "fs";
-import { join } from "path";
+import {
+    existsSync,
+    mkdirSync,
+    symlinkSync,
+    unlinkSync,
+    cpSync,
+    lstatSync,
+    rmSync,
+    readdirSync,
+} from "fs";
+import { join, dirname } from "path";
 
 /** ensures the target skills directory exists */
 export function ensureSkillsDir(targetDir) {
@@ -31,12 +40,18 @@ export function installSkill({ repoDir, targetDir, name, method, dryRun = false 
         return { ok: false, error: `skill directory not found: ${source}` };
     }
 
+    const agentsSource = join(source, "agents");
+    const agentFiles = existsSync(agentsSource)
+        ? readdirSync(agentsSource).filter((f) => f.endsWith(".md"))
+        : [];
+
     // dry run: validate the source, report the plan, touch nothing
     if (dryRun) {
         const verb = method === "symlink" ? "would symlink" : "would copy";
         const replaces =
             existsSync(target) || isDanglingSymlink(target) ? " (replaces existing)" : "";
-        return { ok: true, label: `${verb}${replaces}`, dryRun: true };
+        const agents = agentFiles.length ? ` + ${agentFiles.length} agent file(s)` : "";
+        return { ok: true, label: `${verb}${replaces}${agents}`, dryRun: true };
     }
 
     if (!removeExisting(target)) {
@@ -49,7 +64,19 @@ export function installSkill({ repoDir, targetDir, name, method, dryRun = false 
         } else {
             cpSync(source, target, { recursive: true });
         }
-        return { ok: true, label: method === "symlink" ? "symlinked" : "copied" };
+        // skills that ship subagent definitions carry them in <skill>/agents/;
+        // Claude Code only reads agents from ~/.claude/agents, so those files are
+        // always copied there (even on symlink installs) rather than linked
+        let agentLabel = "";
+        if (agentFiles.length) {
+            const agentsDir = join(dirname(targetDir), "agents");
+            mkdirSync(agentsDir, { recursive: true });
+            for (const file of agentFiles) {
+                cpSync(join(agentsSource, file), join(agentsDir, file));
+            }
+            agentLabel = ` + ${agentFiles.length} agent file(s)`;
+        }
+        return { ok: true, label: `${method === "symlink" ? "symlinked" : "copied"}${agentLabel}` };
     } catch (err) {
         return { ok: false, error: err.message };
     }

@@ -1,0 +1,6 @@
+{
+    "name": "orchestrate",
+    "version": "1.0.0",
+    "description": "Team-lead orchestrator: whichever frontier-class Claude model leads your session plans, routes, and verifies while cheaper Claude or Codex workers execute. Use for: orchestrate, delegate, conductor mode, save tokens, multi-agent.",
+    "skills": "."
+}

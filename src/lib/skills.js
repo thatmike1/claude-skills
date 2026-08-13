@@ -10,6 +10,7 @@ import { SETUP_FIELDS } from "./setup-fields.js";
  */
 const SHORT_BLURBS = {
     readout: "Publish session docs to the web — MDX-authored, themed, anchored comments",
+    orchestrate: "Frontier lead plans, routes, verifies — cheap Claude/Codex workers execute",
     morning: "Daily briefing — aggregates CC/Codex sessions, git, memory into a morning plan",
     evening: "End-of-day receipts — proves what actually got done today",
     goblin: "Neurodivergent thought structuring — braindumps, decompose, estimate, decide",
@@ -35,6 +36,7 @@ export const SKILL_DEPENDENCIES = { evening: "morning" };
 /** preferred display order; discovered skills not listed here sort after, alphabetically */
 const DISPLAY_ORDER = [
     "readout",
+    "orchestrate",
     "morning",
     "evening",
     "scan",
@@ -52,6 +54,7 @@ const DISPLAY_ORDER = [
 /** tiny flavor glyph per skill shown in the picker */
 const GLYPHS = {
     readout: "❖",
+    orchestrate: "♬",
     morning: "☀",
     evening: "☾",
     goblin: "♟",

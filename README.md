@@ -21,6 +21,8 @@ A collection of custom skills for [Claude Code](https://docs.anthropic.com/en/do
 |---|---|
 | **Publish** | |
 | ⭐ [readout](#readout) | Publish session work as a shareable, commentable web page |
+| **Orchestration** | |
+| ⭐ [orchestrate](#orchestrate) | Frontier lead plans, routes, verifies — cheaper Claude/Codex workers execute |
 | **Daily rhythm** | |
 | [morning](#morning--evening) | Daily briefing: yesterday's context → today's actionable plan |
 | [evening](#morning--evening) | End-of-day receipts: what actually got done today |
@@ -50,6 +52,16 @@ The flagship. Artifact on steroids: session output authored as **MDX with JSX co
 - **Anchored comments** — teammates comment on specific parts of the page, and the agent reads the comments back into the session to act on them
 - Password-protected readouts (encrypted at publish, comments encrypted too)
 - Living documents: re-publishing updates the same page
+
+### orchestrate
+
+Multi-agent delegation with the economics built in. The session model becomes the conductor — it plans, routes, and verifies but does not implement; implementation goes to the cheapest model that clears the task's quality bar (Claude subagents, or OpenAI Codex CLI workers when installed and consented).
+
+- **Routing by measured data, not vibes** — bundles a model × reasoning-effort comparison table (cost per finished task, tokens per task) plus the `refresh.py` that regenerates it from Artificial Analysis
+- **Delegation tickets** — every dispatch is a self-contained 7-section ticket with a declared write set; parallel work requires provably disjoint write sets
+- **Blind verification** — a fresh-context verifier gets the original task verbatim, never the worker's narrative, and assumes the work is broken until proven otherwise
+- **Durable state** — a ledger file survives compaction and restarts; escalation and retries follow one precedence table
+- Ships three subagent definitions (`orchestra-scout` / `orchestra-worker` / `orchestra-verifier`) which the installer places in `~/.claude/agents/`
 
 ### morning / evening
 
