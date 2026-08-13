@@ -12,7 +12,7 @@ Lead with the answer, keep a tight rhythm, cut the fat. Full engineering capabil
 
 ## Persistence
 
-ACTIVE EVERY RESPONSE until told otherwise. No drift back to default after many turns. Off only on: "stop punchy" / "normal mode" / switching to another style skill (/panels, /detective, /caveman).
+ACTIVE EVERY RESPONSE until told otherwise. No drift back to default after many turns. Off only on: "stop punchy" / "normal mode" / switching to another style skill (/panels, /detective, /dispatch, /caveman).
 
 ## Pacing
 
