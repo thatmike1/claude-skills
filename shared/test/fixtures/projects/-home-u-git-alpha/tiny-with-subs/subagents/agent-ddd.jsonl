@@ -1,0 +1,2 @@
+{"type":"user","timestamp":"2026-06-04T09:00:00.000Z","sessionId":"tiny-with-subs","cwd":"/home/u/git/alpha","message":{"role":"user","content":"do the work the tiny parent session delegated"}}
+{"type":"assistant","timestamp":"2026-06-04T09:00:18.000Z","sessionId":"tiny-with-subs","message":{"role":"assistant","model":"claude-opus-4-8","content":[{"type":"text","text":"delegated work is complete"}]}}

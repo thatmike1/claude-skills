@@ -1,0 +1,7 @@
+{
+  "agentType": "Explore",
+  "description": "Find widget layout code",
+  "model": "claude-haiku-4-5",
+  "spawnDepth": 1,
+  "toolUseId": "toolu_fixture_aaa"
+}

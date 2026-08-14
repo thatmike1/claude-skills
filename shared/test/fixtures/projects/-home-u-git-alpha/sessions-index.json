@@ -1,0 +1,12 @@
+{
+  "originalPath": "/home/u/git/alpha",
+  "entries": [
+    {
+      "sessionId": "sess-one",
+      "projectPath": "/home/u/git/alpha",
+      "summary": "stale february snapshot",
+      "firstPrompt": "session one asks about the widget layout",
+      "created": "2026-06-01T10:00:00.000Z"
+    }
+  ]
+}

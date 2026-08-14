@@ -1,0 +1,7 @@
+{
+  "agentType": "workflow-step",
+  "description": "Layout audit step",
+  "model": "claude-opus-4-8",
+  "spawnDepth": 1,
+  "toolUseId": "toolu_fixture_ccc"
+}

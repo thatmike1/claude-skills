@@ -1,0 +1,2 @@
+{"type":"user","timestamp":"2026-06-02T11:00:00.000Z","cwd":"/home/u/git/alpha","gitBranch":"main","message":{"role":"user","content":"session two asks about the cache eviction policy"}}
+{"type":"assistant","timestamp":"2026-06-02T11:00:07.000Z","message":{"role":"assistant","model":"claude-opus-4-8","content":[{"type":"text","text":"the cache evicts least recently used entries"}]}}

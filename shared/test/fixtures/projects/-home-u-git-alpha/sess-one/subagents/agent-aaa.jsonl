@@ -1,0 +1,2 @@
+{"type":"user","timestamp":"2026-06-01T10:02:00.000Z","sessionId":"sess-one","cwd":"/home/u/git/alpha","message":{"role":"user","content":"find where the widget layout is computed"}}
+{"type":"assistant","timestamp":"2026-06-01T10:02:11.000Z","sessionId":"sess-one","message":{"role":"assistant","model":"claude-haiku-4-5","content":[{"type":"text","text":"layout is computed in the widget renderer"}]}}

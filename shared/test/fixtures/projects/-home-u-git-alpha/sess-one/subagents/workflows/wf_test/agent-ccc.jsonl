@@ -1,0 +1,2 @@
+{"type":"user","timestamp":"2026-06-01T10:04:00.000Z","sessionId":"sess-one","cwd":"/home/u/git/alpha","message":{"role":"user","content":"run the layout audit step of the workflow"}}
+{"type":"assistant","timestamp":"2026-06-01T10:04:15.000Z","sessionId":"sess-one","message":{"role":"assistant","model":"claude-opus-4-8","content":[{"type":"text","text":"audit step finished, no layout drift"}]}}

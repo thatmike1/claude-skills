@@ -92,9 +92,9 @@ function encodeProjectDir(absPath) {
 
 /**
  * checks whether a discovered session belongs to a project filter, robust to
- * whether the project came from a sessions-index.json (absolute path) or the
- * fallback decode (slash-form). matches on the absolute path prefix OR the
- * encoded project directory name.
+ * whether the project came from history.jsonl (absolute path) or the directory
+ * decode (slash-form). matches on the absolute path prefix OR the encoded
+ * project directory name.
  */
 export function projectMatches(session, projectFilter) {
   if (!projectFilter) return true;
@@ -160,13 +160,109 @@ export async function getTimestampFromJsonl(filePath) {
   }
 }
 
-/** discovers sessions from Claude Code sessions-index.json files. */
-export async function discoverSessionsFromIndex() {
-  const sessions = [];
-  if (!existsSync(PROJECTS_DIR)) return sessions;
+/**
+ * reads the subagent transcripts in one directory into subagent records.
+ *
+ * @param {string} dir        directory holding the transcripts
+ * @param {string} sessionId  owning session id
+ * @param {?string} workflowId workflow the transcripts belong to, null when flat
+ * @returns {object[]} subagent records
+ */
+function readSubagentDir(dir, sessionId, workflowId) {
+  const subagents = [];
 
-  for (const projectDirName of readdirSync(PROJECTS_DIR).sort()) {
-    const projectDir = join(PROJECTS_DIR, projectDirName);
+  let files;
+  try {
+    files = readdirSync(dir).sort();
+  } catch {
+    return subagents;
+  }
+
+  for (const file of files) {
+    if (!file.endsWith('.jsonl')) continue;
+    // a workflow's journal is bookkeeping, not an agent transcript
+    if (file === 'journal.jsonl') continue;
+    const name = file.replace(/\.jsonl$/, '');
+
+    let meta = {};
+    try {
+      const parsed = JSON.parse(readFileSync(join(dir, `${name}.meta.json`), 'utf-8'));
+      if (parsed && typeof parsed === 'object') meta = parsed;
+    } catch {}
+
+    subagents.push({
+      // the workflow segment keeps basenames from colliding across workflows
+      agentId: workflowId ? `${sessionId}~${workflowId}~${name}` : `${sessionId}~${name}`,
+      name: meta.name || name,
+      description: meta.description || '',
+      agentType: meta.agentType ?? null,
+      model: meta.model ?? null,
+      spawnDepth: meta.spawnDepth ?? null,
+      workflowId,
+      filePath: join(dir, file),
+    });
+  }
+
+  return subagents;
+}
+
+/**
+ * collects the subagent transcripts owned by a session.
+ *
+ * they live at `<projectDir>/<sessionId>/subagents/*.jsonl`, with an optional
+ * `<name>.meta.json` sidecar. identity comes from the path only: a subagent's
+ * own JSONL records its PARENT's sessionId, so trusting that field would
+ * collide every subagent with its owner. nested spawns are written flat into
+ * that directory, so it needs no recursion — the one exception is workflow runs,
+ * which get their own `subagents/workflows/<workflowId>/` directory, walked
+ * exactly one level deep.
+ *
+ * @param {string} projectDir absolute path to the Claude project directory
+ * @param {string} sessionId  owning session id
+ * @returns {object[]} subagent records (empty when the session spawned none)
+ */
+function collectSubagents(projectDir, sessionId) {
+  const subagentsDir = join(projectDir, sessionId, 'subagents');
+  const subagents = readSubagentDir(subagentsDir, sessionId, null);
+
+  const workflowsDir = join(subagentsDir, 'workflows');
+  let workflowIds = [];
+  try {
+    workflowIds = readdirSync(workflowsDir).sort();
+  } catch {
+    return subagents;
+  }
+
+  for (const workflowId of workflowIds) {
+    const workflowDir = join(workflowsDir, workflowId);
+    try {
+      if (!statSync(workflowDir).isDirectory()) continue;
+    } catch {
+      continue;
+    }
+    subagents.push(...readSubagentDir(workflowDir, sessionId, workflowId));
+  }
+
+  return subagents;
+}
+
+/**
+ * discovers sessions by listing the Claude project directories.
+ *
+ * `sessions-index.json` is deliberately ignored — Claude Code stopped
+ * maintaining it, so a directory that still has one would enumerate an old
+ * snapshot instead of what is on disk.
+ *
+ * @param {object} [opts]
+ * @param {string} [opts.projectsDir] projects root (default ~/.claude/projects)
+ */
+export async function discoverSessionsFromDisk(opts = {}) {
+  const projectsRoot = resolve(opts.projectsDir || PROJECTS_DIR);
+  const sessions = [];
+  if (!existsSync(projectsRoot)) return sessions;
+
+  for (const projectDirName of readdirSync(projectsRoot).sort()) {
+    const projectDir = join(projectsRoot, projectDirName);
     let stat;
     try {
       stat = statSync(projectDir);
@@ -175,45 +271,23 @@ export async function discoverSessionsFromIndex() {
     }
     if (!stat.isDirectory()) continue;
 
-    const indexFile = join(projectDir, 'sessions-index.json');
-    if (existsSync(indexFile) && statSync(indexFile).size > 10) {
-      try {
-        const data = JSON.parse(readFileSync(indexFile, 'utf-8'));
-        const entries = Array.isArray(data) ? data : data.entries;
-        if (!Array.isArray(entries)) continue;
-
-        for (const entry of entries) {
-          if (!entry.sessionId) continue;
-          const filePath = entry.fullPath || join(projectDir, `${entry.sessionId}.jsonl`);
-          const timestamp = entry.created || normalizeTimestamp(entry.fileMtime) || null;
-          sessions.push({
-            sessionId: entry.sessionId,
-            project: entry.projectPath || data.originalPath || decodeProjectName(projectDirName),
-            projectDir: projectDirName,
-            summary: entry.summary || '',
-            firstPrompt: truncateText(entry.firstPrompt || '', 300),
-            timestamp,
-            date: timestamp ? timestamp.slice(0, 10) : 'unknown',
-            filePath,
-          });
-        }
-      } catch (err) {
-        console.error(`warn: failed to read ${indexFile}: ${err.message}`);
-      }
-      continue;
-    }
-
     for (const file of readdirSync(projectDir).sort()) {
       if (!file.endsWith('.jsonl') || file.startsWith('agent-')) continue;
       const filePath = join(projectDir, file);
+      let size;
       try {
-        if (statSync(filePath).size < 100) continue;
+        size = statSync(filePath).size;
       } catch {
         continue;
       }
+      const sessionId = file.replace(/\.jsonl$/, '');
+      const subagents = collectSubagents(projectDir, sessionId);
+      // the size floor drops empty junk; a session that spawned subagents isn't junk
+      if (size < 100 && !subagents.length) continue;
+
       const timestamp = await getTimestampFromJsonl(filePath);
       sessions.push({
-        sessionId: file.replace(/\.jsonl$/, ''),
+        sessionId,
         project: decodeProjectName(projectDirName),
         projectDir: projectDirName,
         summary: '',
@@ -221,6 +295,7 @@ export async function discoverSessionsFromIndex() {
         timestamp,
         date: timestamp ? timestamp.slice(0, 10) : 'unknown',
         filePath,
+        subagents,
       });
     }
   }
@@ -228,6 +303,9 @@ export async function discoverSessionsFromIndex() {
   sessions.sort((a, b) => String(b.timestamp || '').localeCompare(String(a.timestamp || '')));
   return sessions;
 }
+
+/** @deprecated enumeration no longer reads sessions-index.json — use {@link discoverSessionsFromDisk}. */
+export const discoverSessionsFromIndex = discoverSessionsFromDisk;
 
 /** discovers sessions from Claude Code history.jsonl with date and project filtering. */
 export async function discoverSessionsFromHistory(fromMs, toMs, projectFilter) {
@@ -264,11 +342,17 @@ export async function discoverSessionsFromHistory(fromMs, toMs, projectFilter) {
   return [...sessions.values()];
 }
 
-/** discovers sessions, merging index summaries with history timestamps when available. */
+/**
+ * discovers sessions, merging on-disk enumeration with history timestamps when
+ * a date range is given.
+ *
+ * @param {object} [opts]
+ * @param {string} [opts.projectsDir] projects root (default ~/.claude/projects)
+ */
 export async function discoverSessions(opts = {}) {
   const projectFilter = !opts.global && opts.project ? resolve(opts.project) : null;
-  const indexSessions = await discoverSessionsFromIndex();
-  const byId = new Map(indexSessions.map(session => [session.sessionId, session]));
+  const diskSessions = await discoverSessionsFromDisk({ projectsDir: opts.projectsDir });
+  const byId = new Map(diskSessions.map(session => [session.sessionId, session]));
 
   if (opts.from || opts.to) {
     const fromMs = opts.from ? new Date(`${opts.from}T00:00:00`).getTime() : null;
@@ -276,19 +360,20 @@ export async function discoverSessions(opts = {}) {
     const historySessions = await discoverSessionsFromHistory(fromMs, toMs, projectFilter);
 
     return historySessions.map(session => {
-      const indexed = byId.get(session.sessionId);
+      const onDisk = byId.get(session.sessionId);
       return {
         ...session,
-        summary: indexed?.summary || session.summary || '',
-        firstPrompt: indexed?.firstPrompt || session.firstPrompt || '',
-        timestamp: session.timestamp || indexed?.timestamp || null,
-        date: (session.timestamp || indexed?.timestamp || '').slice(0, 10) || 'unknown',
-        filePath: session.filePath || indexed?.filePath || null,
+        summary: onDisk?.summary || session.summary || '',
+        firstPrompt: onDisk?.firstPrompt || session.firstPrompt || '',
+        timestamp: session.timestamp || onDisk?.timestamp || null,
+        date: (session.timestamp || onDisk?.timestamp || '').slice(0, 10) || 'unknown',
+        filePath: session.filePath || onDisk?.filePath || null,
+        subagents: onDisk?.subagents ?? [],
       };
     });
   }
 
-  return indexSessions.filter(session => projectMatches(session, projectFilter));
+  return diskSessions.filter(session => projectMatches(session, projectFilter));
 }
 
 /**
@@ -424,6 +509,8 @@ async function scanSessionStats(filePath) {
  * builds a lightweight per-session index for "decide what to load" workflows.
  * shallow (default) returns metadata only with no file parsing; deep:true adds
  * branch / model / message + tool counts by cheaply scanning each file.
+ *
+ * accepts the same `projectsDir` override as {@link discoverSessions}.
  */
 export async function buildIndex(opts = {}) {
   const sessions = await discoverSessions(opts);
