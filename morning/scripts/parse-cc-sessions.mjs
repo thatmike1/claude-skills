@@ -12,6 +12,7 @@ import { existsSync } from 'fs';
 import { join, resolve } from 'path';
 import { homedir } from 'os';
 import { discoverSessions, parseSessionFile, truncateText } from '../../shared/cc-parser.mjs';
+import { collectSubagentParses } from './subagent-context.mjs';
 
 const HISTORY_FILE = join(homedir(), '.claude', 'history.jsonl');
 const MAX_MSG_LENGTH = 500;
@@ -33,16 +34,23 @@ function parseArgs() {
   return opts;
 }
 
-/** formats a parsed session as markdown. */
-function formatSession(session, parsed) {
+/**
+ * formats a parsed session as markdown.
+ *
+ * @param {object} session discovery record
+ * @param {object} parsed  parsed transcript
+ * @param {object} [opts]  { title, model } overrides used for subagent blocks
+ */
+function formatSession(session, parsed, opts = {}) {
   const lines = [];
-  const title = parsed.aiTitle || session.firstPrompt || session.sessionId;
+  const title = opts.title || parsed.aiTitle || session.firstPrompt || session.sessionId;
   lines.push(`### ${title}`);
   lines.push('');
 
   const meta = [];
   if (session.project) meta.push(`**Project:** ${session.project}`);
   if (parsed.branch) meta.push(`**Branch:** ${parsed.branch}`);
+  if (opts.model) meta.push(`**Model:** ${opts.model}`);
   if (meta.length) {
     lines.push(meta.join(' | '));
     lines.push('');
@@ -99,6 +107,17 @@ async function main() {
 
     const parsed = await parseSessionFile(session.filePath);
     console.log(formatSession(session, parsed));
+
+    // orchestrated sessions keep the real work in their subagent transcripts
+    const { entries, omitted } = await collectSubagentParses(session, { maxLength: MAX_MSG_LENGTH });
+    for (const entry of entries) {
+      console.log(formatSession(session, entry.parsed, {
+        title: `↳ subagent: ${entry.label}`,
+        model: entry.model,
+      }));
+    }
+    if (omitted > 0) console.log(`*...and ${omitted} more subagent transcript(s) not shown*\n`);
+
     console.log('---\n');
   }
 }

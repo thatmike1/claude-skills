@@ -13,7 +13,7 @@ import { join, resolve, dirname } from 'path';
 import { homedir, platform } from 'os';
 import { createInterface } from 'readline';
 import { fileURLToPath } from 'url';
-import { discoverSessionsFromIndex, decodeProjectName } from '../../shared/cc-parser.mjs';
+import { discoverSessionsFromDisk, decodeProjectName } from '../../shared/cc-parser.mjs';
 
 const HOME = homedir();
 const CLAUDE_DIR = join(HOME, '.claude');
@@ -213,7 +213,7 @@ async function main() {
   console.log('');
 
   // --- session discovery ---
-  const allSessions = await discoverSessionsFromIndex();
+  const allSessions = await discoverSessionsFromDisk();
   const recentSessions = allSessions.filter(s => s.timestamp && s.timestamp >= cutoffISO);
 
   console.log(`## Session Overview`);

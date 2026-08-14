@@ -25,14 +25,16 @@ node <skill-dir>/scripts/scan.mjs [when] [--project <cwd>] [--global] [--full]
 
 ### Search (targeted lookup — prefer this for "find the message…")
 ```bash
-node <skill-dir>/scripts/scan.mjs --search "<query>" [--scope messages|actions|all] [--regex] [--context N] [--limit N] [--global] [--from --to]
+node <skill-dir>/scripts/scan.mjs --search "<query>" [--mode keyword|semantic|both] [--scope messages|actions|all] [--regex] [--context N] [--limit N] [--global] [--from --to]
 ```
 - Searches **full, untruncated** message bodies and returns each hit with surrounding context and a session/file pointer — so long or buried messages are found in full.
 - `--scope messages` (default) searches your + Claude's prose only (lean, fast). `--scope actions` also searches tool calls / commands run; `--scope all` also searches Claude's reasoning. Reach for the wider scopes only when a plain search misses.
 - `--regex` switches the query to a regular expression.
+- `--mode` (default `keyword`): keyword finds what the user can **name** — an exact word, path, or error string. Semantic finds what they can only **describe** ("the session where we argued about pricing"), so reach for it when the wording is theirs rather than the transcript's; `both` runs keyword first and appends the semantic hits it missed. Semantic needs the optional [cc-browse](https://github.com/thatmike1/cc-browse) accelerator; without it (or on a search the index cannot serve — regex, case-sensitive, wider scopes, `--from`/`--to`) it prints a note and falls back to keyword. `--no-accelerate` forces the full scan.
 
 ### Digest (open recap)
 - Default mode dumps a per-session markdown digest (title, date, branch, model, your messages, what Claude did + tool counts).
+- Subagent transcripts are folded in as their own `↳ subagent: <label>` blocks under their session, capped at 10 per session. On an orchestrated session the parent holds only the dispatch and the summary — the implementation is in those blocks.
 - **Auto-routing:** if the range has more than ~12 sessions, scan returns a lightweight **index** instead of a giant digest (to protect context). Read the index, then load only the relevant sessions:
   ```bash
   node <skill-dir>/scripts/scan.mjs --sessions <id,id,...> [--full]

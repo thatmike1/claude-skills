@@ -10,6 +10,11 @@ import { toolCountsFrom } from '../../shared/cc-format.mjs';
 import { discoverCodexSessions } from '../../shared/codex-parser.mjs';
 
 const DEFAULT_CODEX_DAYS = 365;
+// subagent transcripts mined per session, and how much of each is kept. the
+// parent is captured whole, but one orchestration run can spawn dozens of
+// agents — uncapped, the delegated half would dwarf the report
+const MAX_SUBAGENTS_PER_SESSION = 8;
+const SUBAGENT_MSG_CAPS = { maxLength: 2000, maxUserMessages: 3, maxAssistantMessages: 8 };
 
 /** reads all stdin as a UTF-8 string. */
 function readStdin() {
@@ -21,6 +26,43 @@ function daysAgoDate(days) {
   const date = new Date();
   date.setDate(date.getDate() - days);
   return date.toISOString().slice(0, 10);
+}
+
+/**
+ * mines a session's subagent transcripts.
+ *
+ * on orchestrated sessions this is where the implementation work actually
+ * happened — the parent only dispatched and summarised, so tool usage and
+ * sophistication signal read far too low without it.
+ *
+ * @param {object} session discovery record, carrying `subagents`
+ * @returns {Promise<object[]>} per-subagent evidence
+ */
+async function extractSubagentEvidence(session) {
+  const subagents = session.subagents || [];
+  const evidence = [];
+
+  for (const sub of subagents.slice(0, MAX_SUBAGENTS_PER_SESSION)) {
+    let parsed;
+    try {
+      parsed = await parseSessionFile(sub.filePath, SUBAGENT_MSG_CAPS);
+    } catch {
+      continue;
+    }
+    if (!parsed.messages.length) continue;
+    evidence.push({
+      agentId: sub.agentId,
+      name: sub.name,
+      description: sub.description,
+      agentType: sub.agentType,
+      model: sub.model || parsed.model,
+      messageCount: parsed.messages.length,
+      toolCounts: toolCountsFrom(parsed),
+      assistantTexts: parsed.assistantTexts,
+    });
+  }
+
+  return evidence;
 }
 
 /** converts a Claude Code index entry to clean evidence. */
@@ -45,6 +87,7 @@ async function extractClaudeEvidence(session) {
       toolCounts,
       userMessages: parsed.userMessages,
       assistantTexts: parsed.assistantTexts,
+      subagents: await extractSubagentEvidence(session),
     };
   } catch {
     return null;

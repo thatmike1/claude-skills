@@ -9,9 +9,13 @@
  *   - digest:  default            per-session markdown digest; auto-switches to
  *              an index when the range is large, to avoid context bloat
  *
+ * digests fold in the session's subagent transcripts, each as its own labelled
+ * block — on orchestrated sessions the parent only holds the dispatch and the
+ * summary, and the work itself lives in the subagents.
+ *
  * usage:
  *   node scan.mjs [when] [--project <path>] [--global] [--full]
- *   node scan.mjs --search "<query>" [--scope messages|actions|all] [--regex] [--context N] [--limit N]
+ *   node scan.mjs --search "<query>" [--mode keyword|semantic|both] [--scope messages|actions|all] [--regex] [--context N] [--limit N]
  *   node scan.mjs [when] --index [--deep]
  *   node scan.mjs --sessions <id,id,...> [--full]
  *
@@ -29,6 +33,8 @@ const MAX_USER_MSGS = 20;
 const MAX_ASSISTANT_MSGS = 12;
 // above this many sessions, the default digest auto-switches to an index
 const DIGEST_SESSION_LIMIT = 12;
+// subagent blocks rendered per session; an orchestration run can spawn dozens
+const MAX_SUBAGENTS_PER_SESSION = 10;
 
 /** formats a Date as local YYYY-MM-DD. */
 function fmt(date) {
@@ -82,6 +88,8 @@ function parseArgs() {
     else if (a === '--index') opts.index = true;
     else if (a === '--deep') opts.deep = true;
     else if (a === '--search' && args[i + 1]) opts.search = args[++i];
+    else if (a === '--mode' && args[i + 1]) opts.mode = args[++i];
+    else if (a === '--no-accelerate') opts.accelerate = false;
     else if (a === '--scope' && args[i + 1]) opts.scope = args[++i];
     else if (a === '--regex') opts.regex = true;
     else if (a === '--case-sensitive') opts.caseSensitive = true;
@@ -109,6 +117,48 @@ function formatIndex(entries, { label, scope }) {
   return lines.join('\n');
 }
 
+/**
+ * builds digest views for a session's subagent transcripts.
+ *
+ * each subagent becomes its own labelled block rather than being merged into
+ * the parent: delegated work stays attributed, and it does not spend the
+ * parent's message caps. truncation matches the parent's.
+ *
+ * @param {object} session    discovery record, carrying `subagents`
+ * @param {number} maxLength  per-message truncation, same value as the parent
+ * @returns {Promise<object[]>} digest views, empty when nothing was delegated
+ */
+async function buildSubagentViews(session, maxLength) {
+  const subagents = session.subagents || [];
+  const views = [];
+
+  for (const sub of subagents.slice(0, MAX_SUBAGENTS_PER_SESSION)) {
+    let parsed;
+    try {
+      parsed = await parseSessionFile(sub.filePath, { maxLength });
+    } catch {
+      continue;
+    }
+    if (!parsed.messages.length) continue;
+    const label = sub.description || sub.name || sub.agentType || sub.agentId;
+    views.push({
+      ...toSessionView(session, parsed),
+      sessionId: sub.agentId,
+      title: `↳ subagent: ${label}`,
+      model: sub.model || parsed.model,
+    });
+  }
+
+  const omitted = subagents.length - MAX_SUBAGENTS_PER_SESSION;
+  if (omitted > 0) {
+    views.push({
+      sessionId: session.sessionId,
+      title: `↳ *...and ${omitted} more subagent transcript(s) not shown*`,
+    });
+  }
+  return views;
+}
+
 async function main() {
   const opts = parseArgs();
 
@@ -119,6 +169,8 @@ async function main() {
       from: opts.from, to: opts.to,
       project: opts.global ? undefined : opts.project, global: opts.global,
       context: opts.context, limit: opts.limit, caseSensitive: opts.caseSensitive,
+      ...(opts.mode ? { mode: opts.mode } : {}),
+      ...(opts.accelerate === false ? { accelerate: false } : {}),
     });
     console.log(formatHits(hits, { query: opts.search }));
     return;
@@ -136,6 +188,7 @@ async function main() {
       if (!filePath) { console.error(`warn: session ${id} not found`); continue; }
       const parsed = await parseSessionFile(filePath, { maxLength: maxLen });
       views.push(toSessionView(session, parsed));
+      views.push(...await buildSubagentViews(session, maxLen));
     }
     console.log(toMarkdown(views, {
       header: `# Scan: ${opts.sessions.length} session(s)`,
@@ -173,7 +226,8 @@ async function main() {
   for (const session of sessions) {
     if (!session.filePath) continue;
     const parsed = await parseSessionFile(session.filePath, { maxLength: maxLen });
-    views.push(buildView(session, parsed));
+    views.push(toSessionView(session, parsed));
+    views.push(...await buildSubagentViews(session, maxLen));
   }
   console.log(toMarkdown(views, {
     header: `# Scan: ${range.label} (${from} to ${to})\n**Scope:** ${scopeLabel}`,

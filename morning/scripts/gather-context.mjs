@@ -16,6 +16,7 @@ import { fileURLToPath } from 'url';
 import { discoverSessions, parseSessionFile } from '../../shared/cc-parser.mjs';
 import { toMarkdown, toSessionView } from '../../shared/cc-format.mjs';
 import { discoverCodexSessions, truncateText as truncateCodexText } from '../../shared/codex-parser.mjs';
+import { collectSubagentParses } from './subagent-context.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const HOME = homedir();
@@ -132,6 +133,24 @@ async function gatherClaudeCodeSessions(mode, fromDate, toDate, projectPath) {
     if (!session.filePath) continue;
     const parsed = await parseSessionFile(session.filePath, { maxLength: MAX_MSG_LENGTH });
     views.push(toSessionView(session, parsed));
+
+    // delegated work gets its own block so it stays attributed and does not
+    // spend the parent's message caps
+    const { entries, omitted } = await collectSubagentParses(session, { maxLength: MAX_MSG_LENGTH });
+    for (const entry of entries) {
+      views.push({
+        ...toSessionView(session, entry.parsed),
+        sessionId: entry.parsed.sessionId,
+        title: `↳ subagent: ${entry.label}`,
+        model: entry.model,
+      });
+    }
+    if (omitted > 0) {
+      views.push({
+        sessionId: session.sessionId,
+        title: `↳ *...and ${omitted} more subagent transcript(s) not shown*`,
+      });
+    }
   }
   return toMarkdown(views, {
     maxUserMessages: MAX_CC_USER_MSGS,

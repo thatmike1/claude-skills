@@ -35,6 +35,7 @@ node <skill-dir>/scripts/gather-context.mjs --mode <repo|global> [--range 1day|3
 - **global mode**: omit `--project`
 - Script outputs structured markdown with sections for CC sessions, Codex sessions, git activity (including per-branch **Branch status** in repo mode), memory, and open issues
 - Each CC session also reports a **Tools** line (e.g. `Bash×67, Edit×10, Agent×1`) and **Model** — use these to tell real building from research/yapping when grouping work streams
+- A session that delegated work is followed by `↳ subagent: <label>` blocks (up to 8). Treat them as part of their parent session, not as separate work streams — on an orchestrated session the parent only dispatched and summarised, so the subagent blocks are where yesterday's building actually happened
 
 ### Step 2: Verify ship state
 
