@@ -72,7 +72,9 @@ Bookends for the workday.
 
 ### scan
 
-Question-driven search over your Claude Code history. Where morning builds a fixed daily plan, scan answers a specific question: "find where I said X", "what did I do in project Y this week", "recap that migration". Searches full message bodies (keyword/regex), lists sessions as an index, or dumps per-session digests, then reasons over the result.
+Question-driven search over your Claude Code history. Where morning builds a fixed daily plan, scan answers a specific question: "find where I said X", "what did I do in project Y this week", "recap that migration". Searches full message bodies (keyword/regex), lists sessions as an index, or dumps per-session digests, then reasons over the result. Subagent transcripts count as part of their parent session, so delegated work is searchable too.
+
+Install [cc-browse](https://github.com/thatmike1/cc-browse) and search gets an accelerator for free: it keeps the same logs in a SQLite index, which drops a corpus-wide search from ~20s to ~0.3s and adds semantic search (`--mode semantic|both`). Entirely optional — without it everything falls back to the pure-Node scan.
 
 ### goblin
 
@@ -193,4 +195,4 @@ Every skill follows the same convention:
   scripts/               # node.js utilities for deterministic work (zero npm deps)
 ```
 
-Shared conversation parsers (Claude Code + Codex JSONL discovery) live in `shared/` and are used by morning, evening, scan, and ai-cv-scanner.
+Shared conversation parsers (Claude Code + Codex JSONL discovery) live in `shared/` and are used by morning, evening, scan, cc-audit, and ai-cv-scanner. They enumerate sessions by listing `~/.claude/projects` directly and pick up each session's subagent transcripts along with it.

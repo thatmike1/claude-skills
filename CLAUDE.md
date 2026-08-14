@@ -16,6 +16,7 @@ cc-audit/                 — audit CC setup and usage patterns, flag anti-patte
 live-prompt/              — write handoff prompts for attended fresh-instance sessions (collaborative / off-the-leash)
 afk-prompt/               — write autonomous-run prompts + pick tasks safe to run unattended
 readout/                  — MDX-authored session docs published to readout.ssscribe.app with anchored comments (has npm deps for the MDX compile, like the installer)
+shared/                   — Claude Code + Codex JSONL discovery, parsing, search; imported by morning, evening, scan, cc-audit, ai-cv-scanner
 ```
 
 ## Skill Format
@@ -34,6 +35,14 @@ Each skill follows the Claude Code skill convention:
 - Use kebab-case for all file and folder names
 - JSDoc comments for functions, lowercase first letter
 - No `any` types, no unnecessary abstractions
+
+## Shared Parsers
+
+- **Enumeration lists the directory.** `discoverSessionsFromDisk` walks `~/.claude/projects` itself; `sessions-index.json` is ignored because Claude Code stopped maintaining it — trusting it enumerated a months-old snapshot and hid ~1,000 sessions. Titles and first prompts are read out of the JSONL. `discoverSessionsFromIndex` survives only as a deprecated alias.
+- **Subagent transcripts** under `<project>/<session>/subagents/` attach to their parent as `session.subagents` records (`agentId`, `name`, `description`, `agentType`, `model`, `spawnDepth`, `workflowId`, `filePath`), with metadata from the `<name>.meta.json` sidecar. Two things the data does not advertise: a subagent's JSONL records its *parent's* sessionId, so identity has to come from the file path; and nested spawns are written flat into the same directory, so no recursion is needed — `workflows/wf_*/` is the one nested case, walked exactly one level deep, and `journal.jsonl` is bookkeeping rather than a transcript.
+- **cc-browse is an optional accelerator.** `shared/cc-browse-source.mjs` shells out to [cc-browse](https://github.com/thatmike1/cc-browse), a separate tool that indexes the same logs into SQLite; with it `cc-search` answers in ~0.3s instead of ~20s and gains `--mode semantic|both`. No cc-browse code is vendored and every call falls back to the pure-Node scan when it is absent. Resolution: `CCBROWSE_PY` → `ccbrowse.py` on PATH → `~/git/cc-browse/ccbrowse.py`; `CC_SKILLS_NO_CCBROWSE=1` disables it.
+
+A Rust rewrite of the indexing was considered and deferred — the index is the win, not the language. Treat it as a decided question rather than unexplored ground.
 
 ## Config Pattern
 
@@ -59,6 +68,8 @@ node morning/scripts/parse-cc-sessions.mjs --from 2026-05-11 --to 2026-05-12
 node morning/scripts/parse-codex-sessions.mjs --from 2026-05-11 --to 2026-05-12
 node morning/scripts/gather-context.mjs --mode global --range 1day
 node shared/cc-parser.mjs --from 2026-05-11 --to 2026-05-12
+node shared/cc-search.mjs "search term" --global --limit 5
+node shared/cc-search.mjs "search term" --global --no-accelerate   # force the pure-Node scan
 node shared/codex-parser.mjs --from 2026-05-11 --to 2026-05-12
 node ai-cv-scanner/scripts/build-index.mjs
 node ai-cv-scanner/scripts/scan-setup.mjs
