@@ -1,34 +1,43 @@
 # Examples
 
-Both are real prompts from a Pracino session (2026-06-11).
+One real prompt per mode.
 
-## Off the leash — small, fully-diagnosed task
+## Off the leash — approach locked in memory + bead (ccChat-general, 2026-08-24)
 
-The beads task already contained the diagnosis; the prompt adds the fix direction, verification, scope guard, and the reporting constraint.
+Day 5 of a hackathon sprint. The approach lived in a memory file with an explicit
+RESUME HERE pointer plus a sprint bead, so the prompt points at both and spends its
+own lines only on traps the fresh instance couldn't discover cheaply.
 
 ```
-Implement beads task pracino-ei5.10 in the Pracino repo. Invoke the beads skill, then
-claim it: bd update pracino-ei5.10 --claim. Read the task notes first — the diagnosis
-is already done.
+Read .memory/project_all_things_agentic.md, then invoke the beads skill, read
+ccChat-general-5k6 and claim it (bd update ccChat-general-5k6 --claim). The decisions
+are in the memory file and bead — don't relitigate them.
 
-Gist: seeded candidate avatars are DiceBear SVG urls (apps/api/scripts/seed-dev-offers.cjs,
-around lines 591 and 967), and expo-image's Android blurRadius is a no-op on SVG sources,
-so the public-locked blurred-avatar treatment does nothing in dev. Fix: switch the seed
-avatar urls to DiceBear's PNG endpoint (/png variant of the same urls). Check whether
-company logos / workplace photos in the same script have the same problem; fix only the
-candidate avatars unless others are also SVG.
+Today is D5 of Pixel Patrol (~/git/pixel-patrol, GCP project pixel-patrol-mp). Start
+with the RESUME HERE step: run the stability report on smoke-trackers and count the
+overnight drift decisions (a handful = fine; many = raise STABILITY_WINDOW). Then D5
+proper: the Gemini tools — KB-grounded unknown-host classification, Czech
+cookie-policy redline + RoPA row.
 
-After the change, re-run the seed (docker compose exec -u node app npm run drizzle:seed)
-and verify a public-locked candidate card shows a blurred avatar on the Android emulator.
+Traps: gemini-3.5-flash is Vertex `global` location only (europe-west1 404s). gcloud
+must run under the named config `pixel-patrol` (the `default` config is a different
+account — don't mix). ADMIN_KEY is in the agent-report file the memory names, not in
+git — keep it out.
 
-This unblocks pracino-ose.1 (blur display-states rework) — don't start that task, just
-close ei5.10 with a short reason. Commit as one line, lowercase, fix: prefix. Report back
-the gist of what changed, not full code.
+Commit as you go inside ~/git/pixel-patrol and push (origin is set). Report the gist
+of what changed and what the stability count said — a few lines, no full code blocks
+unless I ask.
 ```
 
-## Collaborative — approach still open
+What it shows: task pointer first, gist that orients before reading, a traps block
+for context NOT in the task, verification folded into the first step (the stability
+count), and the reporting constraint.
 
-Decisions about *what* were locked in the task description; *how* (blurred-text technique, state flow) was open, so the prompt forbids coding and names the open questions.
+## Collaborative — approach still open (Pracino, 2026-06-11)
+
+Decisions about *what* were locked in the task description; *how* (blurred-text
+technique, state flow) was open, so the prompt forbids coding and names the open
+questions.
 
 ```
 We're working on beads task pracino-ose.1 in the Pracino repo. Invoke the beads skill,

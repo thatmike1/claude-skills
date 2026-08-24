@@ -32,7 +32,6 @@ If the tracker has an agent-ready tag/label, filter by it first. Batching 2-3 sm
 - Length: ~15-25 lines is fine — explicitness beats brevity when nobody's watching. Past that, move detail into the beads tasks via bd note.
 - Conditional branches beat optimism: write "if A then ship, if B then note+close" rather than assuming the happy path.
 - Order tasks cheapest-first so a wedged later task doesn't eat the easy wins.
-- Expect the run to be slow and careful — that's correct for unattended work, not a flaw. Don't add "be quick" pressure.
 - Don't leak the user's global preference file into the prompt; project-level workflow facts only.
 
 ## Examples

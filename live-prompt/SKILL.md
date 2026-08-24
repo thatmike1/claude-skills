@@ -9,7 +9,7 @@ Write a short prompt the user pastes into a fresh Claude Code instance to start 
 
 ## Pick the mode
 
-Two modes. If the user doesn't signal one, ask one short question ("collaborative or off the leash?") — don't guess.
+Two modes. When the task state makes the mode obvious — the bead or memory carries a locked approach (off the leash), or the approach is visibly open (collaborative) — pick it and say which you picked. Ask one short question ("collaborative or off the leash?") only when it's genuinely ambiguous.
 
 **Collaborative (leash on)** — approach/architecture is still open. The instance reads the task, then discusses before writing any code. Lighter than /grill-me: short back-and-forth, one topic at a time, no relentless interrogation. End the prompt with the handover signal: once the approach is settled, the user lets it implement.
 
