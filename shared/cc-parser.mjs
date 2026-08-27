@@ -247,61 +247,123 @@ function collectSubagents(projectDir, sessionId) {
 }
 
 /**
+ * clock skew and filesystems that fake birthtime make the stat-level bounds
+ * approximate, so they are padded before anything is excluded on them.
+ */
+const BOUND_MARGIN_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * everything knowable about a transcript without opening it.
+ *
+ * @returns {?object} null when the file is junk or unreadable
+ */
+function statCandidate(projectDir, projectDirName, file) {
+  const filePath = join(projectDir, file);
+  let stat;
+  try {
+    stat = statSync(filePath);
+  } catch {
+    return null;
+  }
+
+  const sessionId = file.replace(/\.jsonl$/, '');
+  // the size floor drops empty junk; a session that spawned subagents isn't junk
+  if (stat.size < 100 && !existsSync(join(projectDir, sessionId, 'subagents'))) return null;
+
+  // birthtime is filesystem-dependent — a zero or post-mtime value means "unknown"
+  const birthtimeMs = stat.birthtimeMs > 0 && stat.birthtimeMs <= stat.mtimeMs ? stat.birthtimeMs : null;
+  return { sessionId, projectDirName, projectDir, filePath, size: stat.size, mtimeMs: stat.mtimeMs, birthtimeMs };
+}
+
+/**
  * discovers sessions by listing the Claude project directories.
  *
  * `sessions-index.json` is deliberately ignored — Claude Code stopped
  * maintaining it, so a directory that still has one would enumerate an old
  * snapshot instead of what is on disk.
  *
+ * enumeration is two-phase: stat every transcript (milliseconds), then open
+ * only the ones that survive the caller's bounds. Reading a first timestamp and
+ * first prompt out of every file on disk costs seconds, and callers that want
+ * one day or the newest handful should not pay for the whole corpus.
+ *
+ * The bounds are sound in the direction that matters. A session's last write is
+ * always at or after its first message, so `mtimeMs < fromMs` cannot hide a
+ * session that started inside the window; likewise its first message is at or
+ * after the file's creation, so `birthtimeMs > toMs` cannot hide one either.
+ * Neither bound is applied exactly — see {@link BOUND_MARGIN_MS}.
+ *
  * @param {object} [opts]
  * @param {string} [opts.projectsDir] projects root (default ~/.claude/projects)
+ * @param {?number} [opts.fromMs] drop sessions with no activity at or after this
+ * @param {?number} [opts.toMs]   drop sessions created after this
+ * @param {?number} [opts.limit]  stop after this many, newest first
+ * @param {'start'|'activity'} [opts.order='start'] rank by session start or by last write
+ * @param {string} [opts.projectContains] keep only projects whose decoded name contains this
  */
 export async function discoverSessionsFromDisk(opts = {}) {
   const projectsRoot = resolve(opts.projectsDir || PROJECTS_DIR);
-  const sessions = [];
-  if (!existsSync(projectsRoot)) return sessions;
+  if (!existsSync(projectsRoot)) return [];
 
+  // matched against the whole directory before any of its files are stat-ed, so
+  // that a narrowed listing stays compatible with `limit`
+  const needle = opts.projectContains ? opts.projectContains.toLowerCase() : null;
+
+  const candidates = [];
   for (const projectDirName of readdirSync(projectsRoot).sort()) {
     const projectDir = join(projectsRoot, projectDirName);
-    let stat;
     try {
-      stat = statSync(projectDir);
+      if (!statSync(projectDir).isDirectory()) continue;
     } catch {
       continue;
     }
-    if (!stat.isDirectory()) continue;
+    if (needle && !decodeProjectName(projectDirName).toLowerCase().includes(needle)) continue;
 
     for (const file of readdirSync(projectDir).sort()) {
       if (!file.endsWith('.jsonl') || file.startsWith('agent-')) continue;
-      const filePath = join(projectDir, file);
-      let size;
-      try {
-        size = statSync(filePath).size;
-      } catch {
-        continue;
-      }
-      const sessionId = file.replace(/\.jsonl$/, '');
-      const subagents = collectSubagents(projectDir, sessionId);
-      // the size floor drops empty junk; a session that spawned subagents isn't junk
-      if (size < 100 && !subagents.length) continue;
-
-      const timestamp = await getTimestampFromJsonl(filePath);
-      sessions.push({
-        sessionId,
-        project: decodeProjectName(projectDirName),
-        projectDir: projectDirName,
-        summary: '',
-        firstPrompt: await extractFirstUserMessage(filePath),
-        timestamp,
-        date: timestamp ? timestamp.slice(0, 10) : 'unknown',
-        filePath,
-        subagents,
-      });
+      const candidate = statCandidate(projectDir, projectDirName, file);
+      if (!candidate) continue;
+      if (opts.fromMs != null && candidate.mtimeMs < opts.fromMs - BOUND_MARGIN_MS) continue;
+      if (opts.toMs != null && candidate.birthtimeMs != null && candidate.birthtimeMs > opts.toMs + BOUND_MARGIN_MS) continue;
+      candidates.push(candidate);
     }
   }
 
-  sessions.sort((a, b) => String(b.timestamp || '').localeCompare(String(a.timestamp || '')));
-  return sessions;
+  const rank = opts.order === 'activity'
+    ? candidate => candidate.mtimeMs
+    : candidate => candidate.birthtimeMs ?? candidate.mtimeMs;
+  candidates.sort((a, b) => rank(b) - rank(a));
+
+  // the stat-level rank only approximates the in-file timestamp, so over-fetch
+  // and let the exact sort below decide which rows actually make the cut
+  const shortlist = opts.limit ? candidates.slice(0, Math.max(opts.limit * 3, opts.limit + 25)) : candidates;
+
+  const sessions = [];
+  for (const candidate of shortlist) {
+    const timestamp = await getTimestampFromJsonl(candidate.filePath);
+    sessions.push({
+      sessionId: candidate.sessionId,
+      project: decodeProjectName(candidate.projectDirName),
+      projectDir: candidate.projectDirName,
+      summary: '',
+      firstPrompt: await extractFirstUserMessage(candidate.filePath),
+      timestamp,
+      date: timestamp ? timestamp.slice(0, 10) : 'unknown',
+      filePath: candidate.filePath,
+      mtimeMs: candidate.mtimeMs,
+      subagents: collectSubagents(candidate.projectDir, candidate.sessionId),
+    });
+  }
+
+  // re-sort on the exact key now that the files have been read, then cut: the
+  // final order has to match `order`, or `limit` would keep the wrong rows.
+  // sessionId breaks ties so the result does not depend on stat order —
+  // sessions sharing a first-message millisecond do occur
+  const exact = opts.order === 'activity'
+    ? (a, b) => b.mtimeMs - a.mtimeMs || a.sessionId.localeCompare(b.sessionId)
+    : (a, b) => String(b.timestamp || '').localeCompare(String(a.timestamp || '')) || a.sessionId.localeCompare(b.sessionId);
+  sessions.sort(exact);
+  return opts.limit ? sessions.slice(0, opts.limit) : sessions;
 }
 
 /** @deprecated enumeration no longer reads sessions-index.json — use {@link discoverSessionsFromDisk}. */
@@ -348,15 +410,29 @@ export async function discoverSessionsFromHistory(fromMs, toMs, projectFilter) {
  *
  * @param {object} [opts]
  * @param {string} [opts.projectsDir] projects root (default ~/.claude/projects)
+ * @param {string} [opts.from] inclusive start date, YYYY-MM-DD
+ * @param {string} [opts.to]   inclusive end date, YYYY-MM-DD
+ * @param {?number} [opts.limit] cap on sessions enumerated, newest first
+ * @param {'start'|'activity'} [opts.order] ranking used when `limit` applies
  */
 export async function discoverSessions(opts = {}) {
   const projectFilter = !opts.global && opts.project ? resolve(opts.project) : null;
-  const diskSessions = await discoverSessionsFromDisk({ projectsDir: opts.projectsDir });
+  const fromMs = opts.from ? new Date(`${opts.from}T00:00:00`).getTime() : null;
+  const toMs = opts.to ? new Date(`${opts.to}T23:59:59.999`).getTime() + 1 : null;
+
+  // the date range bounds the disk walk rather than filtering its result — the
+  // walk is the expensive half, and a range the caller already stated is free
+  // information about which transcripts are worth opening
+  const diskSessions = await discoverSessionsFromDisk({
+    projectsDir: opts.projectsDir,
+    fromMs,
+    toMs,
+    limit: opts.limit,
+    order: opts.order,
+  });
   const byId = new Map(diskSessions.map(session => [session.sessionId, session]));
 
   if (opts.from || opts.to) {
-    const fromMs = opts.from ? new Date(`${opts.from}T00:00:00`).getTime() : null;
-    const toMs = opts.to ? new Date(`${opts.to}T23:59:59.999`).getTime() + 1 : null;
     const historySessions = await discoverSessionsFromHistory(fromMs, toMs, projectFilter);
 
     return historySessions.map(session => {

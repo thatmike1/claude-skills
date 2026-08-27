@@ -1,5 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { mkdirSync, mkdtempSync, rmSync, utimesSync, writeFileSync } from 'fs';
+import { tmpdir } from 'os';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import {
@@ -220,4 +222,92 @@ test('projectsDir threads through discoverSessions and buildIndex', async () => 
   const index = await buildIndex({ projectsDir: PROJECTS });
   assert.equal(index.length, 4);
   assert.equal(index.find(e => e.sessionId === 'sess-three').title, 'session three asks about the retry backoff schedule');
+});
+
+/**
+ * builds a throwaway projects tree whose files have known first-message
+ * timestamps and, where given, a forced mtime.
+ *
+ * @param {Object<string, Object<string, {ts: string, mtime?: string}>>} spec
+ *   project dir → session id → timestamps
+ */
+function projectsTree(spec) {
+  const root = mkdtempSync(join(tmpdir(), 'cc-parser-enum-'));
+  for (const [projectDir, files] of Object.entries(spec)) {
+    mkdirSync(join(root, projectDir), { recursive: true });
+    for (const [sessionId, { ts, mtime }] of Object.entries(files)) {
+      const record = { type: 'user', timestamp: ts, message: { role: 'user', content: `prompt in ${sessionId}` } };
+      const path = join(root, projectDir, `${sessionId}.jsonl`);
+      // padded past the 100-byte floor that drops empty transcripts
+      writeFileSync(path, `${JSON.stringify(record)}${' '.repeat(200)}\n`);
+      if (mtime) utimesSync(path, new Date(mtime), new Date(mtime));
+    }
+  }
+  return { root, cleanup: () => rmSync(root, { recursive: true, force: true }) };
+}
+
+test('limit caps enumeration and keeps the newest sessions', async () => {
+  const tree = projectsTree({
+    '-home-u-git-alpha': {
+      oldest: { ts: '2026-06-01T10:00:00.000Z' },
+      middle: { ts: '2026-06-02T10:00:00.000Z' },
+      newest: { ts: '2026-06-03T10:00:00.000Z' },
+    },
+  });
+  try {
+    const sessions = await discoverSessionsFromDisk({ projectsDir: tree.root, limit: 2 });
+    assert.deepEqual(sessions.map(s => s.sessionId), ['newest', 'middle']);
+  } finally {
+    tree.cleanup();
+  }
+});
+
+test("order 'activity' ranks by last write rather than session start", async () => {
+  const tree = projectsTree({
+    '-home-u-git-alpha': {
+      'old-start-new-activity': { ts: '2026-06-01T10:00:00.000Z', mtime: '2026-06-20T10:00:00.000Z' },
+      'new-start-old-activity': { ts: '2026-06-10T10:00:00.000Z', mtime: '2026-06-11T10:00:00.000Z' },
+    },
+  });
+  try {
+    const byStart = await discoverSessionsFromDisk({ projectsDir: tree.root, limit: 1 });
+    assert.deepEqual(byStart.map(s => s.sessionId), ['new-start-old-activity']);
+
+    const byActivity = await discoverSessionsFromDisk({ projectsDir: tree.root, limit: 1, order: 'activity' });
+    assert.deepEqual(byActivity.map(s => s.sessionId), ['old-start-new-activity']);
+  } finally {
+    tree.cleanup();
+  }
+});
+
+test('REGRESSION: fromMs keeps a session that started before the window but ran inside it', async () => {
+  const tree = projectsTree({
+    '-home-u-git-alpha': {
+      resumed: { ts: '2026-06-01T10:00:00.000Z', mtime: '2026-06-20T10:00:00.000Z' },
+      abandoned: { ts: '2026-06-01T10:00:00.000Z', mtime: '2026-06-01T10:05:00.000Z' },
+    },
+  });
+  try {
+    const sessions = await discoverSessionsFromDisk({
+      projectsDir: tree.root,
+      fromMs: Date.parse('2026-06-19T00:00:00.000Z'),
+    });
+    // the bound is on last activity, which is never earlier than the first message
+    assert.deepEqual(sessions.map(s => s.sessionId), ['resumed']);
+  } finally {
+    tree.cleanup();
+  }
+});
+
+test('projectContains narrows enumeration to matching project directories', async () => {
+  const tree = projectsTree({
+    '-home-u-git-alpha': { 'in-alpha': { ts: '2026-06-01T10:00:00.000Z' } },
+    '-home-u-git-beta': { 'in-beta': { ts: '2026-06-02T10:00:00.000Z' } },
+  });
+  try {
+    const sessions = await discoverSessionsFromDisk({ projectsDir: tree.root, projectContains: 'beta' });
+    assert.deepEqual(sessions.map(s => s.sessionId), ['in-beta']);
+  } finally {
+    tree.cleanup();
+  }
 });
