@@ -32,12 +32,12 @@ A collection of custom skills for [Claude Code](https://docs.anthropic.com/en/do
 | [jarvis](#peek--jarvis) | Ask one session about all your others: what is open, what to touch next |
 | **Thinking** | |
 | [goblin](#goblin) | Neurodivergent thought structuring: compile, decompose, estimate, decide |
+| [find-out](#find-out) | Research orchestrator: picks the surface, fans out, reconciles sources |
 | **Handoffs** | |
 | [live-prompt](#live-prompt--afk-prompt) | Prompt for a fresh instance you'll actively steer |
 | [afk-prompt](#live-prompt--afk-prompt) | Prompt for an unattended run while you're away |
 | **Meta** | |
 | [cc-audit](#cc-audit) | Audit your Claude Code setup, flag anti-patterns with ranked fixes |
-| [panels / detective / punchy](#engagement-styles) | Rotating response styles that keep output readable |
 | **Frontend** | |
 | [design-styles](#design-styles) | Aesthetic direction + UX baseline: style packs, landing craft, redesign, reviews |
 | **Niche** | |
@@ -116,15 +116,11 @@ Six frontend skills merged into one with internal routing. A thin SKILL.md does 
 
 Built as the ungated sibling of heavyweight design skills that require per-project setup.
 
-### engagement styles
+### find-out
 
-A small wardrobe of response-formatting styles (**panels**, **detective**, **punchy**) that keep work output engaging to read — built for ADHD attention, where any single fixed style goes stale. Rotate when one stops registering. Each preserves full technical accuracy; the style governs prose only, code and commits stay clean.
+A research orchestrator for open-ended questions where *choosing the research surface* is part of the work — current web, external docs, your own conversation history, authenticated sources. It picks surfaces, fans the question out across them, and reconciles what comes back rather than trusting one source. Search and page reads route through the token-cheap `oc` CLI by default, falling back to `WebSearch` when a query needs domain filtering.
 
-- **panels** — comic-book layout: bold mini-headers, short chunks, `[BLOCKER]/[RISK]/[FYI]` tags. Best for reviews, plans, long output.
-- **detective** — debugging as a case log: clue → hypothesis → ruled-out → culprit → fix. Best for bugs and investigations.
-- **punchy** — hot-take-first, rhythm-switching, filler cut. Best for everyday quick work.
-
-These are skills rather than [output styles](https://code.claude.com/docs/en/output-styles) on purpose: skills hot-swap instantly mid-session, and they're purely additive so they never strip Claude Code's built-in coding behavior.
+Deliberately narrow: ordinary codebase, issue-tracker or history lookups with a known local source should use the local tool directly, even when you say "find out" or "dig into".
 
 ## Install
 
@@ -183,9 +179,7 @@ After installing, restart Claude Code. Skills are available as slash commands:
 
 /cc-audit             # audit your Claude Code setup
 
-/panels               # comic-book layout for reviews/plans/long output
-/detective            # debugging as a case log
-/punchy               # hot-take-first, minimal — everyday work
+/find-out             # multi-source research on an open question
 
 /invoice-subjects     # invoice subjects for a given month
 /ai-cv-scanner        # mine history for AI experience answers

@@ -20,9 +20,8 @@ const SHORT_BLURBS = {
     scan: "Query past CC conversations for a date range / project",
     peek: "Read another running CC session's transcript from disk, zero footprint",
     jarvis: "Ask one session about all your others — what's open, what to touch next",
-    panels: "Engagement style — comic-book layout with severity tags",
-    detective: "Engagement style — debugging as a case log",
-    punchy: "Engagement style — hot-take-first, minimal prose",
+    "find-out": "Research orchestrator — picks the surface, fans out, reconciles sources",
+    "design-styles": "Frontend aesthetic direction + UX baseline, no per-project setup",
     "live-prompt": "Handoff prompts for attended fresh-instance sessions",
     "afk-prompt": "Autonomous-run prompts + picking tasks safe to run unattended",
 };
@@ -47,10 +46,9 @@ const DISPLAY_ORDER = [
     "goblin",
     "live-prompt",
     "afk-prompt",
+    "find-out",
     "cc-audit",
-    "panels",
-    "detective",
-    "punchy",
+    "design-styles",
     "invoice-subjects",
     "ai-cv-scanner",
 ];
@@ -70,9 +68,8 @@ const GLYPHS = {
     jarvis: "☉",
     "live-prompt": "➳",
     "afk-prompt": "☍",
-    panels: "▦",
-    detective: "☂",
-    punchy: "✸",
+    "find-out": "⌖",
+    "design-styles": "✧",
 };
 
 /**
