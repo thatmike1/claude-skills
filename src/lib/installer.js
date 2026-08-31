@@ -32,8 +32,8 @@ export function removeExisting(target) {
 }
 
 /** installs a single skill via symlink or copy; returns a structured result for the UI */
-export function installSkill({ repoDir, targetDir, name, method, dryRun = false }) {
-    const source = join(repoDir, name);
+export function installSkill({ repoDir, targetDir, name, dir = name, method, dryRun = false }) {
+    const source = join(repoDir, dir);
     const target = join(targetDir, name);
 
     if (!existsSync(source)) {

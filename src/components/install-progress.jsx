@@ -12,7 +12,7 @@ const ROW_STAGGER_MS = 160;
  */
 export function InstallProgress({ skills, method, repoDir, targetDir, dryRun = false, onDone }) {
     const rows = useMemo(() => {
-        const list = skills.map((s) => ({ name: s.name, kind: "skill" }));
+        const list = skills.map((s) => ({ name: s.name, dir: s.dir, kind: "skill" }));
         if (sharedInstallNeeded(skills)) list.unshift({ name: "shared", kind: "helpers" });
         return list;
     }, [skills]);
@@ -32,7 +32,7 @@ export function InstallProgress({ skills, method, repoDir, targetDir, dryRun = f
                 const result =
                     row.kind === "helpers"
                         ? installShared({ repoDir, targetDir, method, dryRun })
-                        : installSkill({ repoDir, targetDir, name: row.name, method, dryRun });
+                        : installSkill({ repoDir, targetDir, name: row.name, dir: row.dir, method, dryRun });
                 collected[row.name] = result;
                 setResults({ ...collected });
             }

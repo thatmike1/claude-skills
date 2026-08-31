@@ -22,6 +22,9 @@ const SHORT_BLURBS = {
     jarvis: "Ask one session about all your others — what's open, what to touch next",
     "find-out": "Research orchestrator — picks the surface, fans out, reconciles sources",
     "design-styles": "Frontend aesthetic direction + UX baseline, no per-project setup",
+    panels: "Engagement style — comic-book layout with severity tags",
+    detective: "Engagement style — debugging as a case log",
+    punchy: "Engagement style — hot-take-first, minimal prose",
     "live-prompt": "Handoff prompts for attended fresh-instance sessions",
     "afk-prompt": "Autonomous-run prompts + picking tasks safe to run unattended",
 };
@@ -34,24 +37,18 @@ export const SHARED_CONSUMERS = ["morning", "ai-cv-scanner", "cc-audit", "scan",
 /** skill -> skill it depends on at runtime (soft dependency, warn only) */
 export const SKILL_DEPENDENCIES = { evening: "morning", jarvis: "peek" };
 
-/** preferred display order; discovered skills not listed here sort after, alphabetically */
-const DISPLAY_ORDER = [
-    "readout",
-    "orchestrate",
-    "morning",
-    "evening",
-    "scan",
-    "peek",
-    "jarvis",
-    "goblin",
-    "live-prompt",
-    "afk-prompt",
-    "find-out",
-    "cc-audit",
-    "design-styles",
-    "invoice-subjects",
-    "ai-cv-scanner",
+/**
+ * picker groups, in display order. a skill missing from every group lands in
+ * the last one; skills under deprecated/ form their own collapsed group.
+ */
+export const CATEGORIES = [
+    { title: "sessions", skills: ["morning", "evening", "scan", "peek", "jarvis"] },
+    { title: "delegate", skills: ["orchestrate", "find-out"] },
+    { title: "publish", skills: ["readout"] },
+    { title: "think & design", skills: ["goblin", "design-styles"] },
 ];
+
+export const DEPRECATED_DIR = "deprecated";
 
 /** tiny flavor glyph per skill shown in the picker */
 const GLYPHS = {
@@ -70,21 +67,37 @@ const GLYPHS = {
     "afk-prompt": "☍",
     "find-out": "⌖",
     "design-styles": "✧",
+    panels: "▦",
+    detective: "☂",
+    punchy: "✸",
 };
 
 /**
- * discovers installable skills by scanning the repo for directories containing
- * a SKILL.md — no hardcoded list, so new skills show up automatically
+ * discovers installable skills by scanning the repo root and deprecated/ for
+ * directories containing a SKILL.md — no hardcoded list, so new skills show up
+ * automatically. each skill carries `dir`, its path relative to the repo root.
  */
 export function discoverSkills(repoDir, targetDir) {
-    const entries = readdirSync(repoDir, { withFileTypes: true });
-    const skills = [];
+    const skills = [
+        ...scanDir(repoDir, "", targetDir),
+        ...scanDir(join(repoDir, DEPRECATED_DIR), DEPRECATED_DIR, targetDir),
+    ];
+    return skills.sort(
+        (a, b) =>
+            Number(a.deprecated) - Number(b.deprecated) ||
+            orderOf(a.name) - orderOf(b.name) ||
+            a.name.localeCompare(b.name),
+    );
+}
 
-    for (const entry of entries) {
+function scanDir(dir, relative, targetDir) {
+    if (!existsSync(dir)) return [];
+    const skills = [];
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
         if (!entry.isDirectory() || entry.name.startsWith(".") || entry.name === "node_modules")
             continue;
 
-        const skillMd = join(repoDir, entry.name, "SKILL.md");
+        const skillMd = join(dir, entry.name, "SKILL.md");
         if (!existsSync(skillMd)) continue;
 
         let frontmatter = {};
@@ -97,6 +110,8 @@ export function discoverSkills(repoDir, targetDir) {
         const name = entry.name;
         skills.push({
             name,
+            dir: relative ? `${relative}/${name}` : name,
+            deprecated: relative === DEPRECATED_DIR,
             blurb: SHORT_BLURBS[name] ?? truncate(frontmatter.description ?? "", 80),
             glyph: GLYPHS[name] ?? "◆",
             hasSetup: name in SETUP_FIELDS,
@@ -104,13 +119,16 @@ export function discoverSkills(repoDir, targetDir) {
             needsShared: SHARED_CONSUMERS.includes(name),
         });
     }
-
-    return skills.sort((a, b) => orderOf(a.name) - orderOf(b.name) || a.name.localeCompare(b.name));
+    return skills;
 }
 
+/** position of a skill's category, then its position inside it */
 function orderOf(name) {
-    const idx = DISPLAY_ORDER.indexOf(name);
-    return idx === -1 ? DISPLAY_ORDER.length : idx;
+    for (const [ci, category] of CATEGORIES.entries()) {
+        const si = category.skills.indexOf(name);
+        if (si !== -1) return ci * 100 + si;
+    }
+    return CATEGORIES.length * 100;
 }
 
 function truncate(text, max) {
