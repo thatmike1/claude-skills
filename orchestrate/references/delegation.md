@@ -19,6 +19,8 @@ WRITE SET: <every file/glob this worker may create or modify — MANDATORY on
 
 Inline-vs-path rule: short essentials go **inline verbatim** — the task text, acceptance criteria, a verifier's findings being handed to a fix worker. Bulk material — logs, diffs, generated docs, source files — travels as **paths** (workers read files themselves; artifacts go to `.orchestra/scratch/`). A measured failure mode: a 42k-character dispatch prompt that was 99% pasted history.
 
+External surfaces are part of CONTEXT: if the task hangs off something outside the repo — a Figma file, a live URL, a database, a hosted API — name the surface *and* the MCP server or skill that reaches it, and confirm the bridge answers before you dispatch. A worker or verifier that cannot reach the source of truth will quietly fall back to figures already written down, which verifies nothing.
+
 One task per ticket. EXPECTED OUTCOME must be gradeable — if you can't write the acceptance check, you're not ready to delegate.
 
 ## Parallel dispatch

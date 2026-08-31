@@ -24,11 +24,17 @@ Dispatch with:
 3. The acceptance criteria from the ticket, inline.
 4. **Nothing else.** No worker reasoning, no summaries. Anchoring the verifier on the builder's narrative defeats the point.
 
-The verifier assumes the work is broken until it personally reproduces evidence otherwise: re-runs checks itself, walks the diff, and checks the *goal*, not just the checklist — "checks pass but the goal is broken" is a FAIL. Its tool allowlist is read-and-run only (`Read, Glob, Grep, Bash`) — no edit tools, no delegation, no skills — and its Bash use is check-only by contract.
+The verifier assumes the work is broken until it personally reproduces evidence otherwise: re-runs checks itself, walks the diff, and checks the *goal*, not just the checklist — "checks pass but the goal is broken" is a FAIL. It runs on a *denylist*, not an allowlist: everything the session has minus `Edit`, `Write`, `NotebookEdit`, and `Agent`. That is deliberate — an allowlist silently excludes every MCP server, which is how a verifier ends up checking a Figma-derived task against numbers copied out of the code instead of against the file. Read-only is enforced by contract, not by the tool list: Bash is check-only, and MCP calls must read, never write.
 
 **The mutation backstop** (be honest about what it is): **commit the candidate change** so it is in the tree and the tree is clean *before* dispatching the verifier — never stash it, which would remove the very change under verification and leave the verifier validating the baseline. When the verifier returns, `git status --porcelain` must be empty and `git rev-parse HEAD` unchanged. That detects mutations to tracked content and refs — it does not catch ignored files or external state, so this is contract-plus-detection, not a sandbox. Any detected mutation voids the verification and is itself a finding. For hard isolation, run the verifier as a Codex read-only reviewer (`--sandbox read-only`) or, once the change is committed, in a worktree.
 
 Verdicts: `PASS` / `FAIL` / `PASS_WITH_NOTES` — the first line of the verifier's report, whichever provider runs it (a Codex read-only reviewer acting as verifier uses this vocabulary, not the worker statuses). Per-criterion evidence table; everything unexamined goes under **Not checked** and counts as NOT verified. `PASS_WITH_NOTES` is legal only when every *required* criterion passed and the notes concern non-required observations — a required criterion under a note is a `FAIL`.
+
+## External sources of truth
+
+When the task's definition of "correct" lives outside the repo — a Figma frame, a live page, an API response, a row in a database — the verifier must read that source itself. Numbers recorded in code, beads, or a worker's report are the *claim under test*; checking them against each other proves internal consistency and nothing more.
+
+So before dispatch: name the surface in the ticket, name the MCP server or skill that reaches it, and confirm that bridge is actually live (a Figma plugin bridge with no connected file answers nothing). If the surface is unreachable, the verifier says so and those criteria come back **internally consistent, not verified** — they are never counted as PASS, and the disclosure to the user says which criteria were never measured against the real thing.
 
 ## Disagreement and flakiness rules
 
