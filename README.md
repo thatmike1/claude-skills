@@ -27,6 +27,9 @@ A collection of custom skills for [Claude Code](https://docs.anthropic.com/en/do
 | [morning](#morning--evening) | Daily briefing: yesterday's context → today's actionable plan |
 | [evening](#morning--evening) | End-of-day receipts: what actually got done today |
 | [scan](#scan) | Ask any question about your past Claude Code conversations |
+| **Sessions** | |
+| [peek](#peek--jarvis) | Read another running session's transcript from disk, zero footprint |
+| [jarvis](#peek--jarvis) | Ask one session about all your others: what is open, what to touch next |
 | **Thinking** | |
 | [goblin](#goblin) | Neurodivergent thought structuring: compile, decompose, estimate, decide |
 | **Handoffs** | |
@@ -75,6 +78,12 @@ Bookends for the workday.
 Question-driven search over your Claude Code history. Where morning builds a fixed daily plan, scan answers a specific question: "find where I said X", "what did I do in project Y this week", "recap that migration". Searches full message bodies (keyword/regex), lists sessions as an index, or dumps per-session digests, then reasons over the result. Subagent transcripts count as part of their parent session, so delegated work is searchable too.
 
 Install [cc-browse](https://github.com/thatmike1/cc-browse) and search gets an accelerator for free: it keeps the same logs in a SQLite index, which drops a corpus-wide search from ~20s to ~0.3s and adds semantic search (`--mode semantic|both`). Entirely optional — without it everything falls back to the pure-Node scan.
+
+### peek / jarvis
+
+Every Claude Code session writes its transcript to disk as it goes, and reading that file is invisible to the session that owns it. **peek** is the tool: `peek live` lists the sessions running right now (project, quiet-for, session id, last exchange), `peek <id> --last 6` reads one, and every render ends with a `--since N` cursor so you can follow a session incrementally. Peek before you `SendMessage` another session and you skip the ask-then-instruct round trip; run a coach session that peeks a driver session and the driver's transcript stays clean.
+
+**jarvis** is the skill built on it: the session you talk to *about* the others. "I have six open and an hour left, where do I start", "what is this session on about", "tell session X to do Y", "launch a background job on Z". It answers with a pick and a reason rather than a list to re-triage. `live` is Linux-only (it reads `/proc`).
 
 ### goblin
 
@@ -195,4 +204,4 @@ Every skill follows the same convention:
   scripts/               # node.js utilities for deterministic work (zero npm deps)
 ```
 
-Shared conversation parsers (Claude Code + Codex JSONL discovery) live in `shared/` and are used by morning, evening, scan, cc-audit, and ai-cv-scanner. They enumerate sessions by listing `~/.claude/projects` directly and pick up each session's subagent transcripts along with it.
+Shared conversation parsers (Claude Code + Codex JSONL discovery) live in `shared/` and are used by morning, evening, scan, peek, cc-audit, and ai-cv-scanner. They enumerate sessions by listing `~/.claude/projects` directly and pick up each session's subagent transcripts along with it.

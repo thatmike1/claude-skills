@@ -1,0 +1,6 @@
+{
+    "name": "peek",
+    "version": "1.0.0",
+    "description": "Read another Claude Code session's transcript straight from disk, zero footprint on the observed session. Lists the sessions running right now, renders any session by id with an incremental cursor.",
+    "skills": "."
+}

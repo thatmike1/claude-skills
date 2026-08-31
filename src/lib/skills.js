@@ -18,6 +18,8 @@ const SHORT_BLURBS = {
     "ai-cv-scanner": "Mine conversation history for AI experience evidence",
     "cc-audit": "Audit your Claude Code setup — flags anti-patterns with fixes",
     scan: "Query past CC conversations for a date range / project",
+    peek: "Read another running CC session's transcript from disk, zero footprint",
+    jarvis: "Ask one session about all your others — what's open, what to touch next",
     panels: "Engagement style — comic-book layout with severity tags",
     detective: "Engagement style — debugging as a case log",
     punchy: "Engagement style — hot-take-first, minimal prose",
@@ -28,10 +30,10 @@ const SHORT_BLURBS = {
 // skills whose scripts import from ../../shared — copy installs must also copy
 // shared/ or those imports break. re-derive with:
 //   grep -rl "shared/" --include="*.mjs" .
-export const SHARED_CONSUMERS = ["morning", "ai-cv-scanner", "cc-audit", "scan"];
+export const SHARED_CONSUMERS = ["morning", "ai-cv-scanner", "cc-audit", "scan", "peek"];
 
 /** skill -> skill it depends on at runtime (soft dependency, warn only) */
-export const SKILL_DEPENDENCIES = { evening: "morning" };
+export const SKILL_DEPENDENCIES = { evening: "morning", jarvis: "peek" };
 
 /** preferred display order; discovered skills not listed here sort after, alphabetically */
 const DISPLAY_ORDER = [
@@ -40,6 +42,8 @@ const DISPLAY_ORDER = [
     "morning",
     "evening",
     "scan",
+    "peek",
+    "jarvis",
     "goblin",
     "live-prompt",
     "afk-prompt",
@@ -62,6 +66,8 @@ const GLYPHS = {
     "ai-cv-scanner": "❂",
     "cc-audit": "✚",
     scan: "⌕",
+    peek: "◉",
+    jarvis: "☉",
     "live-prompt": "➳",
     "afk-prompt": "☍",
     panels: "▦",

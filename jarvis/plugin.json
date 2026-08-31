@@ -1,0 +1,6 @@
+{
+    "name": "jarvis",
+    "version": "1.0.0",
+    "description": "Talk to one Claude Code session about all your others: what is open, which to touch next, what a confusing one means, what to send it, and launching background jobs. Built on the peek skill.",
+    "skills": "."
+}

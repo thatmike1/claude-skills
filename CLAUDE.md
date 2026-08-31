@@ -15,8 +15,10 @@ ai-cv-scanner/            — mine conversation history for AI experience eviden
 cc-audit/                 — audit CC setup and usage patterns, flag anti-patterns
 live-prompt/              — write handoff prompts for attended fresh-instance sessions (collaborative / off-the-leash)
 afk-prompt/               — write autonomous-run prompts + pick tasks safe to run unattended
+peek/                     — read another running CC session's transcript from disk (live roster via /proc + session-env, incremental --since cursor)
+jarvis/                   — ask one session about all the others; built on peek, launches --bg jobs
 readout/                  — MDX-authored session docs published to readout.ssscribe.app with anchored comments (has npm deps for the MDX compile, like the installer)
-shared/                   — Claude Code + Codex JSONL discovery, parsing, search; imported by morning, evening, scan, cc-audit, ai-cv-scanner
+shared/                   — Claude Code + Codex JSONL discovery, parsing, search; imported by morning, evening, scan, peek, cc-audit, ai-cv-scanner
 ```
 
 ## Skill Format
@@ -67,6 +69,7 @@ Scripts can be tested directly:
 node morning/scripts/parse-cc-sessions.mjs --from 2026-05-11 --to 2026-05-12
 node morning/scripts/parse-codex-sessions.mjs --from 2026-05-11 --to 2026-05-12
 node morning/scripts/gather-context.mjs --mode global --range 1day
+node peek/scripts/peek.mjs live
 node shared/cc-parser.mjs --from 2026-05-11 --to 2026-05-12
 node shared/cc-search.mjs "search term" --global --limit 5
 node shared/cc-search.mjs "search term" --global --no-accelerate   # force the pure-Node scan
