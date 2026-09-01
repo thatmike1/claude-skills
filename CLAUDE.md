@@ -10,6 +10,7 @@ src/                      — installer ink (React terminal) app: components/ (U
 morning/                  — daily briefing skill (CC + Codex session parsing)
 evening/                  — end-of-day receipts: what actually got done today (reuses morning's gather script)
 goblin/                   — neurodivergent thought structuring (compile/decompose/estimate/decide)
+wonder-pill/              — divergent ideation (assumption audit -> inverted what-ifs -> local html mind map); ported from ara-mkr/Wonder-Pill, MIT
 invoice-subjects/         — invoice subject + newsletter generator from git history
 ai-cv-scanner/            — mine conversation history for AI experience evidence
 cc-audit/                 — audit CC setup and usage patterns, flag anti-patterns

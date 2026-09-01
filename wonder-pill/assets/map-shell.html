@@ -1,0 +1,361 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Wonder Pill — __WP_TOPIC__</title>
+<style>
+:root {
+  color-scheme: light dark;
+  --surface-0: #f6f5f2;
+  --surface-1: #ffffff;
+  --surface-2: #eae7e0;
+  --text-primary: #1b1a18;
+  --text-secondary: #4a4842;
+  --text-muted: #7a766e;
+  --border: #cfcabe;
+  --border-strong: #2f2d28;
+  --bg-accent: #e6eef3;
+  --accent: #2c6a8a;
+  --edge: #b3ada1;
+  --shadow: 0 1px 2px rgba(0,0,0,.06);
+}
+:root[data-theme="dark"] {
+  --surface-0: #131312;
+  --surface-1: #1c1c1a;
+  --surface-2: #262523;
+  --text-primary: #ece9e3;
+  --text-secondary: #c3bfb7;
+  --text-muted: #8d8981;
+  --border: #3c3b37;
+  --border-strong: #ded9d0;
+  --bg-accent: #1b2a32;
+  --accent: #79b3d1;
+  --edge: #4c4a45;
+  --shadow: 0 1px 2px rgba(0,0,0,.4);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --surface-0: #131312;
+    --surface-1: #1c1c1a;
+    --surface-2: #262523;
+    --text-primary: #ece9e3;
+    --text-secondary: #c3bfb7;
+    --text-muted: #8d8981;
+    --border: #3c3b37;
+    --border-strong: #ded9d0;
+    --bg-accent: #1b2a32;
+    --accent: #79b3d1;
+    --edge: #4c4a45;
+    --shadow: 0 1px 2px rgba(0,0,0,.4);
+  }
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-0);
+  color: var(--text-primary);
+  font: 13px/1.5 ui-sans-serif, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+header {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px;
+  padding: 10px 14px; border-bottom: 1px solid var(--border); background: var(--surface-1);
+}
+h1 { font-size: 14px; font-weight: 600; margin: 0; letter-spacing: .1px; }
+h1 span { color: var(--text-muted); font-weight: 400; }
+.spacer { flex: 1 1 auto; }
+button {
+  font: inherit; color: var(--text-primary); background: var(--surface-2);
+  border: 1px solid var(--border); border-radius: 6px; padding: 4px 10px; cursor: pointer;
+}
+button:hover { border-color: var(--border-strong); }
+.zoom { display: inline-flex; gap: 4px; }
+.zoom button { min-width: 30px; }
+.hint { color: var(--text-muted); font-size: 12px; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: var(--text-secondary); }
+.legend i { display: inline-block; width: 18px; height: 0; border-top-width: 2px; vertical-align: middle; margin-right: 5px; border-top-color: var(--border-strong); }
+.legend i.solid { border-top-style: solid; }
+.legend i.dashed { border-top-style: dashed; }
+.legend i.dotted { border-top-style: dotted; }
+.legend i.none { border-top-style: solid; border-top-color: var(--accent); }
+#vp { flex: 1 1 auto; min-height: 320px; overflow: hidden; position: relative; cursor: grab; background: var(--surface-0); }
+#vp.dragging { cursor: grabbing; }
+#stage { position: absolute; top: 0; left: 0; transform-origin: 0 0; width: 2000px; height: 1350px; }
+#edges { position: absolute; top: 0; left: 0; width: 2000px; height: 1350px; overflow: visible; }
+#edges line { stroke: var(--edge); stroke-width: 1.5; }
+#edges line.dotted { stroke-dasharray: 2 4; }
+#edges line.cross { stroke-dasharray: 7 5; stroke: var(--accent); stroke-width: 1.5; }
+.node {
+  position: absolute; padding: 8px 10px; border-radius: 8px;
+  background: var(--surface-1); border: 1px solid var(--border);
+  box-shadow: var(--shadow); cursor: pointer;
+}
+.node .sub { font-size: 11px; color: var(--text-muted); margin-bottom: 3px; }
+.node .title { font-size: 12px; color: var(--text-primary); }
+.node .tag { font-size: 11px; color: var(--text-muted); margin-top: 3px; }
+.node.topic { background: var(--surface-2); border: 1px solid var(--border-strong); }
+.node.topic .title { font-size: 14px; font-weight: 500; }
+.node.branch { background: var(--bg-accent); border: 1px solid var(--border-strong); }
+.node.feral { background: var(--bg-accent); border: 1px dashed var(--border-strong); }
+.node.tendril { background: var(--surface-1); border: 0; border-left: 3px solid var(--accent); border-radius: 0 6px 6px 0; box-shadow: none; }
+.node.seed { background: transparent; border: 1px dotted var(--border-strong); color: var(--text-secondary); }
+.node.scrapped { border: 1px dashed var(--border); opacity: .55; }
+.node.scrapped .title { text-decoration: line-through; }
+.node.sel { outline: 2px solid var(--border-strong); outline-offset: 2px; opacity: 1; }
+#detail {
+  border-top: 1px solid var(--border); background: var(--surface-1);
+  padding: 10px 14px; min-height: 92px; max-height: 34vh; overflow-y: auto;
+}
+#detail .kind { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--text-muted); }
+#detail h2 { font-size: 13px; font-weight: 600; margin: 4px 0 6px; }
+#detail dl { margin: 0; display: grid; grid-template-columns: max-content 1fr; gap: 3px 12px; }
+#detail dt { font-size: 12px; color: var(--text-muted); }
+#detail dd { font-size: 12px; margin: 0; color: var(--text-secondary); max-width: 90ch; }
+#detail .row { margin-top: 8px; display: flex; align-items: center; gap: 10px; }
+#detail .placeholder { color: var(--text-muted); }
+#orient { font-size: 12px; color: var(--text-secondary); max-width: 100ch; margin: 0 0 8px; }
+</style>
+</head>
+<body>
+<h2 class="sr-only">__WP_SR__</h2>
+<header>
+  <h1>__WP_TOPIC_H1__ <span>— wonder pill map</span></h1>
+  <div class="legend">
+    <span><i class="solid"></i>branch (solid)</span>
+    <span><i class="dashed"></i>feral / scrapped (dashed)</span>
+    <span><i class="dotted"></i>seed (dotted)</span>
+    <span><i class="none"></i>tendril (left rule)</span>
+  </div>
+  <div class="spacer"></div>
+  <span class="hint">drag to pan, click a node for its gut-check</span>
+  <div class="zoom">
+    <button id="zout" title="zoom out">−</button>
+    <button id="zres" title="reset view">reset</button>
+    <button id="zin" title="zoom in">+</button>
+  </div>
+  <button id="theme" title="toggle light and dark">theme</button>
+</header>
+<div id="vp">
+  <div id="stage">
+    <svg id="edges" xmlns="http://www.w3.org/2000/svg"></svg>
+  </div>
+</div>
+<div id="detail"></div>
+<script>
+const DATA = /*__WP_DATA__*/ null;
+
+const stage = document.getElementById('stage');
+const vp = document.getElementById('vp');
+const svg = document.getElementById('edges');
+const detail = document.getElementById('detail');
+
+document.title = 'Wonder Pill — ' + DATA.topic;
+
+/** node record keyed by id, with its measured rectangle */
+const nodes = new Map();
+
+const SCRAPPED_FIELDS = ['derivation', 'flaw', 'judgment'];
+
+/** build one node element from its data tuple */
+function buildNode(t) {
+  const [id, type, x, y, w, title, a, b, c] = t;
+  const el = document.createElement('div');
+  el.className = 'node ' + type;
+  el.style.left = x + 'px';
+  el.style.top = y + 'px';
+  el.style.width = w + 'px';
+  const sub = type === 'scrapped' ? a : a;
+  if (sub) {
+    const s = document.createElement('div');
+    s.className = 'sub';
+    s.textContent = sub;
+    el.appendChild(s);
+  }
+  const h = document.createElement('div');
+  h.className = 'title';
+  h.textContent = title;
+  el.appendChild(h);
+  if (type === 'seed') {
+    const tag = document.createElement('div');
+    tag.className = 'tag';
+    tag.textContent = 'seed';
+    el.appendChild(tag);
+  }
+  if (type === 'feral') {
+    const tag = document.createElement('div');
+    tag.className = 'tag';
+    tag.textContent = 'feral';
+    el.appendChild(tag);
+  }
+  el.addEventListener('click', (e) => { e.stopPropagation(); select(id); });
+  stage.appendChild(el);
+  nodes.set(id, { id, type, x, y, w, title, a, b, c, el });
+}
+
+DATA.nodes.forEach(buildNode);
+
+/** rectangle centre and half-extents, measured after layout */
+function rectOf(n) {
+  const h = n.el.offsetHeight;
+  return { cx: n.x + n.w / 2, cy: n.y + h / 2, hw: n.w / 2, hh: h / 2 };
+}
+
+/** point where the segment from a rect's centre toward (tx,ty) leaves the rect */
+function clip(r, tx, ty) {
+  const dx = tx - r.cx, dy = ty - r.cy;
+  if (!dx && !dy) return [r.cx, r.cy];
+  const sx = dx === 0 ? Infinity : (r.hw + 5) / Math.abs(dx);
+  const sy = dy === 0 ? Infinity : (r.hh + 5) / Math.abs(dy);
+  const s = Math.min(sx, sy, 1);
+  return [r.cx + dx * s, r.cy + dy * s];
+}
+
+DATA.edges.forEach(([from, to, style]) => {
+  const a = nodes.get(from), b = nodes.get(to);
+  if (!a || !b) return;
+  const ra = rectOf(a), rb = rectOf(b);
+  const [x1, y1] = clip(ra, rb.cx, rb.cy);
+  const [x2, y2] = clip(rb, ra.cx, ra.cy);
+  const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+  line.setAttribute('x1', x1); line.setAttribute('y1', y1);
+  line.setAttribute('x2', x2); line.setAttribute('y2', y2);
+  if (style && style !== 'solid') line.setAttribute('class', style);
+  svg.appendChild(line);
+});
+
+let scale = 0.55, tx = 0, ty = 0, sel = null;
+
+function apply() {
+  stage.style.transform = 'translate(' + tx + 'px,' + ty + 'px) scale(' + scale + ')';
+}
+
+/** centre the map, at 0.55 when it fits and shrunk to the viewport when it does not */
+function reset() {
+  const fit = Math.min(vp.clientWidth / 2000, vp.clientHeight / 1350) * 0.98;
+  scale = Math.max(0.3, Math.min(0.55, fit));
+  tx = (vp.clientWidth - 2000 * scale) / 2;
+  ty = (vp.clientHeight - 1350 * scale) / 2;
+  apply();
+}
+
+function zoom(next) {
+  const k = Math.min(1.4, Math.max(0.3, next));
+  const cx = vp.clientWidth / 2, cy = vp.clientHeight / 2;
+  tx = cx - (cx - tx) * (k / scale);
+  ty = cy - (cy - ty) * (k / scale);
+  scale = k;
+  apply();
+}
+
+document.getElementById('zin').onclick = () => zoom(scale + 0.15);
+document.getElementById('zout').onclick = () => zoom(scale - 0.15);
+document.getElementById('zres').onclick = reset;
+
+let drag = null;
+function down(px, py) { drag = { px, py, tx, ty }; vp.classList.add('dragging'); }
+function move(px, py) {
+  if (!drag) return;
+  tx = drag.tx + (px - drag.px);
+  ty = drag.ty + (py - drag.py);
+  apply();
+}
+function up() { drag = null; vp.classList.remove('dragging'); }
+
+vp.addEventListener('mousedown', (e) => { down(e.clientX, e.clientY); e.preventDefault(); });
+window.addEventListener('mousemove', (e) => move(e.clientX, e.clientY));
+window.addEventListener('mouseup', up);
+vp.addEventListener('touchstart', (e) => { const t = e.touches[0]; down(t.clientX, t.clientY); }, { passive: true });
+vp.addEventListener('touchmove', (e) => { const t = e.touches[0]; move(t.clientX, t.clientY); }, { passive: true });
+vp.addEventListener('touchend', up);
+
+function row(dl, term, value) {
+  if (!value) return;
+  const dt = document.createElement('dt'); dt.textContent = term;
+  const dd = document.createElement('dd'); dd.textContent = value;
+  dl.appendChild(dt); dl.appendChild(dd);
+}
+
+function placeholder() {
+  detail.textContent = '';
+  const p = document.createElement('div');
+  p.className = 'placeholder';
+  p.textContent = 'Click any node to read its gut-check. Scrapped nodes carry their derivation, flaw, and the judgment call that killed them.';
+  detail.appendChild(p);
+}
+
+/** render the detail strip for one node and highlight it on the map */
+function select(id) {
+  const n = nodes.get(id);
+  if (!n) return;
+  if (sel) sel.el.classList.remove('sel');
+  sel = n;
+  n.el.classList.add('sel');
+
+  detail.textContent = '';
+  const kind = document.createElement('div');
+  kind.className = 'kind';
+  kind.textContent = n.type;
+  detail.appendChild(kind);
+
+  const h = document.createElement('h2');
+  h.textContent = n.title;
+  detail.appendChild(h);
+
+  const dl = document.createElement('dl');
+  if (n.type === 'scrapped') {
+    row(dl, 'Derivation', n.a);
+    row(dl, 'Flaw', n.b);
+    row(dl, 'Judgment', n.c);
+  } else {
+    row(dl, n.type === 'branch' || n.type === 'feral' ? 'Premise' : 'Note', n.a);
+    row(dl, 'Gut-check', n.b);
+  }
+  detail.appendChild(dl);
+
+  if (n.type !== 'topic') {
+    const r = document.createElement('div');
+    r.className = 'row';
+    const btn = document.createElement('button');
+    const prompt = 'Go deeper on the thread: ' + n.title;
+    btn.textContent = 'copy go-deeper prompt';
+    btn.onclick = () => {
+      navigator.clipboard?.writeText(prompt).then(
+        () => { btn.textContent = 'copied'; setTimeout(() => { btn.textContent = 'copy go-deeper prompt'; }, 1400); },
+        () => { btn.textContent = prompt; }
+      );
+    };
+    const note = document.createElement('span');
+    note.className = 'hint';
+    note.textContent = 'paste it back into the session for a fresh audit of this branch';
+    r.appendChild(btn); r.appendChild(note);
+    detail.appendChild(r);
+  }
+}
+
+vp.addEventListener('click', () => {
+  if (drag) return;
+  if (sel) { sel.el.classList.remove('sel'); sel = null; }
+  placeholder();
+});
+
+const themeBtn = document.getElementById('theme');
+themeBtn.onclick = () => {
+  const cur = document.documentElement.getAttribute('data-theme');
+  const dark = cur ? cur === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+  document.documentElement.setAttribute('data-theme', dark ? 'light' : 'dark');
+};
+
+window.addEventListener('resize', () => { if (!drag) apply(); });
+
+placeholder();
+reset();
+</script>
+</body>
+</html>

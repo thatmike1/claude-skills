@@ -32,6 +32,7 @@ A collection of custom skills for [Claude Code](https://docs.anthropic.com/en/do
 | ⭐ [readout](#readout) | Publish session work as a shareable, commentable web page | `/readout`, `/readout comments` |
 | **Think & design** | | |
 | [goblin](#goblin) | Neurodivergent thought structuring: compile, decompose, estimate, decide | `/goblin`, `/goblin decompose` |
+| [wonder-pill](#wonder-pill) | Divergent ideation: invert the hidden assumptions, branch them, render the thought-space as a local map | `/wonder`, "help me brainstorm" |
 | [design-styles](#design-styles) | Aesthetic direction + UX baseline: style packs, landing craft, redesign, reviews | triggers on frontend work |
 
 <details>
@@ -110,6 +111,24 @@ Thought structuring inspired by [goblin.tools](https://goblin.tools). Four modes
 - **decompose** — break overwhelming tasks into steps (spiciness dial 1-4)
 - **estimate** — realistic time estimates with ADHD-aware multipliers
 - **decide** — break analysis paralysis with a recommendation (always picks a side)
+</details>
+
+<details>
+<summary><b>wonder-pill</b></summary>
+
+Ported from [ara-mkr/Wonder-Pill](https://github.com/ara-mkr/Wonder-Pill) (MIT, attribution and
+licence kept in the skill directory). Brainstorming that refuses to hand over a shortlist: it names
+3-5 load-bearing assumptions inside the request, inverts each one into a what-if that has an actual
+hook, branches those outward through fixed dimensions, keeps the discarded threads with their cause
+of death, and does not rank anything at the end.
+
+Two stages are rewritten for Claude Code, which has neither of the claude.ai host tools the original
+leans on. Intake asks its three questions as plain text instead of a tappable-options widget, and the
+map is written as a standalone html file into `<repo>/wonder-pill/` and opened with `xdg-open`
+instead of rendering inline through the Visualizer. `scripts/render-map.mjs` injects the nodes and
+edges into a static shell that carries its own light and dark palettes: drag to pan, zoom between
+0.3 and 1.4, click a node for its gut-check, node types told apart by border style rather than
+colour, dashed cross-links where two branches hit the same tension.
 </details>
 
 <details>
