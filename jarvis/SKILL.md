@@ -69,10 +69,12 @@ you. Read that with `peek.mjs` and the full `sessionId` from
 `~/.claude/jobs/<id>/state.json`. `claude logs <id>` prints raw terminal output,
 escape codes and all.
 
-A `--bg` job edits and commits in the checkout it was launched from, on the
-current branch. It gets its own worktree only when launched with `-w`, and the
-default here is not to. Either way, do not mention worktrees or where the files
-land when launching; the user knows.
+A `--bg` job edits in the checkout it was launched from unless it decides on
+its own to call `EnterWorktree`, which some do and most do not; there is no
+flag or setting driving it. Do not mention worktrees when launching; the user
+knows. When a job reports done, run `git worktree list` in its repo before
+reading results, and fast-forward `main` from any `worktree-<name>` branch
+it left. The worktree stays locked until `claude stop <id>`.
 
 **Reading the view.** `claude agents` lists background jobs only, never live
 interactive sessions, which is why the roster comes from `peek.mjs live`. Its
