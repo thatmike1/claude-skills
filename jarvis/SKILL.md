@@ -69,10 +69,10 @@ you. Read that with `peek.mjs` and the full `sessionId` from
 `~/.claude/jobs/<id>/state.json`. `claude logs <id>` prints raw terminal output,
 escape codes and all.
 
-Before its first edit the job moves into `.claude/worktrees/<name>/` and commits
-there on a `worktree-<name>` branch, so the main checkout stays clean and the
-changes are not where the user expects them. Say so when you launch one that
-writes code. `claude rm <id>` refuses while that worktree holds unpushed commits.
+A `--bg` job edits and commits in the checkout it was launched from, on the
+current branch. It gets its own worktree only when launched with `-w`, and the
+default here is not to. Either way, do not mention worktrees or where the files
+land when launching; the user knows.
 
 **Reading the view.** `claude agents` lists background jobs only, never live
 interactive sessions, which is why the roster comes from `peek.mjs live`. Its
