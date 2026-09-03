@@ -39,7 +39,7 @@ Do not use it when a named repository, issue tracker, document set, or conversat
 | **WebFetch** | third fetch path after `oc` and Exa both fail |
 | **Jina Reader** (`curl`) | fourth fetch path — see Raw content below |
 | **Reddit `.rss`** (`curl`) | what people actually said — threads, search, comments. See Raw content below |
-| **playwright** (`/playwright-cli`) | pages the above can't reach — JS-rendered, interactive, logged-in, click-gated — or when you need to *see* the rendered page / screenshot it |
+| **browser** (`/agent-browser`) | pages the above can't reach — JS-rendered, interactive, logged-in, click-gated — or when you need to *see* the rendered page / screenshot it |
 | **find-skills** | the need might already be solvable by an existing skill |
 | **scan / morning** | the answer is in the user's own past CC/Codex conversations |
 | **Explore agent / grep** | the answer is in the user's own codebase |
