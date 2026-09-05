@@ -25,6 +25,7 @@ A collection of custom skills for [Claude Code](https://docs.anthropic.com/en/do
 | [scan](#scan) | Ask any question about your past Claude Code conversations | `/scan` |
 | ⭐ [peek](#peek--jarvis) | Read another running session's transcript from disk, zero footprint | `/peek live`, `/peek <id> --last 6` |
 | ⭐ [jarvis](#peek--jarvis) | Ask one session about all your others: what is open, what to touch next | `/jarvis` |
+| [warden](#warden) | All-day accountability loop: plan interview, then nudge on drift | `/warden` |
 | **Delegate** | | |
 | ⭐ [orchestrate](#orchestrate) | Frontier lead plans, routes, verifies; cheaper Claude/Codex workers execute | `/orchestrate` |
 | [find-out](#find-out) | Research orchestrator: picks the surface, fans out, reconciles sources | `/find-out` |
@@ -84,6 +85,12 @@ Bookends for the workday.
 
 - **morning** plans the day forward: aggregates yesterday's Claude Code conversations, Codex sessions, git history, and memory files into a plan with checkboxes, time estimates, and sequencing. Repo mode (deep single-project) or global mode (cross-project). Flexible ranges — yesterday, 3 days, week.
 - **evening** proves the day backward: today's sessions, commits, and issue-tracker activity as an honest accomplishment log. Built for the "I did nothing today" feeling — it shows the receipts.
+</details>
+
+<details>
+<summary><b>warden</b></summary>
+
+A standing session that holds you to the day. It interviews you into a short checklist with time anchors, then runs the `loop` skill self-paced: every tick it reads ActivityWatch (window focus and afk state) plus `peek live`, decides on-plan / break / drift, and on drift fires a desktop notification naming the single next physical action. Declared breaks are part of the plan and are never nudged. Needs ActivityWatch running locally and `peek` installed; `config.json` carries the machine's sound target for setups where the default sink is inaudible.
 </details>
 
 <details>

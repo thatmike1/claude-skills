@@ -1,0 +1,5 @@
+{
+  "soundFile": "~/.claude/notification.wav",
+  "soundTarget": "",
+  "soundVolume": 1.0
+}
