@@ -27,6 +27,16 @@ their edits, then start the loop.
 Blocks declared as leisure ARE the plan for that window — watching sports scores
 during a declared break is on-plan; do not nudge it.
 
+## Standing orders
+
+If `config.json` names a `standingOrders` file, read it at opening, before the
+interview. It carries obligations that outlive any single day plan (a pet's
+medication schedule, a check-in protocol) and its own questions to ask at
+opening. Items with fixed clock times go on in-session cron (`CronCreate`) so
+they fire on time instead of waiting for the next tick; items that need a
+confirmation keep re-nudging on their own cadence until the user says done.
+The file is living: append to its log section when it asks for it.
+
 ## The loop
 
 Invoke the `loop` skill self-paced (no interval) with the tick prompt

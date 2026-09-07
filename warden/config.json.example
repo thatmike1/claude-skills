@@ -1,5 +1,6 @@
 {
   "soundFile": "~/.claude/notification.wav",
   "soundTarget": "",
-  "soundVolume": 1.0
+  "soundVolume": 1.0,
+  "standingOrders": "~/path/to/standing.md"
 }
