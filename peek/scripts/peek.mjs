@@ -340,14 +340,18 @@ function surfaceOf(row, thread) {
   return '';
 }
 
-/** one T3 thread's own view of itself, which its session's log knows nothing about. */
+/**
+ * one T3 thread's own view of itself, which its session's log knows nothing
+ * about. No resume command here: this thread is running, so there is nothing to
+ * reopen. `peek.mjs t3` is where the resume handles belong.
+ */
 function t3Line(thread) {
   const state = [
     thread.status,
     thread.settled ? 'settled' : 'unsettled',
     thread.snoozed ? `snoozed until ${hhmm(Date.parse(thread.snoozedUntil))}` : '',
   ].filter(Boolean).join(', ');
-  return `    t3: "${thread.title}"  (${state})  ·  resume: t3 ${thread.threadId}`;
+  return `    t3: "${thread.title}"  (${state})`;
 }
 
 /** the last thing each side said, printed under a roster row. */

@@ -43,8 +43,9 @@ T3 Code is a front end, not a third harness: every thread it opens runs an
 ordinary Claude Code or Antigravity session underneath, which is why its rows
 reach `live` looking like any other session. A `live` row that belongs to one is
 tagged `cc t3` or `agy t3` and carries a `t3:` line with the thread's own title,
-whether it is `busy`, `waiting` on the user or `idle`, whether it is settled,
-and the `t3 <thread-id>` command that reopens it.
+whether it is `busy`, `waiting` on the user or `idle`, and whether it is
+settled. It carries no resume handle, because a thread with a live process is
+already open; resuming is what the `t3` roster below is for.
 
 `peek.mjs t3` is the separate roster, because a thread outlives its process:
 `live` answers what is running, `t3` answers what is still open. Settled threads
