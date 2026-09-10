@@ -11,6 +11,7 @@
  *
  * usage:
  *   node peek.mjs live                           sessions running right now
+ *   node peek.mjs t3 [--all]                     open T3 Code threads
  *   node peek.mjs list [projectFilter] [-n 15]   recent sessions, newest first
  *   node peek.mjs <session-id> [options]         render a session
  *
@@ -21,6 +22,7 @@
  *   --max N       per-message truncation length (default 3000, 0 = unlimited)
  *   --cc / --agy  restrict `live` and `list` to one harness
  *   --no-results  drop tool results (agy sessions log them; Claude Code does not)
+ *   --all         `t3` keeps settled, snoozed and archived threads too
  *
  * every render ends with a `next: --since <n>` line — pass it back on the
  * next call to get only what happened since.
@@ -36,6 +38,7 @@ import {
   liveAgySessions,
   parseAgySession,
 } from '../../shared/agy-parser.mjs';
+import { t3OpenThreads, t3ThreadsBySession } from '../../shared/t3-state.mjs';
 
 // piping into `head` closes stdout early; that is not an error worth a stack trace
 process.stdout.on('error', err => { if (err.code === 'EPIPE') process.exit(0); });
@@ -46,7 +49,7 @@ function fail(msg) {
 }
 
 function parseArgs(argv) {
-  const args = { _: [], since: null, last: null, thinking: false, max: 3000, n: 15, only: null, results: true };
+  const args = { _: [], since: null, last: null, thinking: false, max: 3000, n: 15, only: null, results: true, all: false };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--since') args.since = Number(argv[++i]);
@@ -57,6 +60,7 @@ function parseArgs(argv) {
     else if (a === '--cc') args.only = 'cc';
     else if (a === '--agy') args.only = 'agy';
     else if (a === '--no-results') args.results = false;
+    else if (a === '--all') args.all = true;
     else args._.push(a);
   }
   return args;
@@ -245,8 +249,30 @@ function ago(ms) {
 }
 
 /**
- * pair each live Claude Code process with its session by start time — the two
- * clocks agree to within a couple of seconds.
+ * the session id a process was resumed onto, straight off its own argv.
+ *
+ * Start-time matching cannot see these: a resumed session keeps the session-env
+ * dir from its first start, so the two clocks are however long the session has
+ * been alive apart. T3 Code restarts the underlying process every turn and
+ * resumes it, so its rows go unmatched without this.
+ */
+function sessionIdFromArgv(pid) {
+  const argv = cmdline(pid);
+  for (const [i, a] of argv.entries()) {
+    const inline = a.match(/^--resume[=](.+)$/);
+    if (inline) return inline[1];
+    if (a === '--resume' || a === '-r') {
+      const next = argv[i + 1];
+      if (next && !next.startsWith('-')) return next;
+    }
+  }
+  return null;
+}
+
+/**
+ * pair each live Claude Code process with its session: off its own argv when it
+ * was resumed, otherwise by start time, where the two clocks agree to within a
+ * couple of seconds.
  */
 function liveClaudeRows() {
   const procs = liveClaudeProcs();
@@ -256,6 +282,11 @@ function liveClaudeRows() {
   const rows = [];
 
   for (const proc of procs) {
+    const resumed = sessionIdFromArgv(proc.pid);
+    if (resumed) {
+      rows.push({ kind: 'cc', ...proc, sessionId: resumed });
+      continue;
+    }
     let best = null;
     for (const entry of unclaimed) {
       const drift = Math.abs(entry.startMs - proc.startMs);
@@ -280,6 +311,61 @@ async function parseForRow(row, path, opts) {
     : parseSessionFile(path, opts);
 }
 
+/**
+ * T3 Code gives every session it starts an MCP server under this name, which is
+ * how a T3 thread is recognised in the seconds before its state row catches up.
+ */
+const T3_MCP_NAME = 't3-code';
+
+/** a process's argv, or empty if it is gone or not ours to read. */
+function cmdline(pid) {
+  try {
+    return readFileSync(`/proc/${pid}/cmdline`, 'utf8').split('\0').filter(Boolean);
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * which front end a Claude Code process belongs to, or '' for a plain terminal.
+ * T3 threads and headless `-p` runs both reach the roster looking like any other
+ * session, and only the process's own argv tells them apart.
+ */
+function surfaceOf(row, thread) {
+  if (thread) return 't3';
+  if (row.kind !== 'cc') return '';
+  const argv = cmdline(row.pid);
+  if (argv.some(a => a.includes(T3_MCP_NAME))) return 't3';
+  if (argv.some(a => a === '-p' || a === '--print')) return 'print';
+  return '';
+}
+
+/** one T3 thread's own view of itself, which its session's log knows nothing about. */
+function t3Line(thread) {
+  const state = [
+    thread.status,
+    thread.settled ? 'settled' : 'unsettled',
+    thread.snoozed ? `snoozed until ${hhmm(Date.parse(thread.snoozedUntil))}` : '',
+  ].filter(Boolean).join(', ');
+  return `    t3: "${thread.title}"  (${state})  ·  resume: t3 ${thread.threadId}`;
+}
+
+/** the last thing each side said, printed under a roster row. */
+async function printLastExchange(row, path, max, { title = true } = {}) {
+  const parsed = await parseForRow(row, path, { maxLength: 400 });
+  if (title && parsed.aiTitle) console.log(`    "${parsed.aiTitle}"`);
+
+  const lastUser = [...parsed.messages].reverse().find(m => m.role === 'user' && m.text);
+  const lastAgent = [...parsed.messages].reverse().find(m => m.role === 'assistant' && (m.text || m.tools?.length));
+  const flat = t => truncateText((t || '').replace(/\s+/g, ' '), max);
+
+  if (lastUser) console.log(`    you   ${localHhmm(lastUser.ts)}  ${flat(lastUser.text)}`);
+  if (lastAgent) {
+    const tools = (lastAgent.tools || []).map(t => t.name).join(', ');
+    console.log(`    ${row.kind === 'agy' ? 'agy ' : 'cc  '}  ${localHhmm(lastAgent.ts)}  ${flat(lastAgent.text) || `[${tools}]`}`);
+  }
+}
+
 /** every live session across both harnesses, oldest first, with its last exchange. */
 async function cmdLive(args) {
   const rows = [
@@ -289,14 +375,18 @@ async function cmdLive(args) {
 
   if (!rows.length) return console.log('no live sessions');
 
+  const threads = t3ThreadsBySession();
   console.log(`# ${rows.length} live sessions  ·  ${hhmm(Date.now())}  ·  oldest first\n`);
 
   for (const [i, row] of rows.entries()) {
-    const project = row.cwd.split('/').pop();
+    const thread = row.sessionId ? threads.get(row.sessionId) : null;
+    const project = thread?.project || row.cwd.split('/').pop();
     const path = transcriptForRow(row);
     const self = path && path === process.env.CODEX_COMPANION_TRANSCRIPT_PATH ? '  (this session)' : '';
     const idle = path ? ago(statSync(path).mtimeMs) : '?';
-    const tag = row.kind === 'agy' ? `agy${row.model ? ` ${row.model}` : ''}${row.headless ? ' headless' : ''}` : 'cc';
+    const harness = row.kind === 'agy' ? `agy${row.model ? ` ${row.model}` : ''}${row.headless ? ' headless' : ''}` : 'cc';
+    const surface = surfaceOf(row, thread);
+    const tag = surface ? `${harness} ${surface}` : harness;
 
     console.log(`[${i + 1}] ${project}  ·  ${tag}  ·  started ${hhmm(row.startMs)}  ·  quiet ${idle}  ·  pid ${row.pid}${self}`);
     console.log(`    ${row.cwd}`);
@@ -306,19 +396,9 @@ async function cmdLive(args) {
       continue;
     }
     console.log(`    peek: ${row.sessionId}`);
+    if (thread) console.log(t3Line(thread));
 
-    const parsed = await parseForRow(row, path, { maxLength: 400 });
-    if (parsed.aiTitle) console.log(`    "${parsed.aiTitle}"`);
-
-    const lastUser = [...parsed.messages].reverse().find(m => m.role === 'user' && m.text);
-    const lastAgent = [...parsed.messages].reverse().find(m => m.role === 'assistant' && (m.text || m.tools?.length));
-    const flat = t => truncateText((t || '').replace(/\s+/g, ' '), args.max);
-
-    if (lastUser) console.log(`    you   ${localHhmm(lastUser.ts)}  ${flat(lastUser.text)}`);
-    if (lastAgent) {
-      const tools = (lastAgent.tools || []).map(t => t.name).join(', ');
-      console.log(`    ${row.kind === 'agy' ? 'agy ' : 'cc  '}  ${localHhmm(lastAgent.ts)}  ${flat(lastAgent.text) || `[${tools}]`}`);
-    }
+    await printLastExchange(row, path, args.max, { title: !thread });
     console.log('');
   }
 
@@ -326,10 +406,48 @@ async function cmdLive(args) {
   console.log('# per project in this same start order — the tool reports start age, not id.');
 }
 
+/**
+ * open T3 Code threads, newest first.
+ *
+ * Separate from `live` because the two answer different questions: `live` is
+ * every process running right now, while a T3 thread outlives its process and
+ * stays open until the user settles it. Settled threads are hidden by default
+ * and only ever accumulate; what is left is the set of loops still on them.
+ */
+function cmdT3(args) {
+  const threads = t3OpenThreads({ all: args.all });
+  if (!threads.length) {
+    return console.log(args.all ? 'no t3 threads' : 'no open t3 threads (everything is settled)');
+  }
+
+  const hidden = args.all ? 0 : t3OpenThreads({ all: true }).length - threads.length;
+  const label = args.all ? 't3 threads' : 'open t3 threads';
+  const suffix = hidden ? `  ·  ${hidden} settled or parked, hidden (--all)` : '';
+  console.log(`# ${threads.length} ${label}  ·  ${hhmm(Date.now())}  ·  newest first${suffix}\n`);
+
+  for (const [i, t] of threads.entries()) {
+    const state = [
+      t.status,
+      t.settled ? 'settled' : 'unsettled',
+      t.snoozed ? `snoozed until ${hhmm(Date.parse(t.snoozedUntil))}` : '',
+      t.archived ? 'archived' : '',
+    ].filter(Boolean).join(', ');
+    const model = [t.provider === 'antigravity' ? 'agy' : 'cc', t.model].filter(Boolean).join(' ');
+
+    console.log(`[${i + 1}] ${t.project}  ·  ${model}  ·  ${state}  ·  updated ${hhmm(Date.parse(t.updatedAt))}`);
+    console.log(`    "${t.title}"`);
+    if (t.cwd) console.log(`    ${t.cwd}`);
+    console.log(`    peek: ${t.sessionId}  ·  resume: t3 ${t.threadId}\n`);
+  }
+
+  console.log('# `t3 <thread-id>` reopens a thread in the CLI that ran it.');
+}
+
 const args = parseArgs(process.argv.slice(2));
 const [first, second] = args._;
 
-if (!first) fail('usage: peek.mjs live | peek.mjs list [projectFilter] | peek.mjs <session-id> [--since N] [--last N] [--thinking]');
+if (!first) fail('usage: peek.mjs live | peek.mjs t3 [--all] | peek.mjs list [projectFilter] | peek.mjs <session-id> [--since N] [--last N] [--thinking]');
 if (first === 'live') await cmdLive({ ...args, max: args.max === 3000 ? 150 : args.max });
+else if (first === 't3') cmdT3(args);
 else if (first === 'list') await cmdList(second, args);
 else await cmdShow(first, args);

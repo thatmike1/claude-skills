@@ -29,6 +29,12 @@ same way, with one difference that matters: there is no `SendMessage` name for
 it, so you can watch it and report on it but not talk to it. `--cc` narrows the
 roster when the user only means their Claude sessions.
 
+A row tagged `cc t3` or `agy t3` is running inside a T3 Code thread and carries
+that thread's title and settled state. `peek.mjs t3` is the companion roster of
+open threads, which is a different question: a T3 thread outlives its process,
+so most open threads have nothing running. Unsettled is the user's own mark that
+a thread is not finished with, so rank on it when they ask what is still open.
+
 Two failure modes to avoid. `peek.mjs list` scans *every* transcript on disk, so
 it returns this morning's dead sessions alongside live ones; only `live` answers
 "what do I have open". And never answer from the roster's two-line digest when
