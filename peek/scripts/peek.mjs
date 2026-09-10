@@ -1,11 +1,13 @@
 #!/usr/bin/env node
 
 /**
- * peek — read another Claude Code session's transcript without leaving a mark.
+ * peek — read another agent session's transcript without leaving a mark.
  *
- * built for the coach/driver workflow: a "backstage" session reads what the
- * "driver" session did (prompts, replies, tool calls) straight from the jsonl
- * on disk. purely read-only; the observed session never knows.
+ * covers both Claude Code (`~/.claude/projects/*.jsonl`) and the Antigravity
+ * CLI (`~/.gemini/antigravity-cli/brain/<id>/`). built for the coach/driver
+ * workflow: a "backstage" session reads what the "driver" session did (prompts,
+ * replies, tool calls) straight off disk. purely read-only; the observed
+ * session never knows.
  *
  * usage:
  *   node peek.mjs live                           sessions running right now
@@ -17,6 +19,8 @@
  *   --last N      only the last N messages
  *   --thinking    include assistant thinking blocks
  *   --max N       per-message truncation length (default 3000, 0 = unlimited)
+ *   --cc / --agy  restrict `live` and `list` to one harness
+ *   --no-results  drop tool results (agy sessions log them; Claude Code does not)
  *
  * every render ends with a `next: --since <n>` line — pass it back on the
  * next call to get only what happened since.
@@ -25,6 +29,13 @@
 import { existsSync, readFileSync, readdirSync, readlinkSync, statSync } from 'fs';
 import { homedir } from 'os';
 import { findSessionFile, parseSessionFile, discoverSessionsFromDisk, truncateText } from '../../shared/cc-parser.mjs';
+import {
+  agyToolLine,
+  agyTranscriptPath,
+  discoverAgySessions,
+  liveAgySessions,
+  parseAgySession,
+} from '../../shared/agy-parser.mjs';
 
 // piping into `head` closes stdout early; that is not an error worth a stack trace
 process.stdout.on('error', err => { if (err.code === 'EPIPE') process.exit(0); });
@@ -35,7 +46,7 @@ function fail(msg) {
 }
 
 function parseArgs(argv) {
-  const args = { _: [], since: null, last: null, thinking: false, max: 3000, n: 15 };
+  const args = { _: [], since: null, last: null, thinking: false, max: 3000, n: 15, only: null, results: true };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--since') args.since = Number(argv[++i]);
@@ -43,6 +54,9 @@ function parseArgs(argv) {
     else if (a === '--thinking') args.thinking = true;
     else if (a === '--max') args.max = Number(argv[++i]);
     else if (a === '-n') args.n = Number(argv[++i]);
+    else if (a === '--cc') args.only = 'cc';
+    else if (a === '--agy') args.only = 'agy';
+    else if (a === '--no-results') args.results = false;
     else args._.push(a);
   }
   return args;
@@ -83,51 +97,86 @@ function toolLine(tool) {
   return `  → ${tool.name}: ${truncateText(detail, 160)}`;
 }
 
-async function cmdList(projectFilter, n) {
-  // rank by last activity rather than session start, so a session resumed today
-  // floats to the top; the bounds keep this from opening all ~2k transcripts
-  const sessions = await discoverSessionsFromDisk({
-    projectContains: projectFilter,
-    order: 'activity',
-    limit: n,
-  });
-  for (const s of sessions) {
-    const when = s.mtimeMs ? new Date(s.mtimeMs).toISOString().slice(0, 16).replace('T', ' ') : '?';
-    const title = truncateText((s.firstPrompt || '').replace(/\s+/g, ' '), 60);
-    console.log(`${s.sessionId}  ${when}  ${s.project || '?'}${title ? `  "${title}"` : ''}`);
+async function cmdList(projectFilter, args) {
+  const rows = [];
+
+  if (args.only !== 'agy') {
+    // rank by last activity rather than session start, so a session resumed today
+    // floats to the top; the bounds keep this from opening all ~2k transcripts
+    const sessions = await discoverSessionsFromDisk({
+      projectContains: projectFilter,
+      order: 'activity',
+      limit: args.n,
+    });
+    for (const s of sessions) {
+      rows.push({ kind: 'cc', sessionId: s.sessionId, mtimeMs: s.mtimeMs, project: s.project, title: s.firstPrompt });
+    }
   }
-  if (!sessions.length) console.log('no sessions found');
+
+  if (args.only !== 'cc') {
+    for (const s of discoverAgySessions({ projectContains: projectFilter, limit: args.n })) {
+      rows.push({ kind: 'agy', sessionId: s.sessionId, mtimeMs: s.mtimeMs, project: s.project, title: s.aiTitle });
+    }
+  }
+
+  rows.sort((a, b) => (b.mtimeMs || 0) - (a.mtimeMs || 0));
+
+  for (const row of rows.slice(0, args.n)) {
+    const when = row.mtimeMs ? new Date(row.mtimeMs).toISOString().slice(0, 16).replace('T', ' ') : '?';
+    const title = truncateText((row.title || '').replace(/\s+/g, ' '), 60);
+    console.log(`${row.kind.padEnd(3)} ${row.sessionId}  ${when}  ${row.project || '?'}${title ? `  "${title}"` : ''}`);
+  }
+  if (!rows.length) console.log('no sessions found');
+}
+
+/** the two harnesses share a message shape, so they share one renderer. */
+function renderMessages(parsed, messages, args) {
+  const agy = parsed.kind === 'agy';
+  const agentLabel = agy ? 'AGENT' : 'CLAUDE';
+  const lineFor = agy ? agyToolLine : toolLine;
+
+  for (const msg of messages) {
+    const who = msg.role === 'user' ? 'USER' : msg.role === 'result' ? '  ←' : msg.role === 'system' ? 'SYSTEM' : agentLabel;
+    const status = msg.status && msg.status !== 'DONE' ? `  [${msg.status}]` : '';
+    console.log(`[${msg.seq}] ${who}${msg.ts ? `  ${msg.ts.slice(11, 16)}` : ''}${status}`);
+    if (msg.thinking) console.log(`  (thinking) ${msg.thinking}`);
+    if (msg.text) console.log(msg.text.split('\n').map(l => `  ${l}`).join('\n'));
+    for (const tool of msg.tools || []) console.log(lineFor(tool));
+    console.log('');
+  }
 }
 
 async function cmdShow(sessionId, args) {
-  const filePath = findSessionFile(sessionId);
-  if (!filePath) fail(`session not found: ${sessionId}`);
-
-  const parsed = await parseSessionFile(filePath, {
-    maxLength: args.max || Infinity,
-    includeThinking: args.thinking,
-  });
+  const parsed = agyTranscriptPath(sessionId)
+    ? await parseAgySession(sessionId, {
+        maxLength: args.max || Infinity,
+        includeThinking: args.thinking,
+        includeResults: args.results,
+      })
+    : await (async () => {
+        const filePath = findSessionFile(sessionId);
+        if (!filePath) fail(`session not found: ${sessionId}`);
+        return parseSessionFile(filePath, { maxLength: args.max || Infinity, includeThinking: args.thinking });
+      })();
 
   let messages = parsed.messages;
   if (args.since != null) messages = messages.filter(m => m.seq >= args.since);
   if (args.last != null) messages = messages.slice(-args.last);
 
-  const header = [parsed.aiTitle && `"${parsed.aiTitle}"`, parsed.project, parsed.branch && `branch:${parsed.branch}`, parsed.model]
-    .filter(Boolean).join('  ');
+  const header = [
+    parsed.kind === 'agy' && 'agy',
+    parsed.aiTitle && `"${parsed.aiTitle}"`,
+    parsed.project,
+    parsed.branch && `branch:${parsed.branch}`,
+    parsed.model,
+  ].filter(Boolean).join('  ');
   console.log(`# ${parsed.sessionId}  ${header}\n`);
 
   if (!messages.length) {
     console.log(args.since != null ? '(nothing new)' : '(no messages)');
   }
 
-  for (const msg of messages) {
-    const who = msg.role === 'user' ? 'USER' : 'CLAUDE';
-    console.log(`[${msg.seq}] ${who}${msg.ts ? `  ${msg.ts.slice(11, 16)}` : ''}`);
-    if (msg.thinking) console.log(`  (thinking) ${msg.thinking}`);
-    if (msg.text) console.log(msg.text.split('\n').map(l => `  ${l}`).join('\n'));
-    for (const tool of msg.tools || []) console.log(toolLine(tool));
-    console.log('');
-  }
+  renderMessages(parsed, messages, args);
 
   const lastSeq = parsed.messages.length ? parsed.messages[parsed.messages.length - 1].seq : -1;
   console.log(`# next: --since ${lastSeq + 1}`);
@@ -196,12 +245,12 @@ function ago(ms) {
 }
 
 /**
- * pair each live process with its session by start time — the two clocks agree
- * to within a couple of seconds — and read the tail of each transcript.
+ * pair each live Claude Code process with its session by start time — the two
+ * clocks agree to within a couple of seconds.
  */
-async function cmdLive(args) {
+function liveClaudeRows() {
   const procs = liveClaudeProcs();
-  if (!procs.length) return console.log('no live claude sessions');
+  if (!procs.length) return [];
 
   const unclaimed = recentSessionEnvEntries(procs[0].startMs - PROC_MATCH_WINDOW_MS);
   const rows = [];
@@ -214,18 +263,42 @@ async function cmdLive(args) {
       if (!best || drift < Math.abs(best.startMs - proc.startMs)) best = entry;
     }
     if (best) unclaimed.splice(unclaimed.indexOf(best), 1);
-    rows.push({ ...proc, sessionId: best?.sessionId ?? null });
+    rows.push({ kind: 'cc', ...proc, sessionId: best?.sessionId ?? null });
   }
+  return rows;
+}
+
+/** the transcript path for a row of either kind, or null if it has none yet. */
+function transcriptForRow(row) {
+  if (!row.sessionId) return null;
+  return row.kind === 'agy' ? agyTranscriptPath(row.sessionId) : transcriptFor(row.sessionId);
+}
+
+async function parseForRow(row, path, opts) {
+  return row.kind === 'agy'
+    ? parseAgySession(row.sessionId, { ...opts, includeResults: false })
+    : parseSessionFile(path, opts);
+}
+
+/** every live session across both harnesses, oldest first, with its last exchange. */
+async function cmdLive(args) {
+  const rows = [
+    ...(args.only === 'agy' ? [] : liveClaudeRows()),
+    ...(args.only === 'cc' ? [] : liveAgySessions()),
+  ].sort((a, b) => a.startMs - b.startMs);
+
+  if (!rows.length) return console.log('no live sessions');
 
   console.log(`# ${rows.length} live sessions  ·  ${hhmm(Date.now())}  ·  oldest first\n`);
 
   for (const [i, row] of rows.entries()) {
     const project = row.cwd.split('/').pop();
-    const path = row.sessionId ? transcriptFor(row.sessionId) : null;
+    const path = transcriptForRow(row);
     const self = path && path === process.env.CODEX_COMPANION_TRANSCRIPT_PATH ? '  (this session)' : '';
     const idle = path ? ago(statSync(path).mtimeMs) : '?';
+    const tag = row.kind === 'agy' ? `agy${row.model ? ` ${row.model}` : ''}${row.headless ? ' headless' : ''}` : 'cc';
 
-    console.log(`[${i + 1}] ${project}  ·  started ${hhmm(row.startMs)}  ·  quiet ${idle}  ·  pid ${row.pid}${self}`);
+    console.log(`[${i + 1}] ${project}  ·  ${tag}  ·  started ${hhmm(row.startMs)}  ·  quiet ${idle}  ·  pid ${row.pid}${self}`);
     console.log(`    ${row.cwd}`);
 
     if (!path) {
@@ -234,23 +307,23 @@ async function cmdLive(args) {
     }
     console.log(`    peek: ${row.sessionId}`);
 
-    const parsed = await parseSessionFile(path, { maxLength: 400 });
+    const parsed = await parseForRow(row, path, { maxLength: 400 });
     if (parsed.aiTitle) console.log(`    "${parsed.aiTitle}"`);
 
     const lastUser = [...parsed.messages].reverse().find(m => m.role === 'user' && m.text);
-    const lastClaude = [...parsed.messages].reverse().find(m => m.role !== 'user' && (m.text || m.tools?.length));
+    const lastAgent = [...parsed.messages].reverse().find(m => m.role === 'assistant' && (m.text || m.tools?.length));
     const flat = t => truncateText((t || '').replace(/\s+/g, ' '), args.max);
 
     if (lastUser) console.log(`    you   ${localHhmm(lastUser.ts)}  ${flat(lastUser.text)}`);
-    if (lastClaude) {
-      const tools = (lastClaude.tools || []).map(t => t.name).join(', ');
-      console.log(`    cc    ${localHhmm(lastClaude.ts)}  ${flat(lastClaude.text) || `[${tools}]`}`);
+    if (lastAgent) {
+      const tools = (lastAgent.tools || []).map(t => t.name).join(', ');
+      console.log(`    ${row.kind === 'agy' ? 'agy ' : 'cc  '}  ${localHhmm(lastAgent.ts)}  ${flat(lastAgent.text) || `[${tools}]`}`);
     }
     console.log('');
   }
 
-  console.log('# ListAgents gives the SendMessage name for each of these. Zip them per');
-  console.log('# project in this same start order — the tool reports start age, not id.');
+  console.log('# ListAgents gives the SendMessage name for each Claude Code row. Zip them');
+  console.log('# per project in this same start order — the tool reports start age, not id.');
 }
 
 const args = parseArgs(process.argv.slice(2));
@@ -258,5 +331,5 @@ const [first, second] = args._;
 
 if (!first) fail('usage: peek.mjs live | peek.mjs list [projectFilter] | peek.mjs <session-id> [--since N] [--last N] [--thinking]');
 if (first === 'live') await cmdLive({ ...args, max: args.max === 3000 ? 150 : args.max });
-else if (first === 'list') await cmdList(second, args.n);
+else if (first === 'list') await cmdList(second, args);
 else await cmdShow(first, args);

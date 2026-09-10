@@ -19,9 +19,15 @@ Requires the `peek` skill from this same collection.
 node ~/.claude/skills/peek/scripts/peek.mjs live
 ```
 
-Every live `claude` process, oldest first: project, start time, how long it has
+Every live session, oldest first: project, harness, start time, how long it has
 been quiet, pid, session id, title, and the last thing each side said. Getting
 this from disk costs the observed sessions nothing.
+
+Rows are tagged `cc` (Claude Code) or `agy` (Antigravity CLI, running Gemini or
+another model through `agy`). An `agy` row reads the same way and peeks the
+same way, with one difference that matters: there is no `SendMessage` name for
+it, so you can watch it and report on it but not talk to it. `--cc` narrows the
+roster when the user only means their Claude sessions.
 
 Two failure modes to avoid. `peek.mjs list` scans *every* transcript on disk, so
 it returns this morning's dead sessions alongside live ones; only `live` answers
