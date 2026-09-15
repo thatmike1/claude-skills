@@ -66,6 +66,7 @@ Send one JSON object on stdin to `node scripts/warden.mjs action`:
 | Finish current block | `{"action":"done"}` |
 | Skip it | `{"action":"skip"}` |
 | Add time | `{"action":"extend","minutes":15}` |
+| Retry an exhausted check delivery | `{"action":"retry"}` |
 | Pause / resume | `{"action":"pause"}` / `{"action":"resume"}` |
 | Timed break, with early resume available | `{"action":"break","minutes":10}` |
 | Stop all checks and reminders | `{"action":"stop"}` |
@@ -94,10 +95,20 @@ When the result of a send is uncertain, the panel says so and holds further
 checks; inspect the T3 conversation before acknowledging that tick.
 
 The service can outlive T3. If T3 is unavailable, the panel shows the delivery
-error and bounded retries use the same message id. Reopening T3 preserves the
-thread; use the bridge's connection check if delivery remains unavailable.
-An expired day stops automatically. Start tomorrow as a new day, with a fresh
-binding; do not silently restart yesterday's obligations.
+error and bounded retries use the same message id. A local T3 restart can
+change its port: the bridge follows the live runtime only after verifying the
+same T3 and provider thread. It refuses relocation to a remote address.
+After retries are exhausted, a desktop alert points to the panel. Reopen T3
+and use **Retry check** (or the `retry` action); it refreshes the binding and
+retries the same tick, without starting the day over. If identity verification
+fails, inspect the binding instead of selecting another conversation.
+
+An expired day stops automatically, sends a desktop notification, and delivers
+a separate final-report request to the thread. Its persisted `endReport` uses
+one message id across bounded retries. Verify the report id against saved
+state before answering; a report from an earlier day must not summarize a new
+day. Explicit **Stop** cancels pending deliveries. Start tomorrow as a new day,
+with a fresh binding; do not silently restart yesterday's obligations.
 
 Completed blocks preserve `estimateMinutes` and `activeSeconds`. Use them for
 the short end-of-day comparison. Pause and break time are excluded.

@@ -20,6 +20,7 @@ export async function createWardenServer(options = {}) {
   const stateDir = expandHome(options.stateDir ?? '~/.local/state/warden');
   const widgetsDir = expandHome(options.widgetsDir ?? '~/.t3/userdata/widgets');
   const dispatcher = options.dispatcher ?? defaultDispatcher;
+  const bindingRefresher = options.bindingRefresher ?? defaultBindingRefresher;
   const bindingDoctor = options.bindingDoctor ?? defaultBindingDoctor;
   const notifier = options.noNotify ? async () => {} : (options.notifier ?? desktopNotifier);
   const widgetWriter = options.widgetWriter ?? makeWidgetWriter(widgetsDir);
@@ -52,6 +53,7 @@ export async function createWardenServer(options = {}) {
     controller = new WardenController({
       stateDir,
       dispatcher,
+      bindingRefresher,
       notifier,
       widgetWriter,
       ...(options.now ? { now: options.now } : {}),
@@ -244,6 +246,11 @@ async function defaultBindingDoctor(binding) {
   return doctorBinding(binding);
 }
 
+async function defaultBindingRefresher(binding) {
+  const { refreshBinding } = await import('./t3-bridge.mjs');
+  return refreshBinding(binding);
+}
+
 async function desktopNotifier({ title, body }) {
   const { notifyUser } = await import('./notify.mjs');
   const result = await notifyUser(body, { title });
@@ -357,6 +364,7 @@ Action JSON:
   {"action":"skip","id":"focus"}
   {"action":"extend","minutes":15}
   {"action":"pause"} | {"action":"resume"} | {"action":"break","minutes":10} | {"action":"stop"}
+  {"action":"retry"}  # retry a failed check-in with the same id
   {"action":"check-in","id":"<pending tick id>","verdict":"on-plan|drift|break|unknown","note":"optional","nextMinutes":25}
   {"action":"replan","blocks":[{"id":"next","title":"New future block","minutes":25}]}
   {"action":"ack-reminder","id":"lunch"} | {"action":"snooze-reminder","id":"lunch","minutes":10}

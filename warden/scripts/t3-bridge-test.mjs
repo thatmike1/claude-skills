@@ -7,7 +7,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { afterEach, test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 
-import { dispatchTick } from './t3-bridge.mjs';
+import { dispatchTick, doctorBinding, refreshBinding, validateBinding } from './t3-bridge.mjs';
 
 const originalFetch = globalThis.fetch;
 const originalWebSocket = globalThis.WebSocket;
@@ -149,20 +149,155 @@ test('dispatchTick exchanges a ticket and sends the canonical T3 turn command', 
   });
 });
 
-test('dispatchTick fails closed before auth when the runtime origin changes', async () => {
+test('dispatchTick rejects a changed remote runtime origin before auth', async () => {
   let fetched = false;
   globalThis.fetch = async () => {
     fetched = true;
     throw new Error('unexpected fetch');
   };
+  const binding = await bindingFixture({ baseUrl: 'https://t3.example:3773' });
+  await writeFile(
+    join(binding.baseDir, 'userdata', 'server-runtime.json'),
+    JSON.stringify({
+      version: 1,
+      pid: process.pid,
+      origin: 'https://other.example:3774',
+      startedAt: new Date().toISOString(),
+    }),
+  );
   await assert.rejects(
-    dispatchTick(await bindingFixture({ baseUrl: 'http://127.0.0.1:3774' }), {
+    dispatchTick(binding, {
       id: 'tick-origin',
       text: 'warden tick',
     }),
-    /runtime identity mismatch/,
+    /refuses to follow relocated remote runtime origin/,
   );
   assert.equal(fetched, false);
+});
+
+test('dispatchTick refreshes a restarted local runtime origin', async () => {
+  FakeWebSocket.instances = [];
+  let ticketRequest;
+  globalThis.fetch = async (url, options) => {
+    ticketRequest = { url: String(url), options };
+    return new Response(JSON.stringify({ ticket: 'restarted-ticket' }), {
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+    });
+  };
+  globalThis.WebSocket = FakeWebSocket;
+  const binding = await bindingFixture();
+  await writeFile(
+    join(binding.baseDir, 'userdata', 'server-runtime.json'),
+    JSON.stringify({
+      version: 1,
+      pid: process.pid,
+      origin: 'http://127.0.0.1:3774',
+      startedAt: new Date().toISOString(),
+    }),
+  );
+
+  await dispatchTick(binding, { id: 'tick-restarted', text: 'warden tick' });
+
+  assert.equal(ticketRequest.url, 'http://127.0.0.1:3774/api/auth/websocket-ticket');
+});
+
+test('refreshBinding preserves credentials and current thread settings', async () => {
+  const binding = await bindingFixture({ runtimeMode: 'stale', timeoutMs: 1234 });
+  await writeFile(
+    join(binding.baseDir, 'userdata', 'server-runtime.json'),
+    JSON.stringify({
+      version: 1,
+      pid: process.pid,
+      origin: 'http://localhost:3774',
+      startedAt: new Date().toISOString(),
+    }),
+  );
+  const database = new DatabaseSync(join(binding.baseDir, 'userdata', 'state.sqlite'));
+  database.exec("UPDATE projection_threads SET runtime_mode = 'auto', interaction_mode = 'plan'");
+  database.close();
+
+  const refreshed = await refreshBinding(binding);
+
+  assert.deepEqual(refreshed, {
+    ...binding,
+    baseUrl: 'http://localhost:3774',
+    runtimeMode: 'auto',
+    interactionMode: 'plan',
+  });
+});
+
+test('refreshBinding accepts a changed runtime PID', async () => {
+  const binding = await bindingFixture();
+  await writeFile(
+    join(binding.baseDir, 'userdata', 'server-runtime.json'),
+    JSON.stringify({
+      version: 1,
+      pid: process.ppid,
+      origin: binding.baseUrl,
+      startedAt: new Date().toISOString(),
+    }),
+  );
+
+  const verified = await validateBinding(await refreshBinding(binding));
+
+  assert.equal(verified.pid, process.ppid);
+});
+
+test('doctorBinding refreshes a restarted local runtime origin', async () => {
+  globalThis.fetch = async (url) => {
+    assert.equal(String(url), 'http://127.0.0.1:3775/api/auth/websocket-ticket');
+    return new Response(JSON.stringify({ ticket: 'doctor-ticket' }), {
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+    });
+  };
+  globalThis.WebSocket = FakeWebSocket;
+  const binding = await bindingFixture();
+  await writeFile(
+    join(binding.baseDir, 'userdata', 'server-runtime.json'),
+    JSON.stringify({
+      version: 1,
+      pid: process.pid,
+      origin: 'http://127.0.0.1:3775',
+      startedAt: new Date().toISOString(),
+    }),
+  );
+
+  const result = await doctorBinding(binding);
+
+  assert.equal(result.baseUrl, 'http://127.0.0.1:3775');
+});
+
+test('refreshBinding rejects a provider thread remap', async () => {
+  const binding = await bindingFixture();
+  const database = new DatabaseSync(join(binding.baseDir, 'userdata', 'state.sqlite'));
+  database.exec(`
+    UPDATE provider_session_runtime SET thread_id = 't3-thread-new';
+    INSERT INTO projection_threads VALUES
+      ('t3-thread-new', 'New thread', NULL, NULL, 'full-access', 'default');
+  `);
+  database.close();
+
+  await assert.rejects(refreshBinding(binding), /provider identity mismatch/);
+});
+
+test('refreshBinding rejects a deleted target', async () => {
+  const binding = await bindingFixture();
+  const database = new DatabaseSync(join(binding.baseDir, 'userdata', 'state.sqlite'));
+  database.exec("UPDATE projection_threads SET deleted_at = '2026-09-16T08:00:00Z'");
+  database.close();
+
+  await assert.rejects(refreshBinding(binding), /expected one mapping.*found 0/);
+});
+
+test('refreshBinding rejects an archived target', async () => {
+  const binding = await bindingFixture();
+  const database = new DatabaseSync(join(binding.baseDir, 'userdata', 'state.sqlite'));
+  database.exec("UPDATE projection_threads SET archived_at = '2026-09-16T08:00:00Z'");
+  database.close();
+
+  await assert.rejects(refreshBinding(binding), /expected one mapping.*found 0/);
 });
 
 test('dispatchTick uses the current T3 thread permissions instead of stale binding values', async () => {

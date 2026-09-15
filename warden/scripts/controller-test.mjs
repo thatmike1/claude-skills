@@ -56,6 +56,7 @@ async function fixture(options = {}) {
       return { dispatched: true, commandId: `warden:${tick.id}` };
     }),
     notifier: options.notifier,
+    bindingRefresher: options.bindingRefresher,
     retryDelaysMs: options.retryDelaysMs,
   });
   await controller.init();
@@ -102,7 +103,7 @@ test('pause and resume exclude paused time from elapsed work', async (context) =
   assert.equal(state.blocks[0].activeSeconds, 10 * 60);
 });
 
-test('endAt stops the day and cancels reminders without dispatching', async (context) => {
+test('endAt stops the day, cancels reminders, and starts the final readout', async (context) => {
   const notifications = [];
   const item = await fixture({ notifier: async (notification) => notifications.push(notification) });
   context.after(item.cleanup);
@@ -116,8 +117,8 @@ test('endAt stops the day and cancels reminders without dispatching', async (con
   assert.equal(state.phase, 'stopped');
   assert.equal(state.stopReason, 'day ended');
   assert.equal(state.reminders[0].status, 'cancelled');
-  assert.equal(item.dispatches.length, 0);
-  assert.equal(notifications.length, 0);
+  assert.equal(item.dispatches.length, 1);
+  assert.equal(notifications.length, 1);
 });
 
 test('restart keeps an acknowledged pending dispatch from duplicating', async (context) => {
@@ -175,6 +176,214 @@ test('failed dispatch is visible and retries with the same tick id', async (cont
   state = item.controller.getState();
   assert.equal(state.pendingTick.status, 'awaiting');
   assert.deepEqual(attempts, [attempts[0], attempts[0]]);
+});
+
+test('retry refreshes the binding and resets the attempt budget without changing the tick id', async (context) => {
+  const attempts = [];
+  const refreshedBindings = [];
+  let dispatchShouldFail = true;
+  const item = await fixture({
+    retryDelaysMs: [],
+    bindingRefresher: async (binding) => {
+      refreshedBindings.push(binding);
+      return { ...binding, baseUrl: 'http://127.0.0.1:9001' };
+    },
+    dispatcher: async (binding, tick) => {
+      attempts.push({ binding, id: tick.id });
+      if (dispatchShouldFail) throw new Error('stale T3 runtime');
+      return { dispatched: true, commandId: `warden:${tick.id}` };
+    },
+  });
+  context.after(item.cleanup);
+  await item.controller.action(startPayload({ blocks: [{ id: 'one', title: 'Short', minutes: 10 }] }));
+  item.clock.advanceMinutes(10);
+  await item.controller.processDue();
+  const failed = item.controller.getState();
+  assert.equal(failed.pendingTick.status, 'failed');
+  assert.equal(failed.pendingTick.attempt, 1);
+
+  dispatchShouldFail = false;
+  const retried = await item.controller.action({ action: 'retry' });
+  assert.equal(retried.pendingTick.id, failed.pendingTick.id);
+  assert.equal(retried.pendingTick.status, 'retry');
+  assert.equal(retried.pendingTick.attempt, 0);
+  assert.equal(retried.binding.baseUrl, 'http://127.0.0.1:9001');
+  assert.equal(refreshedBindings.length, 1);
+  await item.controller.processDue();
+  assert.deepEqual(attempts.map(({ id }) => id), [failed.pendingTick.id, failed.pendingTick.id]);
+  assert.equal(attempts[1].binding.baseUrl, 'http://127.0.0.1:9001');
+  assert.equal(item.controller.getState().pendingTick.status, 'awaiting');
+});
+
+test('retry rejects a refreshed binding that points at a different thread', async (context) => {
+  const item = await fixture({
+    retryDelaysMs: [],
+    dispatcher: async () => { throw new Error('thread disappeared'); },
+    bindingRefresher: async (binding) => ({ ...binding, threadId: 'another-thread' }),
+  });
+  context.after(item.cleanup);
+  await item.controller.action(startPayload({ blocks: [{ id: 'one', title: 'Short', minutes: 10 }] }));
+  item.clock.advanceMinutes(10);
+  await item.controller.processDue();
+  const before = item.controller.getState();
+  await assert.rejects(item.controller.action({ action: 'retry' }), /same T3 thread/);
+  assert.deepEqual(item.controller.getState(), before);
+});
+
+test('exhausted tick delivery notifies once until a new retry episode', async (context) => {
+  const notifications = [];
+  const item = await fixture({
+    retryDelaysMs: [],
+    dispatcher: async () => { throw new Error('T3 is offline'); },
+    notifier: async (notification) => notifications.push(notification),
+  });
+  context.after(item.cleanup);
+  await item.controller.action(startPayload({ blocks: [{ id: 'one', title: 'Short', minutes: 10 }] }));
+  item.clock.advanceMinutes(10);
+  await item.controller.processDue();
+  await item.controller.processDue();
+  assert.equal(notifications.length, 1);
+  assert.match(notifications[0].body, /Retry check/);
+
+  await item.controller.action({ action: 'retry' });
+  await item.controller.processDue();
+  await item.controller.processDue();
+  assert.equal(notifications.length, 2);
+});
+
+test('natural day end retries one idempotent final readout across restart', async (context) => {
+  const notifications = [];
+  const attempts = [];
+  const clock = new Clock();
+  const dispatcher = async (_binding, prompt) => {
+    attempts.push(prompt);
+    if (attempts.length === 1) throw new Error('T3 restarting');
+    return { dispatched: true, commandId: `warden:${prompt.id}` };
+  };
+  const item = await fixture({
+    clock,
+    dispatcher,
+    notifier: async (notification) => notifications.push(notification),
+    retryDelaysMs: [1_000],
+  });
+  context.after(item.cleanup);
+  await item.controller.action(startPayload({
+    endAt: '2026-09-15T08:10:00.000Z',
+    blocks: [{ id: 'one', title: 'One block', minutes: 30 }],
+  }));
+  clock.advanceMinutes(11);
+  await item.controller.processDue();
+  assert.equal(item.controller.getState().phase, 'stopped');
+  assert.equal(item.controller.getState().endReport.status, 'retry');
+  assert.equal(notifications.length, 1);
+  assert.match(attempts[0].text, /Read the stopped Warden state/);
+  assert.doesNotMatch(attempts[0].text, /acknowledg|restart/i);
+
+  const restarted = new WardenController({
+    stateDir: item.directory,
+    now: clock.now,
+    dispatcher,
+    notifier: async (notification) => notifications.push(notification),
+    retryDelaysMs: [1_000],
+  });
+  await restarted.init();
+  clock.advanceMilliseconds(1_000);
+  await restarted.processDue();
+  await restarted.processDue();
+  assert.equal(restarted.getState().endReport.status, 'sent');
+  assert.deepEqual(attempts.map(({ id }) => id), [attempts[0].id, attempts[0].id]);
+  assert.equal(notifications.length, 1);
+});
+
+test('explicit stop stays quiet and cancels all automatic end work', async (context) => {
+  const notifications = [];
+  const item = await fixture({ notifier: async (notification) => notifications.push(notification) });
+  context.after(item.cleanup);
+  await item.controller.action(startPayload({ endAt: '2026-09-15T08:10:00.000Z' }));
+  await item.controller.action({ action: 'stop' });
+  item.clock.advanceMinutes(11);
+  await item.controller.processDue();
+  assert.equal(item.controller.getState().endReport, null);
+  assert.equal(item.dispatches.length, 0);
+  assert.equal(notifications.length, 0);
+});
+
+test('starting a new day suppresses an old end report waiting behind notification', async (context) => {
+  const directory = await mkdtemp(join(tmpdir(), 'warden-end-race-'));
+  context.after(() => rm(directory, { recursive: true, force: true }));
+  const clock = new Clock();
+  const notificationStarted = Promise.withResolvers();
+  const releaseNotification = Promise.withResolvers();
+  const dispatches = [];
+  const controller = new WardenController({
+    stateDir: directory,
+    now: clock.now,
+    dispatcher: async (_binding, prompt) => dispatches.push(prompt),
+    notifier: async () => {
+      notificationStarted.resolve();
+      await releaseNotification.promise;
+    },
+  });
+  await controller.init();
+  await controller.action(startPayload({
+    endAt: '2026-09-15T08:10:00.000Z',
+    blocks: [{ id: 'one', title: 'Old day', minutes: 30 }],
+  }));
+  clock.advanceMinutes(11);
+  const due = controller.processDue();
+  await notificationStarted.promise;
+  await controller.action(startPayload({
+    endAt: '2026-09-15T18:00:00.000Z',
+    blocks: [{ id: 'new', title: 'New day', minutes: 30 }],
+  }));
+  releaseNotification.resolve();
+  await due;
+  assert.equal(dispatches.length, 0);
+  assert.equal(controller.getState().phase, 'running');
+  assert.equal(controller.getState().endReport, null);
+});
+
+test('day end crossing while a tick waits behind notification still sends the final report', async (context) => {
+  const directory = await mkdtemp(join(tmpdir(), 'warden-end-crossing-'));
+  context.after(() => rm(directory, { recursive: true, force: true }));
+  const clock = new Clock();
+  const notificationStarted = Promise.withResolvers();
+  const releaseNotification = Promise.withResolvers();
+  const notifications = [];
+  const dispatches = [];
+  const controller = new WardenController({
+    stateDir: directory,
+    now: clock.now,
+    dispatcher: async (_binding, prompt) => {
+      dispatches.push(prompt);
+      return { dispatched: true };
+    },
+    notifier: async (notification) => {
+      notifications.push(notification);
+      if (notifications.length === 1) {
+        notificationStarted.resolve();
+        await releaseNotification.promise;
+      }
+    },
+  });
+  await controller.init();
+  await controller.action(startPayload({
+    endAt: '2026-09-15T08:26:00.000Z',
+    blocks: [{ id: 'one', title: 'One block', minutes: 30 }],
+    reminders: [{ id: 'fixed', title: 'Reminder', at: '2026-09-15T08:25:00.000Z' }],
+  }));
+  clock.advanceMinutes(25);
+  const due = controller.processDue();
+  await notificationStarted.promise;
+  clock.advanceMinutes(2);
+  releaseNotification.resolve();
+  await due;
+  await controller.processDue();
+  assert.equal(controller.getState().phase, 'stopped');
+  assert.equal(controller.getState().endReport.status, 'sent');
+  assert.equal(dispatches.length, 1);
+  assert.match(dispatches[0].text, /Warden final report/);
+  assert.equal(notifications.length, 2);
 });
 
 test('a model check-in schedules the next tick only after dispatch finishes', async (context) => {

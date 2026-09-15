@@ -33,6 +33,7 @@ export function emptyState(now = new Date()) {
     break: null,
     nextTickAt: null,
     pendingTick: null,
+    endReport: null,
     reminders: [],
     lastVerdict: null,
     lastError: null,
@@ -49,6 +50,7 @@ export class WardenController {
     widgetWriter = async () => {},
     now = () => new Date(),
     retryDelaysMs = RETRY_DELAYS_MS,
+    bindingRefresher = null,
     controlUrl = 'http://127.0.0.1:1339',
   }) {
     if (!stateDir) throw new TypeError('stateDir is required');
@@ -59,6 +61,7 @@ export class WardenController {
     this.widgetWriter = widgetWriter;
     this.now = now;
     this.retryDelaysMs = retryDelaysMs;
+    this.bindingRefresher = bindingRefresher;
     this.controlUrl = controlUrl;
     this.state = emptyState(this.now());
     this.queue = Promise.resolve();
@@ -70,6 +73,7 @@ export class WardenController {
     try {
       const loaded = JSON.parse(await readFile(this.statePath, 'utf8'));
       validatePersistedState(loaded);
+      if (loaded.endReport === undefined) loaded.endReport = null;
       this.state = loaded;
       if (loaded.pendingTick?.status === 'acknowledged') {
         finalizeAcknowledgedTick(loaded, this.now());
@@ -90,6 +94,24 @@ export class WardenController {
           },
         };
         await this.#commit(this.state);
+      }
+      if (loaded.endReport?.status === 'dispatching') {
+        const draft = structuredClone(this.state);
+        const report = draft.endReport;
+        report.error = 'service restarted while final report delivery was in progress';
+        if (report.attempt > this.retryDelaysMs.length) {
+          report.status = 'failed';
+          report.nextAttemptAt = null;
+        } else {
+          report.status = 'retry';
+          report.nextAttemptAt = this.now().toISOString();
+        }
+        draft.lastError = {
+          code: 'end-report-outcome-unknown',
+          message: report.error,
+          at: this.now().toISOString(),
+        };
+        await this.#commit(draft);
       }
     } catch (error) {
       if (error?.code !== 'ENOENT') throw error;
@@ -167,6 +189,25 @@ export class WardenController {
         case 'stop':
           stop(draft, now, 'stopped by user');
           break;
+        case 'retry': {
+          requireFailedTick(draft);
+          if (this.bindingRefresher) {
+            const refreshed = validateBinding(await this.bindingRefresher(structuredClone(draft.binding)));
+            if (
+              refreshed.threadId !== draft.binding.threadId
+              || refreshed.providerThreadId !== draft.binding.providerThreadId
+            ) {
+              throw new WardenError(
+                'binding-identity-mismatch',
+                'Refreshed binding must resolve to the same T3 thread and provider thread',
+                409,
+              );
+            }
+            draft.binding = refreshed;
+          }
+          retryFailedTick(draft, now);
+          break;
+        }
         case 'check-in':
           checkIn(draft, payload, now);
           break;
@@ -201,6 +242,17 @@ export class WardenController {
 
       if (isPast(draft.endAt, now) && !['idle', 'stopped'].includes(draft.phase)) {
         stop(draft, now, 'day ended');
+        draft.endReport = makeEndReport(now);
+        notifications.push({
+          title: 'warden day ended',
+          body: 'Your planned day has ended. T3 is preparing the final readout.',
+        });
+        dispatch = {
+          kind: 'end-report',
+          id: draft.endReport.id,
+          text: makeEndReportPrompt(draft.endReport.id, this.controlUrl),
+          binding: draft.binding,
+        };
         changed = true;
       }
 
@@ -227,8 +279,21 @@ export class WardenController {
         changed = true;
       }
 
-      if (
-        draft.phase === 'running'
+      if (!dispatch && draft.endReport?.status === 'retry' && isPast(draft.endReport.nextAttemptAt, now)) {
+        draft.endReport.status = 'dispatching';
+        draft.endReport.attempt += 1;
+        draft.endReport.nextAttemptAt = null;
+        draft.endReport.error = null;
+        dispatch = {
+          kind: 'end-report',
+          id: draft.endReport.id,
+          text: makeEndReportPrompt(draft.endReport.id, this.controlUrl),
+          binding: draft.binding,
+        };
+        changed = true;
+      } else if (
+        !dispatch
+        && draft.phase === 'running'
         && !draft.pendingTick
         && isPast(draft.nextTickAt, now)
         && !isPast(draft.endAt, now)
@@ -236,10 +301,11 @@ export class WardenController {
         const pendingTick = makePendingTick(draft, now, 'scheduled check');
         draft.pendingTick = pendingTick;
         draft.nextTickAt = null;
-        dispatch = { id: pendingTick.id, text: makeTickPrompt(pendingTick.id, this.controlUrl), binding: draft.binding };
+        dispatch = { kind: 'tick', id: pendingTick.id, text: makeTickPrompt(pendingTick.id, this.controlUrl), binding: draft.binding };
         changed = true;
       } else if (
-        draft.phase === 'running'
+        !dispatch
+        && draft.phase === 'running'
         && draft.pendingTick?.status === 'retry'
         && isPast(draft.pendingTick.nextAttemptAt, now)
         && !isPast(draft.endAt, now)
@@ -249,6 +315,7 @@ export class WardenController {
         draft.pendingTick.nextAttemptAt = null;
         draft.pendingTick.error = null;
         dispatch = {
+          kind: 'tick',
           id: draft.pendingTick.id,
           text: makeTickPrompt(draft.pendingTick.id, this.controlUrl),
           binding: draft.binding,
@@ -271,11 +338,15 @@ export class WardenController {
 
     const stillCurrent = await this.#serialize(async () => {
       const now = this.now();
-      if (isPast(this.state.endAt, now) && !['idle', 'stopped'].includes(this.state.phase)) {
-        const draft = structuredClone(this.state);
-        stop(draft, now, 'day ended');
-        await this.#commit(draft);
+      if (dispatch.kind === 'tick' && isPast(this.state.endAt, now) && !['idle', 'stopped'].includes(this.state.phase)) {
+        // the next due pass owns the complete natural-end transition and its side effects
         return false;
+      }
+      if (dispatch.kind === 'end-report') {
+        return this.state.phase === 'stopped'
+          && this.state.stopReason === 'day ended'
+          && this.state.endReport?.id === dispatch.id
+          && this.state.endReport.status === 'dispatching';
       }
       return this.state.phase === 'running'
         && this.state.pendingTick?.id === dispatch.id
@@ -286,6 +357,16 @@ export class WardenController {
     try {
       const result = await this.dispatcher(dispatch.binding, { id: dispatch.id, text: dispatch.text });
       await this.#serialize(async () => {
+        if (dispatch.kind === 'end-report') {
+          if (this.state.endReport?.id !== dispatch.id || this.state.endReport.status !== 'dispatching') return;
+          const draft = structuredClone(this.state);
+          draft.endReport.status = 'sent';
+          draft.endReport.sentAt = this.now().toISOString();
+          draft.endReport.result = compactDispatchResult(result);
+          draft.lastError = null;
+          await this.#commit(draft);
+          return;
+        }
         if (this.state.pendingTick?.id !== dispatch.id) return;
         const draft = structuredClone(this.state);
         if (draft.pendingTick.status === 'acknowledged') {
@@ -302,7 +383,29 @@ export class WardenController {
       });
       return { dispatched: true, result, state: this.getState() };
     } catch (error) {
+      let failureNotification = null;
       await this.#serialize(async () => {
+        if (dispatch.kind === 'end-report') {
+          if (this.state.endReport?.id !== dispatch.id || this.state.endReport.status !== 'dispatching') return;
+          const draft = structuredClone(this.state);
+          const report = draft.endReport;
+          const delay = this.retryDelaysMs[report.attempt - 1];
+          report.error = safeErrorMessage(error);
+          if (delay === undefined) {
+            report.status = 'failed';
+            report.nextAttemptAt = null;
+          } else {
+            report.status = 'retry';
+            report.nextAttemptAt = new Date(this.now().getTime() + delay).toISOString();
+          }
+          draft.lastError = {
+            code: 'end-report-failed',
+            message: report.error,
+            at: this.now().toISOString(),
+          };
+          await this.#commit(draft);
+          return;
+        }
         if (this.state.pendingTick?.id !== dispatch.id) return;
         const draft = structuredClone(this.state);
         const pending = draft.pendingTick;
@@ -316,6 +419,13 @@ export class WardenController {
         if (delay === undefined || isPast(draft.endAt, new Date(this.now().getTime() + delay))) {
           pending.status = 'failed';
           pending.nextAttemptAt = null;
+          if (!pending.failureNotifiedAt) {
+            pending.failureNotifiedAt = this.now().toISOString();
+            failureNotification = {
+              title: 'warden check-in failed',
+              body: 'Warden could not reach T3 after several attempts. Open the dashboard and use Retry check.',
+            };
+          }
         } else {
           pending.status = 'retry';
           pending.nextAttemptAt = new Date(this.now().getTime() + delay).toISOString();
@@ -327,6 +437,13 @@ export class WardenController {
         };
         await this.#commit(draft);
       });
+      if (failureNotification) {
+        try {
+          await this.notifier(failureNotification);
+        } catch (notificationError) {
+          await this.#recordError('notification-failed', notificationError);
+        }
+      }
       return { dispatched: false, error: safeErrorMessage(error), state: this.getState() };
     }
   }
@@ -426,9 +543,12 @@ function applyStart(state, payload, now) {
   state.break = null;
   state.nextTickAt = nextTickTime(state, now, DEFAULT_TICK_MINUTES);
   state.pendingTick = null;
+  state.endReport = null;
   state.reminders = reminders;
   state.lastVerdict = null;
   state.lastError = null;
+  delete state.stoppedAt;
+  delete state.stopReason;
 }
 
 function finishBlock(state, requestedId, status, now) {
@@ -595,11 +715,28 @@ function stop(state, now, reason) {
   state.break = null;
   state.nextTickAt = null;
   state.pendingTick = null;
+  state.endReport = null;
   state.stoppedAt = now.toISOString();
   state.stopReason = reason;
   for (const reminder of state.reminders) {
     if (['pending', 'due'].includes(reminder.status)) reminder.status = 'cancelled';
   }
+}
+
+function requireFailedTick(state) {
+  requireRunning(state);
+  if (state.pendingTick?.status !== 'failed') {
+    throw new WardenError('no-failed-tick', 'There is no failed check-in delivery to retry', 409);
+  }
+}
+
+function retryFailedTick(state, now) {
+  state.pendingTick.status = 'retry';
+  state.pendingTick.attempt = 0;
+  state.pendingTick.nextAttemptAt = now.toISOString();
+  state.pendingTick.error = null;
+  delete state.pendingTick.failureNotifiedAt;
+  state.lastError = null;
 }
 
 function makeCurrent(block, now) {
@@ -629,14 +766,38 @@ function makePendingTick(state, now, reason) {
   };
 }
 
+function makeEndReport(now) {
+  return {
+    id: randomUUID(),
+    status: 'dispatching',
+    createdAt: now.toISOString(),
+    notificationSentAt: now.toISOString(),
+    attempt: 1,
+    nextAttemptAt: null,
+    error: null,
+  };
+}
+
 function makeTickPrompt(id, controlUrl) {
   return [
     `Warden tick ${id}.`,
     `Invoke $warden and follow ${SKILL_PATH}.`,
     `Read current state from GET ${controlUrl}/api/state; this prompt intentionally contains no plan or signal data.`,
+    'If another user request is already being handled, finish that request before handling this tick.',
     'Gather only the recent signals needed for a gentle on-plan, break, unknown, or drift verdict.',
     `Before acknowledging, confirm phase is running and pendingTick.id is still ${id}.`,
     `POST the check-in to ${controlUrl}/api/action as JSON with X-Warden-Request: 1, then respond to Mike briefly.`,
+  ].join(' ');
+}
+
+function makeEndReportPrompt(id, controlUrl) {
+  return [
+    `Warden final report ${id}.`,
+    `Invoke $warden and follow ${SKILL_PATH}.`,
+    `Read the stopped Warden state from GET ${controlUrl}/api/state.`,
+    `Continue only when phase is stopped and endReport.id is still ${id}; otherwise ignore this stale delivery.`,
+    'Summarize the day from that state and publish one final readout.',
+    'Do not POST any actions or continue the plan.',
   ].join(' ');
 }
 

@@ -77,6 +77,7 @@
         <button class="quiet" data-action="pause" id="pause">Pause</button>
         <button class="primary" data-action="resume" id="resume" hidden>Resume</button>
         <button class="quiet" data-action="skip" id="skip">Skip</button>
+        <button class="primary" data-action="retry" id="retry" hidden>Retry check</button>
       </div>
     </section>
     <div class="columns">
@@ -115,10 +116,10 @@
     text('current-note',stopped ? 'What’s left can wait for another day.' : resting ? `${current?.title ? `Pick up ${current.title} when you’re ready.` : 'Resume when you’re ready.'}` : 'One block at a time. Adjust it as you go.');
     const seconds=state.current ? running ? Math.max(0,(Date.parse(state.current.dueAt)-Date.now())/1000) : state.current.remainingSeconds : null;
     text('block-time',seconds===null||stopped ? '' : seconds>0 ? `${Math.ceil(seconds/60)} min ${resting?'saved':'left in this block'}` : 'Time to check in. Extend or move on.');
-    text('next-check',stopped ? 'Checks stopped' : phase==='paused' ? 'Checks paused' : phase==='break' ? `Back at ${clock(state.break?.dueAt)}` : state.pendingTick ? state.pendingTick.status==='retry' ? 'Check-in delivery needs attention' : 'Check-in sent to T3' : state.nextTickAt ? `Next check ${clock(state.nextTickAt)}` : 'No check scheduled');
+    text('next-check',stopped ? 'Checks stopped' : phase==='paused' ? 'Checks paused' : phase==='break' ? `Back at ${clock(state.break?.dueAt)}` : state.pendingTick ? state.pendingTick.status==='failed' ? 'Check-in delivery failed' : state.pendingTick.status==='retry' ? 'Check-in delivery needs attention' : 'Check-in sent to T3' : state.nextTickAt ? `Next check ${clock(state.nextTickAt)}` : 'No check scheduled');
     text('day-end',state.endAt ? `Finish ${clock(state.endAt)}` : '');
     for(const id of ['done','extend','break','pause','skip']) show(id,running && (id==='pause'||Boolean(current)));
-    show('resume',resting); show('stop',!stopped);
+    show('resume',resting); show('retry',running&&state.pendingTick?.status==='failed'); show('stop',!stopped);
     const remaining=state.blocks.filter(b=>b.status==='pending'||b.status==='current');
     $('blocks').replaceChildren(...remaining.map(b=>blockRow(b)));
     show('nothing-next',!remaining.length);
@@ -155,7 +156,7 @@
     const button=event.target.closest('button[data-action]');if(!button||busy)return;
     busy=true;show('feedback',false);render();
     const payload={action:button.dataset.action};if(button.dataset.minutes)payload.minutes=Number(button.dataset.minutes);if(button.dataset.id)payload.id=button.dataset.id;
-    try { const response=await fetch('/api/action',{method:'POST',headers:{'Content-Type':'application/json','X-Warden-Request':'1'},body:JSON.stringify(payload),signal:AbortSignal.timeout(10000)});const data=await response.json();if(!response.ok||!data.ok)throw Error(data.error?.message||'The change could not be saved.');state=data.state;show('error',false);text('feedback',({done:'Block complete.',skip:'Block skipped.',extend:'Added 15 minutes.',pause:'Paused. Take the time you need.',resume:'Back to your block.',break:'A ten-minute break. The plan will shift with you.',stop:'Day ended. Checks are stopped.','ack-reminder':'Reminder marked done.','snooze-reminder':'Reminder moved by 15 minutes.'})[payload.action]||'Saved.');show('feedback',true); }
+    try { const response=await fetch('/api/action',{method:'POST',headers:{'Content-Type':'application/json','X-Warden-Request':'1'},body:JSON.stringify(payload),signal:AbortSignal.timeout(10000)});const data=await response.json();if(!response.ok||!data.ok)throw Error(data.error?.message||'The change could not be saved.');state=data.state;show('error',false);text('feedback',({done:'Block complete.',skip:'Block skipped.',extend:'Added 15 minutes.',pause:'Paused. Take the time you need.',resume:'Back to your block.',break:'A ten-minute break. The plan will shift with you.',retry:'Retrying the same check-in now.',stop:'Day ended. Checks are stopped.','ack-reminder':'Reminder marked done.','snooze-reminder':'Reminder moved by 15 minutes.'})[payload.action]||'Saved.');show('feedback',true); }
     catch(error){text('error',`${error.message} Refreshing the saved plan.`);show('error',true);}
     finally {busy=false;render();}
   });

@@ -54,7 +54,8 @@ or move the finish time. Do not quietly squeeze everything into less time.
 
 The controller delivers a tick into the bound T3 thread. Read saved state
 first. If its tick id is no longer pending, or the day is paused/stopped, it is
-an obsolete delivery: leave the plan alone. For a current tick:
+an obsolete delivery: leave the plan alone. A tick can arrive during an active
+reply; preserve and finish any unanswered user request. For a current tick:
 
 1. Gather the compact ActivityWatch and session signals with `signals.mjs`.
    Missing or stale data means **unknown**, not distraction. AFK may be an
@@ -84,6 +85,9 @@ lead; read the actual last turns before explaining what a session needs.
 
 ## End the day
 
-Stop the controller when the user finishes or the agreed finish time arrives.
+Stop the controller when the user finishes. At the agreed finish, it stops
+automatically and sends a final-report request. This is separate from a tick:
+verify phase is stopped and `endReport.id` matches before responding. Ignore a
+stale report after a new day starts. Do not restart the plan or post actions.
 Give a short done / moved / untouched readout with estimates beside actual
 active time. Carry unfinished items as candidates, without a guilt score.

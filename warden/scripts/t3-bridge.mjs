@@ -41,6 +41,20 @@ function normalizedOrigin(value, label) {
   return url.origin;
 }
 
+/** allow only origins that cannot move a bearer credential to a remote host. */
+function isTrustedLoopbackOrigin(value) {
+  const url = new URL(value);
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') return false;
+  const hostname = url.hostname.toLowerCase();
+  if (hostname === 'localhost' || hostname === '[::1]') return true;
+  const octets = hostname.split('.');
+  return (
+    octets.length === 4 &&
+    octets[0] === '127' &&
+    octets.every((octet) => /^(?:0|[1-9]\d{0,2})$/.test(octet) && Number(octet) <= 255)
+  );
+}
+
 /** resolve the long-lived bearer credential without exposing its value. */
 async function bearerToken(binding) {
   if (Object.hasOwn(binding, 'bearerToken')) {
@@ -153,6 +167,53 @@ export async function validateBinding(binding) {
     );
   }
   return { ...runtime, ...mapped, providerThreadId };
+}
+
+/** refresh a binding after a local T3 restart without changing its thread identity. */
+export async function refreshBinding(binding) {
+  if (binding === null || typeof binding !== 'object') {
+    throw new Error('T3 bridge binding must be an object.');
+  }
+  if (Object.hasOwn(binding, 'bearerToken')) {
+    throw new Error('T3 bridge refuses inline bearerToken credentials.');
+  }
+  const baseDir = resolve(expandHome(requiredString(binding.baseDir, 'baseDir')));
+  const baseUrl = normalizedOrigin(binding.baseUrl, 'baseUrl');
+  const threadId = requiredString(binding.threadId, 'threadId');
+  const providerThreadId = requiredString(binding.providerThreadId, 'providerThreadId');
+  const runtime = await runtimeIdentity(baseDir);
+  if (runtime.baseUrl !== baseUrl && !isTrustedLoopbackOrigin(runtime.baseUrl)) {
+    throw new Error(
+      `T3 bridge refuses to follow relocated remote runtime origin ${runtime.baseUrl}.`,
+    );
+  }
+  const mapped = mappedThread(baseDir, providerThreadId);
+  if (mapped.threadId !== threadId) {
+    throw new Error(
+      `T3 bridge provider identity mismatch: Codex thread ${providerThreadId} maps to ${mapped.threadId}.`,
+    );
+  }
+  return {
+    ...binding,
+    baseDir,
+    baseUrl: runtime.baseUrl,
+    threadId: mapped.threadId,
+    providerThreadId,
+    runtimeMode: mapped.runtimeMode,
+    interactionMode: mapped.interactionMode,
+  };
+}
+
+/** validate a binding and recover from a relocated local runtime origin. */
+async function currentBinding(binding) {
+  try {
+    return await validateBinding(binding);
+  } catch (error) {
+    if (!(error instanceof Error) || !error.message.startsWith('T3 bridge runtime identity mismatch:')) {
+      throw error;
+    }
+    return validateBinding(await refreshBinding(binding));
+  }
 }
 
 /** discover a fail-closed binding for the Codex thread running this command. */
@@ -318,7 +379,7 @@ async function authenticatedRpc(binding, request, verified = undefined) {
 
 /** verify runtime identity, thread mapping, bearer authentication, and RPC access. */
 export async function doctorBinding(binding) {
-  const verified = await validateBinding(binding);
+  const verified = await currentBinding(binding);
   await authenticatedRpc(
     binding,
     {
@@ -345,7 +406,7 @@ export async function dispatchTick(binding, tick) {
   }
   const tickId = requiredString(tick.id, 'tick id');
   const text = requiredString(tick.text, 'tick text');
-  const verified = await validateBinding(binding);
+  const verified = await currentBinding(binding);
   const runtimeMode = verified.runtimeMode;
   const interactionMode = verified.interactionMode;
   if (!RUNTIME_MODES.has(runtimeMode)) {
