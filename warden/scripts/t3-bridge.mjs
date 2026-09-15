@@ -1,7 +1,8 @@
+import { realpathSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath } from 'node:url';
 import { DatabaseSync } from 'node:sqlite';
 
 const DEFAULT_TIMEOUT_MS = 10_000;
@@ -106,6 +107,7 @@ function mappedThread(baseDir, providerThreadId) {
         WHERE runtime.provider_name = 'codex'
           AND json_extract(runtime.resume_cursor_json, '$.threadId') = ?
           AND threads.deleted_at IS NULL
+          AND threads.archived_at IS NULL
       `)
       .all(providerThreadId);
     if (rows.length !== 1) {
@@ -302,14 +304,14 @@ function sendRpc(socketUrl, { id, tag, payload }, timeoutMs) {
 }
 
 /** open one authenticated RPC connection after checking the local runtime identity. */
-async function authenticatedRpc(binding, request) {
-  const verified = await validateBinding(binding);
+async function authenticatedRpc(binding, request, verified = undefined) {
+  const current = verified ?? (await validateBinding(binding));
   const timeoutMs = binding.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {
     throw new Error('T3 bridge timeoutMs must be a positive finite number.');
   }
   const token = await bearerToken(binding);
-  const { httpUrl, socketUrl } = endpoints(verified.baseUrl);
+  const { httpUrl, socketUrl } = endpoints(current.baseUrl);
   socketUrl.searchParams.set('wsTicket', await issueTicket(httpUrl, token, timeoutMs));
   return sendRpc(socketUrl, request, timeoutMs);
 }
@@ -317,11 +319,15 @@ async function authenticatedRpc(binding, request) {
 /** verify runtime identity, thread mapping, bearer authentication, and RPC access. */
 export async function doctorBinding(binding) {
   const verified = await validateBinding(binding);
-  await authenticatedRpc(binding, {
-    id: `warden-doctor:${crypto.randomUUID()}`,
-    tag: 'server.probe',
-    payload: {},
-  });
+  await authenticatedRpc(
+    binding,
+    {
+      id: `warden-doctor:${crypto.randomUUID()}`,
+      tag: 'server.probe',
+      payload: {},
+    },
+    verified,
+  );
   return {
     ok: true,
     baseUrl: verified.baseUrl,
@@ -339,8 +345,9 @@ export async function dispatchTick(binding, tick) {
   }
   const tickId = requiredString(tick.id, 'tick id');
   const text = requiredString(tick.text, 'tick text');
-  const runtimeMode = binding.runtimeMode ?? 'approval-required';
-  const interactionMode = binding.interactionMode ?? 'default';
+  const verified = await validateBinding(binding);
+  const runtimeMode = verified.runtimeMode;
+  const interactionMode = verified.interactionMode;
   if (!RUNTIME_MODES.has(runtimeMode)) {
     throw new Error(`T3 bridge runtimeMode ${runtimeMode} is not supported.`);
   }
@@ -349,19 +356,23 @@ export async function dispatchTick(binding, tick) {
   }
   const commandId = `warden:${tickId}`;
   const messageId = `warden-message:${tickId}`;
-  const result = await authenticatedRpc(binding, {
-    id: `warden-rpc:${tickId}`,
-    tag: 'orchestration.dispatchCommand',
-    payload: {
-      type: 'thread.turn.start',
-      commandId,
-      threadId: requiredString(binding.threadId, 'threadId'),
-      message: { messageId, role: 'user', text, attachments: [] },
-      runtimeMode,
-      interactionMode,
-      createdAt: new Date().toISOString(),
+  const result = await authenticatedRpc(
+    binding,
+    {
+      id: `warden-rpc:${tickId}`,
+      tag: 'orchestration.dispatchCommand',
+      payload: {
+        type: 'thread.turn.start',
+        commandId,
+        threadId: verified.threadId,
+        message: { messageId, role: 'user', text, attachments: [] },
+        runtimeMode,
+        interactionMode,
+        createdAt: new Date().toISOString(),
+      },
     },
-  });
+    verified,
+  );
   if (!Number.isSafeInteger(result?.sequence) || result.sequence < 0) {
     throw new Error('T3 bridge received an invalid dispatch result.');
   }
@@ -405,7 +416,10 @@ async function main(args) {
   throw new Error('Usage: t3-bridge.mjs bind [options] | doctor --binding FILE');
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
+if (
+  process.argv[1] &&
+  realpathSync(fileURLToPath(import.meta.url)) === realpathSync(resolve(process.argv[1]))
+) {
   main(process.argv.slice(2)).catch((error) => {
     process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
     process.exitCode = 1;

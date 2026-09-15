@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Warden · your day</title>
+  <style>
+    :root { color-scheme: light; --bg:#f6f5f1; --fg:#252b29; --muted:#606963; --line:#d5dad4; --accent:#32604b; --surface:#fffefa; --button:#e6ece6; --error:#953e30; font-family:ui-sans-serif,system-ui,sans-serif; font-size:16px; }
+    @media(prefers-color-scheme:dark) { :root { color-scheme:dark; --bg:#202521; --fg:#e5e9e1; --muted:#adb6ab; --line:#444e43; --accent:#b4cfb6; --surface:#292f28; --button:#394537; --error:#f2ac99; } }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--bg); color:var(--fg); line-height:1.5; }
+    ::selection { background:var(--accent); color:var(--bg); }
+    :focus-visible { outline:3px solid var(--accent); outline-offset:4px; }
+    button,a { -webkit-tap-highlight-color:transparent; }
+    button { font:inherit; font-weight:550; min-height:44px; padding:.6rem 1rem; border:1px solid transparent; border-radius:7px; background:var(--button); color:var(--fg); cursor:pointer; }
+    button:hover { border-color:var(--accent); }
+    button:disabled { opacity:.45; cursor:default; }
+    button.primary { background:var(--accent); color:var(--bg); }
+    button.quiet { background:transparent; border-color:var(--line); }
+    button.small { padding:.4rem .75rem; font-size:.875rem; }
+    main { max-width:960px; margin:auto; padding:28px 32px 64px; }
+    header { display:flex; justify-content:space-between; align-items:center; gap:16px; padding-bottom:22px; border-bottom:1px solid var(--line); }
+    h1 { font-size:1.125rem; margin:0; font-weight:650; }
+    h2 { margin:0; font-size:clamp(1.6rem,4vw,2.5rem); line-height:1.15; font-weight:600; letter-spacing:-.025em; overflow-wrap:anywhere; }
+    h3 { font-size:1rem; font-weight:600; margin:0 0 12px; }
+    p { margin:12px 0 0; max-width:68ch; }
+    .muted,time { color:var(--muted); }
+    time,.number { font-variant-numeric:tabular-nums; }
+    .status { display:flex; align-items:center; gap:8px; color:var(--muted); font-size:.875rem; }
+    .dot { width:7px; height:7px; background:var(--accent); border-radius:50%; }
+    .offline .dot { background:var(--error); }
+    .focus { padding:36px 0 30px; }
+    .timing { display:flex; flex-wrap:wrap; gap:8px 24px; margin:18px 0 24px; color:var(--muted); font-size:.9375rem; }
+    .actions { display:flex; flex-wrap:wrap; gap:10px; }
+    .columns { display:grid; grid-template-columns:minmax(0,1.4fr) minmax(220px,1fr); gap:40px; padding-top:28px; border-top:1px solid var(--line); }
+    ol,ul { padding:0; margin:0; list-style:none; }
+    li.block { display:flex; align-items:baseline; gap:16px; padding:12px 0; border-bottom:1px solid var(--line); }
+    .block .title { flex:1; overflow-wrap:anywhere; }
+    .block .duration { white-space:nowrap; color:var(--muted); font-size:.875rem; font-variant-numeric:tabular-nums; }
+    .block.completed .title { color:var(--muted); }
+    .block.current .title { font-weight:600; }
+    .block .marker { width:1rem; color:var(--accent); font-size:.8rem; }
+    .reminder { padding:14px 0; border-top:1px solid var(--line); }
+    .reminder .actions { margin-top:10px; }
+    .notice { margin-top:18px; padding:14px 16px; background:var(--surface); border:1px solid var(--line); border-radius:7px; }
+    .notice.error { color:var(--error); }
+    .empty { padding:48px 0; }
+    .empty p { color:var(--muted); }
+    code { font-family:ui-monospace,monospace; color:var(--fg); }
+    footer { margin-top:32px; display:flex; align-items:center; flex-wrap:wrap; gap:12px; font-size:.875rem; color:var(--muted); }
+    details { margin-top:24px; }
+    summary { cursor:pointer; padding:8px 0; color:var(--muted); }
+    [hidden] { display:none !important; }
+    @media(max-width:620px) { main { padding:20px 20px 40px; } .columns { grid-template-columns:1fr; gap:28px; } .focus { padding:28px 0; } .actions { gap:8px; } .actions button { flex:1 0 auto; } header { align-items:flex-start; } .status { text-align:right; } }
+  </style>
+</head>
+<body>
+<main>
+  <header><h1>Warden</h1><div class="status" id="connection"><span class="dot" aria-hidden="true"></span><span id="connection-label">Connecting…</span></div></header>
+  <div id="error" class="notice error" role="alert" hidden></div>
+  <div id="feedback" class="notice" role="status" hidden></div>
+  <section id="empty" class="empty" hidden>
+    <h2>A little structure for your day.</h2>
+    <p>Open a Codex conversation in T3 and send <code>$warden</code>. Pick a first task and when you want to finish. Your plan will appear here.</p>
+    <p>Breaks shift the plan. There’s nothing to catch up with.</p>
+  </section>
+  <div id="day" hidden>
+    <section class="focus" aria-label="Current block">
+      <h2 id="current-title"></h2>
+      <p id="current-note" class="muted"></p>
+      <div class="timing"><span id="block-time"></span><span id="next-check"></span><span id="day-end"></span></div>
+      <div class="actions" id="controls">
+        <button class="primary" data-action="done" id="done">Done</button>
+        <button data-action="extend" data-minutes="15" id="extend">+15 min</button>
+        <button data-action="break" data-minutes="10" id="break">10 min break</button>
+        <button class="quiet" data-action="pause" id="pause">Pause</button>
+        <button class="primary" data-action="resume" id="resume" hidden>Resume</button>
+        <button class="quiet" data-action="skip" id="skip">Skip</button>
+      </div>
+    </section>
+    <div class="columns">
+      <section aria-labelledby="plan-heading"><h3 id="plan-heading">The remaining day</h3><ol id="blocks"></ol><p class="muted" id="nothing-next" hidden>No more blocks. You can call it a day, or add one in the conversation.</p><p class="muted" id="fit-note" hidden></p><details id="finished"><summary id="finished-label">Finished blocks</summary><ul id="history"></ul></details></section>
+      <section aria-labelledby="check-heading"><h3 id="check-heading">Last check-in</h3><p id="verdict" class="muted">Your first check-in is still ahead.</p><div id="reminders-section" hidden><h3 style="margin-top:28px">Reminders</h3><ul id="reminders"></ul></div></section>
+    </div>
+    <footer><button class="quiet small" data-action="stop" id="stop">End day</button><span>Change the plan in T3. A word or two is enough.</span></footer>
+  </div>
+</main>
+<script>
+  const $ = (id) => document.getElementById(id);
+  let state = null;
+  let connected = false;
+  let busy = false;
+  let polling = false;
+  const clock = (value) => value ? new Date(value).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) : '';
+  const text = (id,value) => { $(id).textContent = value; };
+  const show = (id,visible) => { $(id).hidden = !visible; };
+  function blockRow(block, history=false) {
+    const row = document.createElement('li');
+    row.className = `block ${history ? 'completed' : block.status === 'current' ? 'current' : ''}`;
+    const marker = document.createElement('span'); marker.className='marker'; marker.textContent=block.status==='current' ? 'Now' : '';
+    const title = document.createElement('span'); title.className='title'; title.textContent=block.title;
+    const duration = document.createElement('span'); duration.className='duration';
+    duration.textContent=block.status==='skipped' ? 'Skipped' : history ? `${block.estimateMinutes ?? block.minutes} planned · ${Math.round((block.activeSeconds || 0)/60)} min took` : `${block.minutes} min`;
+    row.append(marker,title,duration); return row;
+  }
+  function render() {
+    if (!state) return;
+    const phase=state.phase, running=phase==='running', resting=phase==='paused'||phase==='break', stopped=phase==='stopped';
+    show('empty',phase==='idle'); show('day',phase!=='idle');
+    text('connection-label',connected ? ({idle:'Ready when you are',running:'Running',paused:'Paused',break:'On a break',stopped:'Day ended'}[phase]||phase) : 'Disconnected');
+    $('connection').classList.toggle('offline',!connected);
+    const current=state.blocks.find(b=>b.id===state.current?.blockId);
+    text('current-title',stopped ? 'That’s your day.' : resting ? phase==='break' ? 'Take your break.' : 'The plan can wait.' : current?.title || 'Room for what’s next.');
+    text('current-note',stopped ? 'What’s left can wait for another day.' : resting ? `${current?.title ? `Pick up ${current.title} when you’re ready.` : 'Resume when you’re ready.'}` : 'One block at a time. Adjust it as you go.');
+    const seconds=state.current ? running ? Math.max(0,(Date.parse(state.current.dueAt)-Date.now())/1000) : state.current.remainingSeconds : null;
+    text('block-time',seconds===null||stopped ? '' : seconds>0 ? `${Math.ceil(seconds/60)} min ${resting?'saved':'left in this block'}` : 'Time to check in. Extend or move on.');
+    text('next-check',stopped ? 'Checks stopped' : phase==='paused' ? 'Checks paused' : phase==='break' ? `Back at ${clock(state.break?.dueAt)}` : state.pendingTick ? state.pendingTick.status==='retry' ? 'Check-in delivery needs attention' : 'Check-in sent to T3' : state.nextTickAt ? `Next check ${clock(state.nextTickAt)}` : 'No check scheduled');
+    text('day-end',state.endAt ? `Finish ${clock(state.endAt)}` : '');
+    for(const id of ['done','extend','break','pause','skip']) show(id,running && (id==='pause'||Boolean(current)));
+    show('resume',resting); show('stop',!stopped);
+    const remaining=state.blocks.filter(b=>b.status==='pending'||b.status==='current');
+    $('blocks').replaceChildren(...remaining.map(b=>blockRow(b)));
+    show('nothing-next',!remaining.length);
+    const history=state.blocks.filter(b=>b.status==='done'||b.status==='skipped');
+    $('history').replaceChildren(...history.map(b=>blockRow(b,true)));
+    show('finished',history.length>0); text('finished-label',`${history.filter(b=>b.status==='done').length} done${history.some(b=>b.status==='skipped')?' · skipped blocks included':''}`);
+    const needed=remaining.filter(b=>b.status==='pending').reduce((sum,b)=>sum+b.minutes,0)+(seconds||0)/60;
+    const available=state.endAt ? (Date.parse(state.endAt)-Date.now())/60000 : Infinity;
+    const excess=Math.ceil(needed-available);
+    show('fit-note',running&&excess>0); text('fit-note',`About ${excess} min won’t fit before your finish time. Choose what to leave for tomorrow in T3.`);
+    const verdict=state.lastVerdict;
+    text('verdict',verdict ? typeof verdict==='string' ? verdict : verdict.note || ({'on-plan':'On plan. Carry on.',drift:'A small reset might help.',unknown:'Not enough information for a useful check.',break:'Break time is part of the plan.'}[verdict.verdict] || 'Checked in.') : 'Your first check-in is still ahead.');
+    const reminders=(state.reminders||[]).filter(r=>r.status==='pending'||r.status==='due');
+    show('reminders-section',reminders.length>0);
+    $('reminders').replaceChildren(...reminders.map(r=>{
+      const li=document.createElement('li'); li.className='reminder';
+      const label=document.createElement('div'); label.textContent=r.title;
+      const when=document.createElement('time'); when.textContent=r.status==='due'?'Ready for your confirmation':clock(r.snoozedUntil||r.at);
+      li.append(label,when);
+      if(r.status==='due'&&!stopped){ const actions=document.createElement('div'); actions.className='actions'; for(const [action,title] of [['ack-reminder','Done'],['snooze-reminder','In 15 min']]){const button=document.createElement('button');button.className='small';button.textContent=title;button.dataset.action=action;button.dataset.id=r.id;if(action==='snooze-reminder')button.dataset.minutes='15';actions.append(button);} li.append(actions); }
+      return li;
+    }));
+    for(const button of document.querySelectorAll('button[data-action]')) button.disabled=busy||!connected;
+    if(state.lastError){ text('error',typeof state.lastError==='string'?state.lastError:state.lastError.message||'Warden needs attention. Check the T3 connection.');show('error',true); }
+  }
+  async function refresh() {
+    if(polling||busy) return;
+    polling=true;
+    try { const response=await fetch('/api/state',{signal:AbortSignal.timeout(5000)}); if(!response.ok)throw Error('Warden could not load the day.'); const data=await response.json(); state=data.state||data; connected=true; show('error',false); render(); }
+    catch(error) { connected=false; text('connection-label','Disconnected');$('connection').classList.add('offline');text('error','Warden is offline. Your saved plan is safe; controls return when the service reconnects.');show('error',true);for(const button of document.querySelectorAll('button'))button.disabled=true; }
+    finally { polling=false; }
+  }
+  document.addEventListener('click',async(event)=>{
+    const button=event.target.closest('button[data-action]');if(!button||busy)return;
+    busy=true;show('feedback',false);render();
+    const payload={action:button.dataset.action};if(button.dataset.minutes)payload.minutes=Number(button.dataset.minutes);if(button.dataset.id)payload.id=button.dataset.id;
+    try { const response=await fetch('/api/action',{method:'POST',headers:{'Content-Type':'application/json','X-Warden-Request':'1'},body:JSON.stringify(payload),signal:AbortSignal.timeout(10000)});const data=await response.json();if(!response.ok||!data.ok)throw Error(data.error?.message||'The change could not be saved.');state=data.state;show('error',false);text('feedback',({done:'Block complete.',skip:'Block skipped.',extend:'Added 15 minutes.',pause:'Paused. Take the time you need.',resume:'Back to your block.',break:'A ten-minute break. The plan will shift with you.',stop:'Day ended. Checks are stopped.','ack-reminder':'Reminder marked done.','snooze-reminder':'Reminder moved by 15 minutes.'})[payload.action]||'Saved.');show('feedback',true); }
+    catch(error){text('error',`${error.message} Refreshing the saved plan.`);show('error',true);}
+    finally {busy=false;render();}
+  });
+  refresh();setInterval(()=>{if(!document.hidden)refresh();},5000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)refresh();});
+</script>
+</body>
+</html>

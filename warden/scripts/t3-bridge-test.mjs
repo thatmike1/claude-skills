@@ -1,9 +1,11 @@
 import assert from 'node:assert/strict';
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises';
+import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { afterEach, test } from 'node:test';
+import { fileURLToPath } from 'node:url';
 
 import { dispatchTick } from './t3-bridge.mjs';
 
@@ -38,12 +40,12 @@ async function bindingFixture(overrides = {}) {
     );
     CREATE TABLE projection_threads (
       thread_id TEXT PRIMARY KEY, title TEXT NOT NULL, deleted_at TEXT,
-      runtime_mode TEXT NOT NULL, interaction_mode TEXT NOT NULL
+      archived_at TEXT, runtime_mode TEXT NOT NULL, interaction_mode TEXT NOT NULL
     );
     INSERT INTO provider_session_runtime VALUES
       ('t3-thread-123', 'codex', '{"threadId":"codex-thread-456"}');
     INSERT INTO projection_threads VALUES
-      ('t3-thread-123', 'Warden', NULL, 'full-access', 'default');
+      ('t3-thread-123', 'Warden', NULL, NULL, 'full-access', 'default');
   `);
   database.close();
   const tokenFile = join(baseDir, 'token');
@@ -133,7 +135,7 @@ test('dispatchTick exchanges a ticket and sends the canonical T3 turn command', 
       threadId: 't3-thread-123',
       messageId: 'warden-message:2026-09-16T08:30:00Z',
       text: 'warden tick',
-      runtimeMode: 'approval-required',
+      runtimeMode: 'full-access',
       interactionMode: 'default',
       attachments: [],
       headers: [],
@@ -161,6 +163,52 @@ test('dispatchTick fails closed before auth when the runtime origin changes', as
     /runtime identity mismatch/,
   );
   assert.equal(fetched, false);
+});
+
+test('dispatchTick uses the current T3 thread permissions instead of stale binding values', async () => {
+  FakeWebSocket.instances = [];
+  globalThis.fetch = async () =>
+    new Response(JSON.stringify({ ticket: 'ticket' }), {
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+    });
+  globalThis.WebSocket = FakeWebSocket;
+  const binding = await bindingFixture({ runtimeMode: 'full-access' });
+  const database = new DatabaseSync(join(binding.baseDir, 'userdata', 'state.sqlite'));
+  database.exec("UPDATE projection_threads SET runtime_mode = 'approval-required'");
+  database.close();
+
+  await dispatchTick(binding, { id: 'tick-permissions', text: 'warden tick' });
+  const request = JSON.parse(FakeWebSocket.instances[0].sent[0]);
+  assert.equal(request.payload.runtimeMode, 'approval-required');
+});
+
+test('dispatchTick refuses an archived target before auth', async () => {
+  let fetched = false;
+  globalThis.fetch = async () => {
+    fetched = true;
+    throw new Error('unexpected fetch');
+  };
+  const binding = await bindingFixture();
+  const database = new DatabaseSync(join(binding.baseDir, 'userdata', 'state.sqlite'));
+  database.exec("UPDATE projection_threads SET archived_at = '2026-09-15T20:00:00Z'");
+  database.close();
+
+  await assert.rejects(
+    dispatchTick(binding, { id: 'tick-archived', text: 'warden tick' }),
+    /expected one mapping.*found 0/,
+  );
+  assert.equal(fetched, false);
+});
+
+test('CLI entrypoint runs when invoked through a symlink', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'warden-t3-bridge-link-'));
+  temporaryDirectories.push(directory);
+  const link = join(directory, 't3-bridge.mjs');
+  await symlink(fileURLToPath(new URL('./t3-bridge.mjs', import.meta.url)), link);
+  const result = spawnSync(process.execPath, [link], { encoding: 'utf8' });
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /Usage: t3-bridge\.mjs/);
 });
 
 test('dispatchTick rejects inline bearer credentials', async () => {

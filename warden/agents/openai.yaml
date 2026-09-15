@@ -1,0 +1,6 @@
+interface:
+  display_name: "Warden"
+  short_description: "A flexible day plan and gentle check-ins in T3"
+  default_prompt: "Use $warden to plan today with me and keep me company while I work."
+policy:
+  allow_implicit_invocation: false
