@@ -1,13 +1,14 @@
 ---
 name: peek
-description: Read another agent session's transcript straight from its log on disk, with zero footprint on the observed session, and list which sessions are running right now. Covers both Claude Code and the Antigravity CLI (agy/Gemini), and the T3 Code threads wrapped around either. Use before sending a message to another session, when observing or coaching a session that must stay untouched, when asked which T3 threads are still open or unsettled, or when asked to peek at, read, or follow what another session is doing.
+description: Read another agent session's transcript straight from its log on disk, with zero footprint on the observed session, and list which sessions are running right now. Covers Claude Code, Codex and the Antigravity CLI (agy/Gemini), and the T3 Code threads wrapped around any of them. Use before sending a message to another session, when observing or coaching a session that must stay untouched, when asked which T3 threads are still open or unsettled, or when asked to peek at, read, or follow what another session is doing.
 ---
 
 # peek
 
 Every Claude Code session writes its transcript to `~/.claude/projects/` as it
-goes, and every Antigravity CLI conversation writes one to
-`~/.gemini/antigravity-cli/brain/<id>/`. Reading either is invisible to the
+goes, every Codex session writes a rollout to
+`~/.codex/sessions/YYYY/MM/DD/`, and every Antigravity CLI conversation writes
+one to `~/.gemini/antigravity-cli/brain/<id>/`. Reading any of them is invisible to the
 session that owns it: no turn spent, no context consumed, nothing in its
 history. That makes peeking the cheap way to know what another session is doing
 before you touch it.
@@ -28,21 +29,22 @@ said. It is Linux-only. `list` is the wrong tool for "what is open" because it
 returns this morning's dead sessions too; use it to find a session that has
 already ended.
 
-`live` and `list` cover both harnesses and tag each row `cc` or `agy`. `--cc`
-and `--agy` narrow them to one. A session id is enough on its own —
-`peek.mjs <id>` works out which harness it belongs to.
+`live` and `list` cover all three harnesses and tag each row `cc`, `agy` or
+`codex`. `--cc`, `--agy` and `--codex` narrow them to one. A session id is
+enough on its own — `peek.mjs <id>` works out which harness it belongs to.
 
 Every render ends with `# next: --since N`. Pass that back on the next call and
 you get only the new messages, which is how you follow a session over time
 without re-reading it. `--thinking` adds the model's thinking blocks;
-`--max 0` lifts the per-message truncation.
+`--max 0` lifts the per-message truncation. A Codex row shows the model from
+the rollout's turn context, so a warden on Astra reads `codex gpt-6-astra`.
 
 ## T3 Code threads
 
 T3 Code is a front end, not a third harness: every thread it opens runs an
 ordinary Claude Code or Antigravity session underneath, which is why its rows
 reach `live` looking like any other session. A `live` row that belongs to one is
-tagged `cc t3` or `agy t3` and carries a `t3:` line with the thread's own title,
+tagged `cc t3`, `codex t3` or `agy t3` and carries a `t3:` line with the thread's own title,
 whether it is `busy`, `waiting` on the user or `idle`, and whether it is
 settled. It carries no resume handle, because a thread with a live process is
 already open; resuming is what the `t3` roster below is for.
@@ -61,7 +63,7 @@ message costs two: it asks, waits for the reply, then instructs. Peek first and
 send one message that already knows where the session is. The `live` output
 carries the session id; `ListAgents` carries the `SendMessage` name and reports
 start age rather than id, so pair the two lists per project in start order.
-`ListAgents` covers Claude Code only — an agy conversation is peeked, not
+`ListAgents` covers Claude Code only — an agy or codex session is peeked, not
 messaged.
 
 ## Coach and driver
@@ -78,9 +80,10 @@ response being generated. Good enough for steering, too slow for real-time
 interruption.
 
 For Claude Code, tool results are not rendered, only tool calls with their
-inputs; read the raw JSONL when a result matters. Antigravity logs each result
-as its own step, so peek shows them, prefixed `←`, and `--no-results` drops
-them.
+inputs; read the raw JSONL when a result matters. Antigravity and Codex log
+each result as its own step, so peek shows them, prefixed `←`, and
+`--no-results` drops them. Codex reasoning is encrypted on disk; `--thinking`
+shows the summaries, which is all there is.
 
 ## How each harness is found
 
@@ -93,11 +96,21 @@ thread first opened. That dir's SessionStart hook file holds the real transcript
 path, which matters because a `--resume` session's dir name points at a jsonl
 that does not exist.
 
+Codex: `/proc` for `codex` processes. A running Codex that holds its rollout
+file open is joined exactly through its file descriptors, one row per open
+rollout; otherwise `codex resume <id>` names the session on argv, and the last
+resort is a start-time match against the meta timestamps of the last two days
+of rollouts. The rollout is `sessions/YYYY/MM/DD/rollout-<stamp>-<id>.jsonl`,
+found by the id in its name, and the title comes from
+`~/.codex/session_index.jsonl` when Codex has named the thread. `list` walks
+the last 45 days of rollouts, so an older session resumed today is out of its
+reach.
+
 T3 Code: `~/.t3/userdata/state.sqlite`, read-only, joining
 `provider_session_runtime` to `projection_threads`. The underlying session id
 lives in `resume_cursor_json` under a per-provider key — `resume` for Claude
-Code, `sessionId` for Antigravity — and that field is the only join between a
-thread and its session. A T3 process is also recognisable before its state row
+Code, `threadId` for Codex, `sessionId` for Antigravity — and that field is
+the only join between a thread and its session. A T3 process is also recognisable before its state row
 lands, because T3 gives every session it starts an MCP server named `t3-code`,
 which shows in the process's argv.
 

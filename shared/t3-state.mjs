@@ -2,7 +2,7 @@
  * t3-state — read T3 Code's own state for the threads it is running.
  *
  * T3 Code is a front end, not a harness: every thread it opens runs an ordinary
- * Claude Code or Antigravity session underneath, which is why its rows reach a
+ * Claude Code, Codex or Antigravity session underneath, which is why its rows reach a
  * roster looking like any other session. What T3 knows and the session does not
  * is the thread around it — its title, its project, whether it is waiting on the
  * user, and whether the user has *settled* it. Settled is the one signal here
@@ -83,11 +83,13 @@ function parseJson(text) {
 
 /**
  * the underlying session id, which each provider files under its own key:
- * `resume` for Claude Code, `sessionId` for Antigravity. `threadId` is T3's
- * own id and is never the session's, so it is not a fallback.
+ * `resume` for Claude Code, `threadId` for Codex, `sessionId` for Antigravity.
+ * Codex's `threadId` is Codex's own name for its session id, not T3's thread
+ * id, which is why it is read only for that provider and never as a fallback.
  */
 function sessionIdOf(cursor, provider) {
   if (provider === 'claudeAgent') return String(cursor.resume || '');
+  if (provider === 'codex') return String(cursor.threadId || '');
   return String(cursor.sessionId || cursor.resume || '');
 }
 

@@ -23,13 +23,14 @@ Every live session, oldest first: project, harness, start time, how long it has
 been quiet, pid, session id, title, and the last thing each side said. Getting
 this from disk costs the observed sessions nothing.
 
-Rows are tagged `cc` (Claude Code) or `agy` (Antigravity CLI, running Gemini or
-another model through `agy`). An `agy` row reads the same way and peeks the
-same way, with one difference that matters: there is no `SendMessage` name for
-it, so you can watch it and report on it but not talk to it. `--cc` narrows the
-roster when the user only means their Claude sessions.
+Rows are tagged `cc` (Claude Code), `codex` (Codex CLI) or `agy` (Antigravity
+CLI, running Gemini or another model through `agy`). A `codex` or `agy` row
+reads the same way and peeks the same way, with one difference that matters:
+there is no `SendMessage` name for it, so you can watch it and report on it but
+not talk to it. `--cc` narrows the roster when the user only means their Claude
+sessions.
 
-A row tagged `cc t3` or `agy t3` is running inside a T3 Code thread and carries
+A row tagged `cc t3`, `codex t3` or `agy t3` is running inside a T3 Code thread and carries
 that thread's title and settled state. `peek.mjs t3` is the companion roster of
 open threads, which is a different question: a T3 thread outlives its process,
 so most open threads have nothing running. Unsettled is the user's own mark that

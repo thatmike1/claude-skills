@@ -58,6 +58,9 @@ seed([
   { id: 'open-2', title: 'Open older', updatedAt: ago(30), cursor: { resume: 'sess-open-2' } },
   { id: 'agy-1', title: 'Antigravity thread', updatedAt: ago(10), provider: 'antigravity',
     cursor: { schemaVersion: 1, sessionId: 'sess-agy-1' } },
+  // Codex calls its own session id threadId; it is not T3's thread id
+  { id: 'codex-1', title: 'Codex thread', updatedAt: ago(11), provider: 'codex',
+    cursor: { threadId: 'sess-codex-1' } },
   { id: 'waiting-1', title: 'Waiting on approval', updatedAt: ago(5), turnStatus: 'running',
     approvals: 1, cursor: { resume: 'sess-waiting-1' } },
   { id: 'busy-1', title: 'Mid turn', updatedAt: ago(6), turnStatus: 'running',
@@ -87,6 +90,7 @@ test('open threads hide settled, snoozed and archived ones', () => {
     'Waiting on approval',
     'Mid turn',
     'Antigravity thread',
+    'Codex thread',
     'Open older',
     'Resumed to',
   ]);
@@ -122,6 +126,10 @@ test('each provider files its session id under its own key', () => {
   assert.equal(map.get('sess-open-1').threadId, 'open-1');
   assert.equal(map.get('sess-agy-1').threadId, 'agy-1');
   assert.equal(map.get('sess-agy-1').provider, 'antigravity');
+  assert.equal(map.get('sess-codex-1').threadId, 'codex-1');
+  assert.equal(map.get('sess-codex-1').provider, 'codex');
+  // a codex cursor's threadId never leaks into another provider's lookup
+  assert.equal(map.has('codex-1'), false);
 });
 
 test('a session id shared by two threads resolves to the newer thread', () => {

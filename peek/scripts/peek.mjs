@@ -3,8 +3,9 @@
 /**
  * peek — read another agent session's transcript without leaving a mark.
  *
- * covers both Claude Code (`~/.claude/projects/*.jsonl`) and the Antigravity
- * CLI (`~/.gemini/antigravity-cli/brain/<id>/`). built for the coach/driver
+ * covers Claude Code (`~/.claude/projects/*.jsonl`), the Antigravity CLI
+ * (`~/.gemini/antigravity-cli/brain/<id>/`) and Codex
+ * (`~/.codex/sessions/YYYY/MM/DD/rollout-*-<id>.jsonl`). built for the coach/driver
  * workflow: a "backstage" session reads what the "driver" session did (prompts,
  * replies, tool calls) straight off disk. purely read-only; the observed
  * session never knows.
@@ -20,8 +21,8 @@
  *   --last N      only the last N messages
  *   --thinking    include assistant thinking blocks
  *   --max N       per-message truncation length (default 3000, 0 = unlimited)
- *   --cc / --agy  restrict `live` and `list` to one harness
- *   --no-results  drop tool results (agy sessions log them; Claude Code does not)
+ *   --cc / --agy / --codex  restrict `live` and `list` to one harness
+ *   --no-results  drop tool results (agy and codex log them; Claude Code does not)
  *   --all         `t3` keeps settled, snoozed and archived threads too
  *
  * every render ends with a `next: --since <n>` line — pass it back on the
@@ -38,6 +39,13 @@ import {
   liveAgySessions,
   parseAgySession,
 } from '../../shared/agy-parser.mjs';
+import {
+  codexRolloutPath,
+  codexToolLine,
+  discoverRecentCodexSessions,
+  liveCodexSessions,
+  parseCodexTranscript,
+} from '../../shared/codex-parser.mjs';
 import { t3OpenThreads, t3ThreadsBySession } from '../../shared/t3-state.mjs';
 
 // piping into `head` closes stdout early; that is not an error worth a stack trace
@@ -59,6 +67,7 @@ function parseArgs(argv) {
     else if (a === '-n') args.n = Number(argv[++i]);
     else if (a === '--cc') args.only = 'cc';
     else if (a === '--agy') args.only = 'agy';
+    else if (a === '--codex') args.only = 'codex';
     else if (a === '--no-results') args.results = false;
     else if (a === '--all') args.all = true;
     else args._.push(a);
@@ -104,7 +113,9 @@ function toolLine(tool) {
 async function cmdList(projectFilter, args) {
   const rows = [];
 
-  if (args.only !== 'agy') {
+  const wants = kind => !args.only || args.only === kind;
+
+  if (wants('cc')) {
     // rank by last activity rather than session start, so a session resumed today
     // floats to the top; the bounds keep this from opening all ~2k transcripts
     const sessions = await discoverSessionsFromDisk({
@@ -117,9 +128,15 @@ async function cmdList(projectFilter, args) {
     }
   }
 
-  if (args.only !== 'cc') {
+  if (wants('agy')) {
     for (const s of discoverAgySessions({ projectContains: projectFilter, limit: args.n })) {
       rows.push({ kind: 'agy', sessionId: s.sessionId, mtimeMs: s.mtimeMs, project: s.project, title: s.aiTitle });
+    }
+  }
+
+  if (wants('codex')) {
+    for (const s of await discoverRecentCodexSessions({ projectContains: projectFilter, limit: args.n })) {
+      rows.push({ kind: 'codex', sessionId: s.sessionId, mtimeMs: s.mtimeMs, project: s.project, title: s.aiTitle || s.firstPrompt });
     }
   }
 
@@ -128,16 +145,18 @@ async function cmdList(projectFilter, args) {
   for (const row of rows.slice(0, args.n)) {
     const when = row.mtimeMs ? new Date(row.mtimeMs).toISOString().slice(0, 16).replace('T', ' ') : '?';
     const title = truncateText((row.title || '').replace(/\s+/g, ' '), 60);
-    console.log(`${row.kind.padEnd(3)} ${row.sessionId}  ${when}  ${row.project || '?'}${title ? `  "${title}"` : ''}`);
+    console.log(`${row.kind.padEnd(5)} ${row.sessionId}  ${when}  ${row.project || '?'}${title ? `  "${title}"` : ''}`);
   }
   if (!rows.length) console.log('no sessions found');
 }
 
-/** the two harnesses share a message shape, so they share one renderer. */
+const AGENT_LABEL = { agy: 'AGENT', codex: 'CODEX' };
+const TOOL_LINE = { agy: agyToolLine, codex: codexToolLine };
+
+/** the three harnesses share a message shape, so they share one renderer. */
 function renderMessages(parsed, messages, args) {
-  const agy = parsed.kind === 'agy';
-  const agentLabel = agy ? 'AGENT' : 'CLAUDE';
-  const lineFor = agy ? agyToolLine : toolLine;
+  const agentLabel = AGENT_LABEL[parsed.kind] || 'CLAUDE';
+  const lineFor = TOOL_LINE[parsed.kind] || toolLine;
 
   for (const msg of messages) {
     const who = msg.role === 'user' ? 'USER' : msg.role === 'result' ? '  ←' : msg.role === 'system' ? 'SYSTEM' : agentLabel;
@@ -151,24 +170,22 @@ function renderMessages(parsed, messages, args) {
 }
 
 async function cmdShow(sessionId, args) {
-  const parsed = agyTranscriptPath(sessionId)
-    ? await parseAgySession(sessionId, {
-        maxLength: args.max || Infinity,
-        includeThinking: args.thinking,
-        includeResults: args.results,
-      })
-    : await (async () => {
-        const filePath = findSessionFile(sessionId);
-        if (!filePath) fail(`session not found: ${sessionId}`);
-        return parseSessionFile(filePath, { maxLength: args.max || Infinity, includeThinking: args.thinking });
-      })();
+  const opts = { maxLength: args.max || Infinity, includeThinking: args.thinking, includeResults: args.results };
+  let parsed;
+  if (agyTranscriptPath(sessionId)) parsed = await parseAgySession(sessionId, opts);
+  else if (codexRolloutPath(sessionId)) parsed = await parseCodexTranscript(sessionId, opts);
+  else {
+    const filePath = findSessionFile(sessionId);
+    if (!filePath) fail(`session not found: ${sessionId}`);
+    parsed = await parseSessionFile(filePath, opts);
+  }
 
   let messages = parsed.messages;
   if (args.since != null) messages = messages.filter(m => m.seq >= args.since);
   if (args.last != null) messages = messages.slice(-args.last);
 
   const header = [
-    parsed.kind === 'agy' && 'agy',
+    parsed.kind !== 'cc' && parsed.kind,
     parsed.aiTitle && `"${parsed.aiTitle}"`,
     parsed.project,
     parsed.branch && `branch:${parsed.branch}`,
@@ -302,13 +319,15 @@ function liveClaudeRows() {
 /** the transcript path for a row of either kind, or null if it has none yet. */
 function transcriptForRow(row) {
   if (!row.sessionId) return null;
-  return row.kind === 'agy' ? agyTranscriptPath(row.sessionId) : transcriptFor(row.sessionId);
+  if (row.kind === 'agy') return agyTranscriptPath(row.sessionId);
+  if (row.kind === 'codex') return codexRolloutPath(row.sessionId);
+  return transcriptFor(row.sessionId);
 }
 
 async function parseForRow(row, path, opts) {
-  return row.kind === 'agy'
-    ? parseAgySession(row.sessionId, { ...opts, includeResults: false })
-    : parseSessionFile(path, opts);
+  if (row.kind === 'agy') return parseAgySession(row.sessionId, { ...opts, includeResults: false });
+  if (row.kind === 'codex') return parseCodexTranscript(row.sessionId, { ...opts, includeResults: false });
+  return parseSessionFile(path, opts);
 }
 
 /**
@@ -333,6 +352,7 @@ function cmdline(pid) {
  */
 function surfaceOf(row, thread) {
   if (thread) return 't3';
+  if (row.kind === 'codex') return row.appServer ? 'app-server' : '';
   if (row.kind !== 'cc') return '';
   const argv = cmdline(row.pid);
   if (argv.some(a => a.includes(T3_MCP_NAME))) return 't3';
@@ -366,15 +386,17 @@ async function printLastExchange(row, path, max, { title = true } = {}) {
   if (lastUser) console.log(`    you   ${localHhmm(lastUser.ts)}  ${flat(lastUser.text)}`);
   if (lastAgent) {
     const tools = (lastAgent.tools || []).map(t => t.name).join(', ');
-    console.log(`    ${row.kind === 'agy' ? 'agy ' : 'cc  '}  ${localHhmm(lastAgent.ts)}  ${flat(lastAgent.text) || `[${tools}]`}`);
+    console.log(`    ${(row.kind === 'cc' ? 'cc' : row.kind).padEnd(5)} ${localHhmm(lastAgent.ts)}  ${flat(lastAgent.text) || `[${tools}]`}`);
   }
 }
 
-/** every live session across both harnesses, oldest first, with its last exchange. */
+/** every live session across the three harnesses, oldest first, with its last exchange. */
 async function cmdLive(args) {
+  const wants = kind => !args.only || args.only === kind;
   const rows = [
-    ...(args.only === 'agy' ? [] : liveClaudeRows()),
-    ...(args.only === 'cc' ? [] : liveAgySessions()),
+    ...(wants('cc') ? liveClaudeRows() : []),
+    ...(wants('agy') ? liveAgySessions() : []),
+    ...(wants('codex') ? liveCodexSessions() : []),
   ].sort((a, b) => a.startMs - b.startMs);
 
   if (!rows.length) return console.log('no live sessions');
@@ -388,7 +410,7 @@ async function cmdLive(args) {
     const path = transcriptForRow(row);
     const self = path && path === process.env.CODEX_COMPANION_TRANSCRIPT_PATH ? '  (this session)' : '';
     const idle = path ? ago(statSync(path).mtimeMs) : '?';
-    const harness = row.kind === 'agy' ? `agy${row.model ? ` ${row.model}` : ''}${row.headless ? ' headless' : ''}` : 'cc';
+    const harness = row.kind === 'cc' ? 'cc' : `${row.kind}${row.model ? ` ${row.model}` : ''}${row.headless ? ' headless' : ''}`;
     const surface = surfaceOf(row, thread);
     const tag = surface ? `${harness} ${surface}` : harness;
 
@@ -408,6 +430,7 @@ async function cmdLive(args) {
 
   console.log('# ListAgents gives the SendMessage name for each Claude Code row. Zip them');
   console.log('# per project in this same start order — the tool reports start age, not id.');
+  console.log('# agy and codex rows can be peeked, not messaged.');
 }
 
 /**
@@ -418,6 +441,8 @@ async function cmdLive(args) {
  * stays open until the user settles it. Settled threads are hidden by default
  * and only ever accumulate; what is left is the set of loops still on them.
  */
+const PROVIDER_TAG = { claudeAgent: 'cc', codex: 'codex', antigravity: 'agy' };
+
 function cmdT3(args) {
   const threads = t3OpenThreads({ all: args.all });
   if (!threads.length) {
@@ -436,7 +461,7 @@ function cmdT3(args) {
       t.snoozed ? `snoozed until ${hhmm(Date.parse(t.snoozedUntil))}` : '',
       t.archived ? 'archived' : '',
     ].filter(Boolean).join(', ');
-    const model = [t.provider === 'antigravity' ? 'agy' : 'cc', t.model].filter(Boolean).join(' ');
+    const model = [PROVIDER_TAG[t.provider] || t.provider, t.model].filter(Boolean).join(' ');
 
     console.log(`[${i + 1}] ${t.project}  ·  ${model}  ·  ${state}  ·  updated ${hhmm(Date.parse(t.updatedAt))}`);
     console.log(`    "${t.title}"`);
