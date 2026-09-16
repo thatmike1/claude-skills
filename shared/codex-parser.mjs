@@ -159,42 +159,39 @@ export async function parseCodexSession(filePath, sessionIndex = loadSessionInde
   return result;
 }
 
+// the harness prepends its own context as user-role text blocks, sometimes all
+// in one message and sometimes beside the human's words
+const INJECTED_PREFIXES = ['# AGENTS.md', '# Codex', '<INSTRUCTIONS>', '<image', '</image>', '[tui]', '<skill>', '<turn_aborted>', '<command-message>'];
+
+/**
+ * whether one user-role text block is harness context rather than the human.
+ * besides the known prefixes, a block that is wholly one `<tag>…</tag>` element
+ * (`<environment_context>`, `<recommended_plugins>`) is injected, so a new tag
+ * of that shape is caught without a list update.
+ */
+export function isInjectedText(text) {
+  const t = (text || '').trim();
+  if (!t) return true;
+  if (INJECTED_PREFIXES.some(prefix => t.startsWith(prefix))) return true;
+  const open = t.match(/^<([a-z][a-z0-9_-]*)>/i);
+  return Boolean(open && t.endsWith(`</${open[1]}>`));
+}
+
 /** checks whether content blocks contain real user input rather than injected context. */
 export function isRealUserMessage(contentBlocks) {
   if (!Array.isArray(contentBlocks)) return false;
-
-  for (const block of contentBlocks) {
-    if (block.type !== 'input_text' || !block.text) continue;
-    const text = block.text.trim();
-    if (text.startsWith('# AGENTS.md')) return false;
-    if (text.startsWith('<environment_context>')) return false;
-    if (text.startsWith('<INSTRUCTIONS>')) return false;
-    if (text.startsWith('# Codex')) return false;
-    if (text.length > 0) return true;
-  }
-  return false;
+  return contentBlocks.some(block => block.type === 'input_text' && !isInjectedText(block.text));
 }
 
 /** extracts user-readable text from Codex content blocks. */
 export function extractUserText(contentBlocks) {
   if (!Array.isArray(contentBlocks)) return '';
-
-  const parts = [];
-  for (const block of contentBlocks) {
-    if (block.type !== 'input_text' || !block.text) continue;
-    const text = block.text.trim();
-    if (text.startsWith('<image')) continue;
-    if (text.startsWith('</image>')) continue;
-    if (text.startsWith('[tui]')) continue;
-    if (text.startsWith('<skill>')) continue;
-    if (text.startsWith('<turn_aborted>')) continue;
-    if (text.startsWith('<command-message>')) continue;
-    if (text.startsWith('<environment_context>')) continue;
-    if (text) parts.push(text);
-  }
-  return parts.join(' ').trim();
+  return contentBlocks
+    .filter(block => block.type === 'input_text' && !isInjectedText(block.text))
+    .map(block => block.text.trim())
+    .join(' ')
+    .trim();
 }
-
 
 // ---------------------------------------------------------------------------
 // peek-shaped reader
@@ -294,25 +291,132 @@ function decodeArguments(args) {
   }
 }
 
+/** the text of one `{"output": "...", "exit_code"|"metadata": ...}` wrapper, or null when `value` is not one. */
+function unwrapOutput(value) {
+  // `Promise.allSettled` in an exec script wraps each result once more
+  if (value && typeof value === 'object' && 'status' in value && 'value' in value) {
+    return typeof value.value === 'string' ? value.value.trim() : unwrapOutput(value.value);
+  }
+  if (!value || typeof value !== 'object' || typeof value.output !== 'string') return null;
+  const code = value.exit_code ?? value.metadata?.exit_code;
+  const lines = [value.output.trim()];
+  if (code != null && code !== 0) lines.push(`[exit ${code}]`);
+  // an exec that outlived its yield keeps running under a session id
+  if (value.session_id != null) lines.push(`[still running, session ${value.session_id}]`);
+  return lines.filter(Boolean).join('\n');
+}
+
 /**
- * a shell result is usually `{"output": "...", "metadata": {"exit_code": 0}}`
- * serialised into the `output` string; lift the text and the exit code out.
+ * lifts the real output out of its JSON wrapper; plain text passes through.
+ * an over-long result arrives as a `Warning: truncated output` preamble with
+ * one wrapper per line after it.
+ */
+function decodeOutputText(text) {
+  const truncated = text.match(/^Warning: truncated output \(original token count: (\d+)\)\nTotal output lines: \d+\n+/);
+  const body = truncated ? text.slice(truncated[0].length) : text;
+  const decodeLine = line => {
+    try { return unwrapOutput(JSON.parse(line)); } catch { return null; }
+  };
+  let decoded = decodeLine(body);
+  if (decoded == null && truncated) {
+    const lines = body.split('\n').filter(l => l.trim());
+    const each = lines.map(decodeLine);
+    if (each.every(d => d != null)) decoded = each.join('\n');
+  }
+  const out = decoded ?? body.trim();
+  return truncated ? `[truncated by codex, was ${truncated[1]} tokens]\n${out}` : out;
+}
+
+/**
+ * a function result is a string, usually a JSON wrapper around the real
+ * output. an `exec` script result is a list of blocks: a `Script completed` /
+ * `Script failed` header, then one block per `text()` / `image()` the script
+ * emitted, each of which may be that same wrapper.
  */
 function decodeOutput(output) {
   if (output == null) return '';
-  if (typeof output !== 'string') return JSON.stringify(output);
-  try {
-    const parsed = JSON.parse(output);
-    if (parsed && typeof parsed === 'object' && typeof parsed.output === 'string') {
-      const code = parsed.metadata?.exit_code;
-      const text = parsed.output.trim();
-      return code != null && code !== 0 ? `${text}\n[exit ${code}]` : text;
+  if (typeof output === 'string') return decodeOutputText(output);
+  if (!Array.isArray(output)) return JSON.stringify(output);
+  const parts = [];
+  for (const block of output) {
+    if (block?.type === 'input_image') { parts.push('[image]'); continue; }
+    const text = block?.text;
+    if (typeof text !== 'string') continue;
+    const header = text.match(/^Script (completed|failed)\nWall time [\d.]+ seconds\nOutput:\n?/);
+    if (header) {
+      if (header[1] === 'failed') parts.push('[script failed]');
+      const rest = text.slice(header[0].length);
+      if (rest.trim()) parts.push(decodeOutputText(rest));
+      continue;
     }
-  } catch { /* plain text */ }
-  return output.trim();
+    parts.push(decodeOutputText(text));
+  }
+  return parts.filter(Boolean).join('\n');
 }
 
-/** the tool call carried by one response item, or null when it is not one. */
+/** the first string literal bound to `key` in a JS object literal, unescaped. */
+function stringArg(source, key) {
+  const match = source.match(new RegExp(`(?<!\\w)["']?${key}["']?\\s*:\\s*("(?:[^"\\\\]|\\\\.)*"|'(?:[^'\\\\]|\\\\.)*'|\`[^\`]*\`)`));
+  if (!match) return null;
+  const literal = match[1];
+  if (literal.startsWith('"')) {
+    try { return JSON.parse(literal); } catch { /* fall through */ }
+  }
+  return literal.slice(1, -1);
+}
+
+/**
+ * the `exec` tool takes a JS script that calls `tools.<name>(...)`, often
+ * several per script. each call becomes its own tool entry with the argument
+ * that identifies it; a script with no recognisable call stays one `exec`.
+ */
+function execCalls(source) {
+  const matches = [...source.matchAll(/tools\.(\w+)\(/g)];
+  const script = { raw: source.trim().replace(/\s+/g, ' ') };
+  if (!matches.length) return [{ name: 'exec', input: script }];
+  const patchFiles = [...source.matchAll(/\*\*\* (?:Add|Update|Delete) File: ([^\n\\"`]+)/g)].map(m => m[1].trim());
+  // a call whose argument is built in code (`cmds.map(cmd => tools.exec_command({cmd}))`)
+  // has no literal to lift; the script's opening is the next best description
+  const hasDetail = input => Object.values(input).some(v => v);
+  return matches.map((m, i) => {
+    const call = execCall(m[1], source.slice(m.index, matches[i + 1]?.index ?? source.length), patchFiles);
+    return hasDetail(call.input) ? call : { name: call.name, input: script };
+  });
+}
+
+/** one `tools.<name>(...)` call inside an exec script, keyed on the argument that identifies it. */
+function execCall(name, segment, patchFiles) {
+  switch (name) {
+    case 'exec_command':
+      return { name, input: { cmd: stringArg(segment, 'cmd') ?? '' } };
+    case 'write_stdin': {
+      const session = segment.match(/session_id["']?\s*:\s*(\d+)/)?.[1];
+      const chars = stringArg(segment, 'chars');
+      return { name, input: { raw: session ? `session ${session}${chars ? ` <- ${JSON.stringify(chars)}` : ''}` : '' } };
+    }
+    case 'apply_patch':
+      return { name, input: { raw: patchFiles.join(', ') } };
+    case 'view_image':
+      return { name, input: { path: stringArg(segment, 'path') ?? '' } };
+    case 'web__run': {
+      const queries = [...segment.matchAll(/(?<!\w)["']?q["']?\s*:\s*("(?:[^"\\]|\\.)*")/g)].map(q => {
+        try { return JSON.parse(q[1]); } catch { return q[1]; }
+      });
+      return { name: 'web_search', input: { query: queries.join(' | ') } };
+    }
+    default: {
+      // mcp and other tools: the first string argument usually says what the call did
+      const first = segment.match(/\(\s*\{[^]*?:\s*("(?:[^"\\]|\\.)*")/)?.[1];
+      let detail = '';
+      if (first) {
+        try { detail = JSON.parse(first); } catch { detail = first; }
+      }
+      return { name, input: { raw: detail } };
+    }
+  }
+}
+
+/** the tool call(s) carried by one response item, or null when it is not one. */
 function toolOf(p) {
   switch (p.type) {
     case 'function_call':
@@ -320,6 +424,7 @@ function toolOf(p) {
     case 'local_shell_call':
       return { name: 'shell', input: { command: p.action?.command, workdir: p.action?.working_directory } };
     case 'custom_tool_call':
+      if (p.name === 'exec' && typeof p.input === 'string') return execCalls(p.input);
       return { name: p.name || 'custom_tool', input: { input: p.input } };
     case 'web_search_call':
       return { name: 'web_search', input: { query: p.action?.query } };
@@ -426,7 +531,7 @@ export async function parseCodexTranscript(sessionId, opts = {}) {
     const tool = toolOf(p);
     if (tool) {
       sawAssistantItem = true;
-      result.messages.push({ seq, role: 'assistant', ts, text: '', tools: [tool] });
+      result.messages.push({ seq, role: 'assistant', ts, text: '', tools: [tool].flat() });
       continue;
     }
 
@@ -447,7 +552,7 @@ export async function parseCodexTranscript(sessionId, opts = {}) {
 /** one-line summary of a Codex tool call, keyed on the argument that identifies it. */
 export function codexToolLine(tool, maxLength = 160) {
   const input = tool.input || {};
-  const command = c => (Array.isArray(c) ? c.join(' ') : String(c || '')).replace(/\s+/g, ' ');
+  const command = c => (Array.isArray(c) ? c.join(' ') : String(c || '')).trim().replace(/\s*\n\s*/g, '; ').replace(/\s+/g, ' ');
   let detail;
   switch (tool.name) {
     case 'shell':
@@ -458,6 +563,7 @@ export function codexToolLine(tool, maxLength = 160) {
       detail = command(input.cmd);
       break;
     case 'apply_patch': {
+      if (input.raw != null) { detail = input.raw; break; }
       const files = [...String(input.input || input.patch || '').matchAll(/^\*\*\* (?:Add|Update|Delete) File: (.+)$/gm)].map(m => m[1]);
       detail = files.join(', ');
       break;
@@ -471,9 +577,18 @@ export function codexToolLine(tool, maxLength = 160) {
     case 'view_image':
       detail = input.path || '';
       break;
+    // agent messages are encrypted on disk; who they went to is the readable part
+    case 'spawn_agent':
+      detail = [input.task_name, input.model, input.reasoning_effort].filter(Boolean).join(' ');
+      break;
+    case 'send_message':
+    case 'followup_task':
+      detail = input.target ? `to ${input.target}` : '';
+      break;
     default:
       detail = input.raw ?? JSON.stringify(input);
   }
+  if (!detail && input.raw) detail = input.raw;
   return `  → ${tool.name}: ${truncateText(detail, maxLength)}`;
 }
 

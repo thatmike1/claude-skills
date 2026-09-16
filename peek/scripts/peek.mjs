@@ -23,6 +23,7 @@
  *   --max N       per-message truncation length (default 3000, 0 = unlimited)
  *   --cc / --agy / --codex  restrict `live` and `list` to one harness
  *   --no-results  drop tool results (agy and codex log them; Claude Code does not)
+ *   --no-tools    drop tool calls and their results, leaving only the conversation
  *   --all         `t3` keeps settled, snoozed and archived threads too
  *
  * every render ends with a `next: --since <n>` line — pass it back on the
@@ -69,6 +70,7 @@ function parseArgs(argv) {
     else if (a === '--agy') args.only = 'agy';
     else if (a === '--codex') args.only = 'codex';
     else if (a === '--no-results') args.results = false;
+    else if (a === '--no-tools') { args.tools = false; args.results = false; }
     else if (a === '--all') args.all = true;
     else args._.push(a);
   }
@@ -181,6 +183,11 @@ async function cmdShow(sessionId, args) {
   }
 
   let messages = parsed.messages;
+  if (args.tools === false) {
+    messages = messages
+      .map(m => (m.tools?.length ? { ...m, tools: [] } : m))
+      .filter(m => m.role !== 'result' && (m.text || m.thinking));
+  }
   if (args.since != null) messages = messages.filter(m => m.seq >= args.since);
   if (args.last != null) messages = messages.slice(-args.last);
 

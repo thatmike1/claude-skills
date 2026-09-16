@@ -82,8 +82,9 @@ interruption.
 For Claude Code, tool results are not rendered, only tool calls with their
 inputs; read the raw JSONL when a result matters. Antigravity and Codex log
 each result as its own step, so peek shows them, prefixed `←`, and
-`--no-results` drops them. Codex reasoning is encrypted on disk; `--thinking`
-shows the summaries, which is all there is.
+`--no-results` drops them. `--no-tools` drops calls and results together, for
+any harness, when only the conversation matters. Codex reasoning is encrypted
+on disk; `--thinking` shows the summaries, which is all there is.
 
 ## How each harness is found
 

@@ -11,6 +11,7 @@ process.env.CODEX_HOME = CODEX_HOME;
 const SESSION = '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b';
 const OLDER = '0199a1b2-c3d4-7e5f-8a9b-ffffffffffff';
 const LEGACY = '0199a1b2-c3d4-7e5f-8a9b-eeeeeeeeeeee';
+const SCRIPTED = '0199a1b2-c3d4-7e5f-8a9b-dddddddddddd';
 
 /** writes one rollout under sessions/YYYY/MM/DD the way Codex files them. */
 function writeRollout(id, day, records, { mtimeSec, threadName } = {}) {
@@ -58,6 +59,33 @@ writeRollout(LEGACY, '2026-09-08', [
   { timestamp: '2026-09-08T07:00:01.000Z', type: 'response_item', payload: { type: 'message', role: 'user', content: [{ type: 'input_text', text: 'hi' }] } },
   { timestamp: '2026-09-08T07:00:02.000Z', type: 'event_msg', payload: { type: 'agent_message', message: 'hello from the event feed', phase: 'final_answer' } },
 ], { mtimeSec: 1_770_000_000 });
+
+// the current format: T3 and the app prepend context blocks in one user message,
+// and tools run through `exec`, a JS script whose result is a list of text blocks
+const T = '2026-09-07T07:00:00.000Z';
+const wrap = (output, extra = {}) => JSON.stringify({ chunk_id: 'a1', wall_time_seconds: 0.1, exit_code: 0, original_token_count: 5, output, ...extra });
+writeRollout(SCRIPTED, '2026-09-07', [
+  { timestamp: T, type: 'session_meta', payload: { id: SCRIPTED, timestamp: T, cwd: '/home/someone/git/scripted' } },
+  { timestamp: T, type: 'response_item', payload: { type: 'message', role: 'user', content: [
+    { type: 'input_text', text: '<recommended_plugins>\nHere is a list of plugins that are available but not installed.\n- Airtable\n</recommended_plugins>' },
+    { type: 'input_text', text: '# AGENTS.md instructions for /home/someone/git/scripted\n\n<INSTRUCTIONS>\nbe nice\n</INSTRUCTIONS>' },
+    { type: 'input_text', text: '<environment_context>\n  <cwd>/home/someone/git/scripted</cwd>\n</environment_context>' },
+  ] } },
+  { timestamp: T, type: 'response_item', payload: { type: 'message', role: 'user', content: [{ type: 'input_text', text: 'check the repo' }] } },
+  { timestamp: T, type: 'response_item', payload: { type: 'custom_tool_call', name: 'exec', call_id: 'c1', input: 'text(await tools.exec_command({cmd:"git status\\nls","max_output_tokens":500}));\ntext(await tools.exec_command({cmd:"cat \\"a b.md\\""}));\n' } },
+  { timestamp: T, type: 'response_item', payload: { type: 'custom_tool_call_output', call_id: 'c1', output: [
+    { type: 'input_text', text: 'Script completed\nWall time 0.1 seconds\nOutput:\n' },
+    { type: 'input_text', text: wrap('clean\n') },
+    { type: 'input_text', text: 'Warning: truncated output (original token count: 9000)\nTotal output lines: 2\n\n' + wrap('line one') + '\n' + wrap('boom', { exit_code: 2 }) },
+  ] } },
+  { timestamp: T, type: 'response_item', payload: { type: 'custom_tool_call', name: 'exec', call_id: 'c2', input: 'const r = await Promise.allSettled(["oc a","oc b"].map(cmd=>tools.exec_command({cmd})));\nconst patch = "*** Begin Patch\\n*** Update File: src/x.ts\\n*** End Patch";\nawait tools.apply_patch(patch);\nimage((await tools.view_image({path:"/tmp/s.png"})).image_url);\nawait tools.web__run({search_query:[{q:"one"},{q:"two"}]});\nawait tools.write_stdin({"session_id":42,"chars":""});\nawait tools.mcp__t3_code__preview_open({open:true,url:"http://localhost:1337/"});' } },
+  { timestamp: T, type: 'response_item', payload: { type: 'custom_tool_call_output', call_id: 'c2', output: [
+    { type: 'input_text', text: 'Script failed\nWall time 3 seconds\nOutput:\n' },
+    { type: 'input_text', text: JSON.stringify({ status: 'fulfilled', value: JSON.parse(wrap('settled', { exit_code: undefined, session_id: 7 })) }) },
+    { type: 'input_image', image_url: 'data:image/png;base64,AAAA' },
+    { type: 'input_text', text: 'ReferenceError: nope' },
+  ] } },
+], { mtimeSec: 1_760_000_000 });
 
 const {
   codexRolloutPath, codexToolLine, discoverRecentCodexSessions, parseCodexTranscript, readCodexSessionMeta,
@@ -127,7 +155,7 @@ test('parseCodexTranscript returns null for an unknown session', async () => {
 
 test('discoverRecentCodexSessions orders by activity, filters by project, reads a title or first prompt', async () => {
   const all = await discoverRecentCodexSessions({ limit: 10 });
-  assert.deepEqual(all.map(s => s.sessionId), [SESSION, OLDER, LEGACY]);
+  assert.deepEqual(all.map(s => s.sessionId), [SESSION, OLDER, LEGACY, SCRIPTED]);
   assert.equal(all[0].aiTitle, 'Listing a directory');
   assert.equal(all[1].aiTitle, null);
   assert.equal(all[1].firstPrompt, 'hello there');
@@ -145,4 +173,32 @@ test('codexToolLine summarises each tool by the argument that identifies it', ()
   assert.equal(codexToolLine({ name: 'web_search', input: { query: 'codex rollout format' } }), '  → web_search: codex rollout format');
   assert.equal(codexToolLine({ name: 'mystery', input: { raw: 'not json' } }), '  → mystery: not json');
   assert.equal(codexToolLine({ name: 'shell', input: { command: 'abcdef' } }, 3), '  → shell: abc...');
+});
+
+test('a user message made only of context blocks is not the human, whatever the tags', async () => {
+  const parsed = await parseCodexTranscript(SCRIPTED);
+  assert.deepEqual(parsed.messages.filter(m => m.role === 'user').map(m => m.text), ['check the repo']);
+  const [row] = (await discoverRecentCodexSessions({ projectContains: 'scripted', limit: 5 }));
+  assert.equal(row.firstPrompt, 'check the repo');
+});
+
+test('an exec script becomes one tool entry per tools.<name>() call', async () => {
+  const parsed = await parseCodexTranscript(SCRIPTED);
+  const [first, second] = parsed.messages.filter(m => m.tools).map(m => m.tools.map(t => codexToolLine(t)));
+  assert.deepEqual(first, ['  → exec_command: git status; ls', '  → exec_command: cat "a b.md"']);
+  assert.match(second[0], /^ {2}→ exec_command: const r = await Promise\.allSettled\(\["oc a","oc b"\]/);
+  assert.deepEqual(second.slice(1), [
+    '  → apply_patch: src/x.ts',
+    '  → view_image: /tmp/s.png',
+    '  → web_search: one | two',
+    '  → write_stdin: session 42',
+    '  → mcp__t3_code__preview_open: http://localhost:1337/',
+  ]);
+});
+
+test('an exec result lifts the output out of its wrappers and keeps what matters', async () => {
+  const parsed = await parseCodexTranscript(SCRIPTED);
+  const [ok, failed] = parsed.messages.filter(m => m.role === 'result').map(m => m.text);
+  assert.equal(ok, 'clean\n[truncated by codex, was 9000 tokens]\nline one\nboom\n[exit 2]');
+  assert.equal(failed, '[script failed]\nsettled\n[still running, session 7]\n[image]\nReferenceError: nope');
 });
