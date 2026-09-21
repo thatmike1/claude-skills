@@ -1,0 +1,6 @@
+{
+    "name": "gpt-pro",
+    "version": "1.0.0",
+    "description": "Hand a question to ChatGPT's Pro model or image generator through your own chat window: the agent packs the prompt and context and puts it on your clipboard, you paste it and copy the answer back.",
+    "skills": "."
+}

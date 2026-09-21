@@ -19,6 +19,7 @@ afk-prompt/               — write autonomous-run prompts + pick tasks safe to 
 peek/                     — read another running CC session's transcript from disk (live roster via /proc + session-env, incremental --since cursor)
 jarvis/                   — ask one session about all the others; built on peek, launches --bg jobs
 warden/                   — all-day accountability loop: plan interview, then /loop ticks over ActivityWatch + peek, desktop nudge on drift
+gpt-pro/                  — hand-carried ChatGPT Pro runs: prompt + packed context to the clipboard, answer back from it, run folders per project
 readout/                  — MDX-authored session docs published to readout.ssscribe.app with anchored comments (has npm deps for the MDX compile, like the installer)
 shared/                   — Claude Code + Codex JSONL discovery, parsing, search; imported by morning, evening, scan, peek, cc-audit, ai-cv-scanner
 ```

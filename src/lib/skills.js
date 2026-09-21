@@ -43,7 +43,7 @@ export const SKILL_DEPENDENCIES = { evening: "morning", jarvis: "peek" };
  */
 export const CATEGORIES = [
     { title: "sessions", skills: ["morning", "evening", "scan", "peek", "jarvis"] },
-    { title: "delegate", skills: ["orchestrate", "find-out"] },
+    { title: "delegate", skills: ["orchestrate", "find-out", "gpt-pro"] },
     { title: "publish", skills: ["readout"] },
     { title: "think & design", skills: ["goblin", "design-styles"] },
 ];
@@ -66,6 +66,7 @@ const GLYPHS = {
     "live-prompt": "➳",
     "afk-prompt": "☍",
     "find-out": "⌖",
+    "gpt-pro": "✉",
     "design-styles": "✧",
     panels: "▦",
     detective: "☂",
