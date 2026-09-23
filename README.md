@@ -32,6 +32,7 @@ A collection of custom skills for [Claude Code](https://docs.anthropic.com/en/do
 | [gpt-pro](#gpt-pro) | Put a question to ChatGPT's Pro model from your agent session: it packs the prompt and context, you paste and copy back | `/gpt-pro` |
 | **Publish** | | |
 | ⭐ [readout](#readout) | Publish session work as a shareable, commentable web page | `/readout`, `/readout comments` |
+| [firefox-tabs](firefox-tabs/SKILL.md) | Propose and review closures for live Firefox and Sidebery tabs | `/firefox-tabs` |
 | **Think & design** | | |
 | [goblin](#goblin) | Neurodivergent thought structuring: compile, decompose, estimate, decide | `/goblin`, `/goblin decompose` |
 | [wonder-pill](#wonder-pill) | Divergent ideation: invert the hidden assumptions, branch them, render the thought-space as a local map | `/wonder`, "help me brainstorm" |
