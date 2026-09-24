@@ -2,5 +2,7 @@
   "soundFile": "~/.claude/notification.wav",
   "soundTarget": "",
   "soundVolume": 1.0,
-  "standingOrders": "~/path/to/standing.md"
+  "standingOrders": "~/path/to/standing.md",
+  "parkedList": "~/.local/share/overlay-hud/parked.jsonl",
+  "parkedCli": "~/path/to/overlay-hud-v2"
 }

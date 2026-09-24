@@ -75,6 +75,25 @@ reply; preserve and finish any unanswered user request. For a current tick:
 and the next check time. The persistent controller owns waiting; finish the
 model turn normally. A sleeping tool call is not the scheduler.
 
+## The parked list
+
+The user parks things they should not do right now in a list of their own
+(the overlay HUD, bottom-left of alt+q). It works without Warden and stays
+theirs: Warden is a helper on it, never an authority over it. Read it with
+`scripts/parked.mjs list` on the plan interview and on each current tick.
+
+- An item with `needsTidy` gets a tidy title: a few plain words for what they
+  meant, written with `parked.mjs tidy`. It shows quieter under their words,
+  which are never rewritten or removed. Tidying needs no message.
+- An item with `mayOfferBead` gets one offer to file a bead, folded into the
+  reply you were already sending, one line for every such item together.
+  Record it with `parked.mjs offered <id>...` as you send it. An offer is
+  made once: an ignored or declined item is never raised again.
+- On a yes, file the bead as the repository's own rules say, then link it
+  with `parked.mjs bead <id> <bead-id>`.
+- Never plan around parked items, count them against the day, suggest
+  ticking or clearing one, or mention the list when it has nothing new.
+
 ## Work in other sessions
 
 Warden coordinates; implementation belongs in an independently openable

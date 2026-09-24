@@ -85,6 +85,16 @@ freshness is separate. On-plan and declared breaks need no desktop alert.
 For an intervention, `node scripts/notify.mjs "one next action"` sends one
 notification and the configured sound; `--silent` suppresses sound.
 
+## Parked list
+
+`node scripts/parked.mjs list` prints the open items with `needsTidy` and
+`mayOfferBead`, plus `canWrite`. `tidy <id> "<title>"` and `bead <id> <bead-id>`
+write through the HUD binary named by `parkedCli` in `config.json`, which holds
+the list's lock; Warden never edits the list file. `offered <id>...` records
+offers in `~/.local/state/warden/parked-offered.json`. `parkedList` and
+`parkedOffered` override the two paths. Without `parkedCli`, reading works and
+writes report that they cannot run.
+
 ## Recovery and completion
 
 State lives at `~/.local/state/warden/state.json`. Only the controller writes
