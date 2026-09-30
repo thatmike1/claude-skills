@@ -62,7 +62,10 @@ that they wanted to edit costs that session a turn.
 
 ## Launching a background job
 
-They may ask you to start work rather than route it:
+They may ask you to start work rather than route it. Inside T3 Code, where the
+`t3-code` MCP server offers `create_threads`, start it as a T3 thread with that
+tool instead: a `--bg` job never shows in T3's sidebar. Everything below is the
+route outside T3.
 
 ```bash
 cd <repo> && claude --bg --name <short-name> --model claude-opus-5 --effort high "<task>"
