@@ -35,7 +35,7 @@ Do not use it when a named repository, issue tracker, document set, or conversat
 | **perplexity_ask** | quick web-grounded answer with citations; "current state of X", recent facts. **Costs prepaid credits** — not free |
 | **perplexity_research** | deep multi-source investigation (slow, 30s+); literature-review depth. Costs credits |
 | **perplexity_reason** | analysis needing step-by-step logic over sources. Costs credits |
-| **WebSearch** | `oc ddg search` came back empty or wrong, or the query needs `allowed_domains` / `blocked_domains` |
+| **`oc bing search`** | `oc ddg search` came back empty, wrong, or as a captcha. Domain filters are `site:` in either query, so WebSearch has no job here |
 | **WebFetch** | third fetch path after `oc` and Exa both fail |
 | **Jina Reader** (`curl`) | fourth fetch path — see Raw content below |
 | **Reddit `.rss`** (`curl`) | what people actually said — threads, search, comments. See Raw content below |
@@ -57,7 +57,7 @@ Do not use it when a named repository, issue tracker, document set, or conversat
 
 `oc` renders a page or a result list as ~500 tokens of numbered text, in about two seconds, on the local machine. `WebSearch` bills roughly 13.5k input tokens to the session-leading model per call, so a search that `oc` can answer costs about a fifteenth as much. Command reference lives in `/web-browsing-cli`; only the routing is here.
 
-- **Search** is `oc ddg search <words>` — no quoting, ~15 results with snippets. Six back-to-back queries ran clean, so a fan-out does not need pacing.
+- **Search** is `oc ddg search <words>` — no quoting, ~15 results with snippets. Eight parallel queries ran clean; about thirty inside a minute drew DuckDuckGo captchas that cleared after a minute, while `oc bing search` held through the same burst. Spread a big fan-out across both engines.
 - **Reading a page** is `oc open <url>` then `oc find <term>`, as two calls. On a docs site or a GitHub repo the first render is often all sidebar, and `find` is what returns the actual passage — including code and config blocks verbatim, which is the reason to prefer it over any summarizing fetcher when exact wording or a copyable snippet is the point.
 - **Exit 2 is final for that URL.** It means `oc` cannot read the page, not that the page is empty. Move to Exa, then WebFetch, then Jina; do not re-run `oc` on it.
 
@@ -112,7 +112,7 @@ Two operational facts: the browser User-Agent is required, and Reddit rate-limit
 ## Routing heuristics
 
 - Default to **context7 over web search** for any library/API/framework question.
-- Default to **`oc ddg search` over WebSearch** for general search, and to `oc open` + `oc find` over any fetcher, on cost.
+- Default to **`oc ddg search`**, then `oc bing search`, for general search (WebSearch is not used), and to `oc open` + `oc find` over any fetcher, on cost.
 - Escalate to **perplexity** when depth or reasoning is the actual need, and say so — it burns prepaid credits.
 - **Blocked page?** The fetchers fail independently: `oc`, `exa.py fetch`, WebFetch, Jina Reader. Try the others before reporting failure.
 - Use **playwright only after** the fetchers fail or content is clearly behind JS/auth — it's heavier and slower.
