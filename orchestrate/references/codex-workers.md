@@ -2,6 +2,8 @@
 
 OpenAI's Codex CLI is an optional accelerator — never a requirement. When present and consented, it adds a second family of worker seats.
 
+**Codex seats take backend, research, data and verification work — never UI or UX.** Anything a person looks at or clicks is built by a Claude seat from the start, sketches, mockups and first drafts included: a GPT draft polished by Claude is still a GPT design at its core. A Codex reviewer may check UI code for defects, but never proposes or judges the design. Routing.md carries the same rule.
+
 ## The probe (once per session, cache the result)
 
 ```bash

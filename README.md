@@ -75,7 +75,7 @@ Every Claude Code session writes its transcript to disk as it goes, and reading 
 
 Multi-agent delegation with the economics built in. The session model becomes the conductor — it plans, routes, and verifies but does not implement; implementation goes to the cheapest model that clears the task's quality bar (Claude subagents, or OpenAI Codex CLI workers when installed and consented).
 
-- **Routing by measured data, not vibes** — bundles a model × reasoning-effort comparison table (cost per finished task, tokens per task) plus the `refresh.py` that regenerates it from Artificial Analysis
+- **Routing by measured data, not vibes** — bundles a model × reasoning-effort comparison table (cost per finished task, tokens per task) plus a `refresh.py` that syncs it from a canonical model map kept outside this repo
 - **Delegation tickets** — every dispatch is a self-contained 7-section ticket with a declared write set; parallel work requires provably disjoint write sets
 - **Blind verification** — a fresh-context verifier gets the original task verbatim, never the worker's narrative, and assumes the work is broken until proven otherwise
 - **Durable state** — a ledger file survives compaction and restarts; escalation and retries follow one precedence table

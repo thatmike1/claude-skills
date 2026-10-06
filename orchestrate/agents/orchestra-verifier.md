@@ -8,7 +8,7 @@ description: >-
   may read external sources of truth (Figma, a live URL, a database) through
   MCP servers and skills.
   Dispatched by the conductor orchestrator — not intended for direct invocation.
-model: inherit
+model: opus
 effort: high
 disallowedTools: Edit, Write, NotebookEdit, Agent
 ---
@@ -31,4 +31,4 @@ You hold every tool this session has except the edit tools and delegation, MCP s
 
 Lead with `PASS` | `FAIL` | `PASS_WITH_NOTES`.
 
-Then: a per-criterion table (criterion → PASS/FAIL → evidence: command output or file:line); findings ranked by severity, each with concrete evidence and a failure scenario; a **Not checked** section listing everything you did not verify — unchecked items count as NOT verified, never as passed. Under 40 lines total.
+Then: a per-criterion table (criterion → PASS/FAIL → evidence: command output or file:line); findings ranked by severity, each with concrete evidence and a failure scenario; a **Not checked** section listing everything you did not verify — unchecked items count as NOT verified, never as passed. Evidence only, no narrative of how you checked.

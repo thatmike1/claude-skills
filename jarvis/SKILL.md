@@ -68,7 +68,7 @@ tool instead: a `--bg` job never shows in T3's sidebar. Everything below is the
 route outside T3.
 
 ```bash
-cd <repo> && claude --bg --name <short-name> --model claude-opus-5 --effort high "<task>"
+cd <repo> && claude --bg --name <short-name> --model opus --effort high "<task>"
 ```
 
 It prints an eight-character job id and returns. Two things the flags do not
