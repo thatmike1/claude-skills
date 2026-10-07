@@ -130,7 +130,8 @@ session's last turns. Codex can coordinate existing Claude jobs through shell
 commands without Claude's agent-message tools. When the user asks for a new
 background job, start it as a T3 thread with the `t3-code` server's
 `create_threads` tool wherever that server is reachable (a `claude --bg` job
-never shows in T3) and return the thread title. Only when the user says they
+never shows in T3), with a Claude `target` (Opus at high effort) unless the
+user asked for Codex, and return the thread title. Only when the user says they
 don't need to see the job, or no T3 server is reachable, verify the installed
 `claude --help` flags, launch with
 `claude --bg --name <name> --model <chosen-model> "<task>"`, and return its

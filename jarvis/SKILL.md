@@ -94,8 +94,10 @@ it left. The worktree stays locked until `claude stop <id>`.
 
 A Codex job outside T3 is a detached `codex exec`: write the task to a file,
 then `nohup codex exec -C <repo> -o <result-file> - < <task-file> > <log-file> 2>&1 &`.
-Model, effort and the workspace-write sandbox come from `~/.codex/config.toml`
-unless you pass `-m` and `-c model_reasoning_effort=<level>`. There is no attach:
+Pass `-m <model>` and `-c model_reasoning_effort=<level>` on every job, picked
+from the "Codex models" section of the shared rules; without them it falls back
+to `~/.codex/config.toml`'s low-effort default. The workspace-write sandbox
+comes from that file too. There is no attach:
 report the log and result paths, and the session id printed at the top of the
 log, which `codex resume <id>` opens.
 
