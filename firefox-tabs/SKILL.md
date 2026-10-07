@@ -1,25 +1,39 @@
 ---
 name: firefox-tabs
-description: Triage Mike's live Firefox tabs (Sidebery tree, the YouTube pile included) when he asks to close, tidy or clear out tabs. Group suggested closures with a reason, open the review page in Firefox, and he flips what to keep and closes them in one click.
+description: Triage Mike's live Firefox tabs when he asks to close, tidy or clear out tabs. Default is window B, his everyday window on the second monitor; with "youtube" as the argument it is window A's YouTube pile. Group suggested closures with evidence, open the review page in Firefox, and he flips what to keep and closes them in one click.
 ---
 
 # Firefox tabs
 
 Firefox answers on `127.0.0.1:1345` itself: `firefox.cfg` loads `~/git/ccChat-general/projects/firefox-tab-bridge/firefox-bridge.js` at startup, so there is no add-on to load and no helper to start. The agent side is `tabs.py` in that folder; run everything below from there.
 
-Every tab comes with its Sidebery parent and panel and the time it was last viewed. YouTube video tabs also carry their length, channel and **how much of the video ActivityWatch heard play** (audible time, not tab focus). These signals are what make a suggestion trustworthy. The first listing of a window full of videos takes about half a minute while yt-dlp fills its cache.
+## Which window
+
+- **B, the default:** his everyday window on the second monitor, where stacks of work tabs build up. This is what the skill was made for.
+- **A, with the argument `youtube`:** the window on his main monitor (another desktop) holding the YouTube pile.
+
+`tabs.py` takes `A` and `B` wherever it takes a window id: A is the window with the most YouTube videos, B the biggest other one. `status` prints which is which.
+
+## What each tab carries
+
+Its Sidebery parent, panel and nearest Sidebery group, and when it was last viewed. Then facts that make a suggestion trustworthy, shown in `{}` in the listing and as a badge on the page:
+
+- blank tab; also open in this or the other window (the copy viewed last is never the duplicate)
+- nothing running on a localhost port; a local file saved on disk or deleted (a deleted file's tab is the last copy, so that one is his call)
+- bead status for beadside links; pull request or issue state for GitHub links
+- YouTube videos: length, channel and **how much ActivityWatch heard play** (audible time, not tab focus). The first listing of a window full of videos takes about half a minute while yt-dlp fills its cache
 
 ## Steps
 
-1. `python3 tabs.py status`: windows, tab counts, YouTube counts, panels. Pick the window Mike means; the memory note `firefox-tab-bridge` has his window habits.
-2. `python3 tabs.py list --window <id>` (add `--videos` for the YouTube pile, `--json` for full data). Lines read `id flags age title [video note] <url>`, indented by Sidebery depth.
-3. Judge. Strong close signals: played to the end, never played and two weeks or older, exact duplicates, search and home pages whose results are open beside them, finished setup pages. Half-watched videos and anything ambiguous are his call. Verify a suspected duplicate before calling it one.
+1. `python3 tabs.py status`: windows with their letters, tab counts, panels. The memory note `firefox-tab-bridge` has his window habits.
+2. `python3 tabs.py list --window B` (or `A --videos` for the pile; `--json` for full data). Lines read `id flags age title [video] {facts} <url>`, indented by Sidebery depth.
+3. Judge. Strong close signals: blank tabs, second copies, stopped local servers, closed beads, merged pull requests, finished setup pages (API keys, DNS, dashboards visited once), search pages whose results are open beside them, videos played to the end or never played and two weeks old. Old artifacts and reading in his Sidebery groups, half-watched videos and anything ambiguous are his call. For project tabs, check the project's current state before calling one finished.
 4. Write a proposal and run `python3 tabs.py propose <file>`. It checks every id, attaches the video data and opens the review page in that window:
 
    ```json
    {
-     "window": 1,
-     "headline": "23 YouTube tabs you are done with",
+     "window": "B",
+     "headline": "17 tabs in window B can go",
      "note": "One sentence on what the pile is and what stays.",
      "groups": [
        {"title": "Played to the end", "note": "ActivityWatch heard these play through.",
@@ -30,7 +44,7 @@ Every tab comes with its Sidebery parent and panel and the time it was last view
    }
    ```
 
-   Two to five groups, each a plain title plus one takeaway line. `default: close` only for groups you would defend tab by tab. A video tile already shows the channel, length, played amount and age, so a per-tab `reason` is for judgment the page cannot show. The page is the suggestion, not an inventory: the rest of the window sits behind a collapsed link at the bottom.
+   Two to five groups, each a plain title plus one takeaway line; the headline's number is the tabs in `close` groups. `default: close` only for groups you would defend tab by tab. Every row already shows its facts, site, Sidebery group and age (and videos their channel, length and played amount), so a per-tab `reason` is for judgment the page cannot show. Blank tabs in a group fold into one row. The page is the suggestion, not an inventory: the rest of the window sits behind a collapsed link at the bottom.
 5. Mike flips tiles (faded means it closes) and presses **Close**. The bridge recloses nothing that changed: a tab that navigated, got pinned, or is a folded Sidebery parent whose children were not ticked is left open and reported.
 6. `python3 tabs.py result` shows what happened. Report the count closed and anything left open with its reason. Another round is fine while defensible candidates remain.
 
