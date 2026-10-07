@@ -43,7 +43,7 @@ Do not use it when a named repository, issue tracker, document set, or conversat
 | **find-skills** | the need might already be solvable by an existing skill |
 | **scan / morning** | the answer is in the user's own past CC/Codex conversations |
 | **Explore agent / grep** | the answer is in the user's own codebase |
-| **research** | hand off when the findings should land as a sourced Markdown file, or the reading should run as a background agent |
+| **research** | hand off when the findings should land as a sourced Markdown file, or the reading should run as a research subagent |
 
 ## Workflow
 
@@ -61,7 +61,7 @@ Do not use it when a named repository, issue tracker, document set, or conversat
 - **Reading a page** is `oc open <url>` then `oc find <term>`, as two calls. On a docs site or a GitHub repo the first render is often all sidebar, and `find` is what returns the actual passage — including code and config blocks verbatim, which is the reason to prefer it over any summarizing fetcher when exact wording or a copyable snippet is the point.
 - **Exit 2 is final for that URL.** It means `oc` cannot read the page, not that the page is empty. Move to Exa, then WebFetch, then Jina; do not re-run `oc` on it.
 
-Verified boundaries: `oc open https://x.com/<handle>` returns real logged-out post text. Reddit does not work at all — every `oc reddit` verb lands on the login wall, so use the `.rss` endpoints below.
+Verified boundaries: `oc open https://x.com/<handle>` returns real logged-out post text. Anonymous Reddit URLs are automatically rewritten to `.rss` feeds; the explicit `.rss` endpoints below provide a direct fetch path.
 
 ## Exa: free search, no key
 
@@ -82,7 +82,7 @@ If Exa starts refusing calls, the daily cap is the likely cause — tell the use
 
 WebFetch and WebSearch return a *summary* produced by a small model. When the actual wording matters — quotes, exact steps, someone's real phrasing, a long doc you want to read yourself — fetch the raw text instead.
 
-`oc find` is the cheap way to get exact wording out of one page. The paths below are for a whole document you want in full, and for Reddit, which `oc` cannot reach.
+`oc find` is the cheap way to get exact wording out of one page. The paths below are for a whole document you want in full, and for fetching Reddit feeds directly.
 
 **Any web page → markdown.** No key, no install:
 
