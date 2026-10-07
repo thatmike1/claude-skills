@@ -50,7 +50,7 @@ node <skill-dir>/scripts/scan.mjs --search "<query>" [--mode keyword|semantic|bo
 
 ## Scale guard
 
-If a digest is still huge after auto-routing, spawn **sonnet subagents — one per session or project cluster** — each given the question and told to return only matching findings, then synthesize (mirrors the `ai-cv-scanner` fan-out).
+If a digest is still huge after auto-routing, spawn **sonnet subagents — one per session or project cluster** — each given the question and told to return only matching findings, then synthesize.
 
 ## Rules
 

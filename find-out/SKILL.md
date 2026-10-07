@@ -7,7 +7,7 @@ description: >
   research. Do not trigger for ordinary codebase, issue-tracker, document, or conversation-history
   investigation with a known local source, even if the user says "find out", "look into", "dig into",
   or "explore"; use the relevant local tool directly. Sibling of /find-skills (skills only) and
-  /deep-research (heavy multi-source reports).
+  /research (sourced findings written to a file).
 ---
 
 # /find-out
@@ -43,7 +43,7 @@ Do not use it when a named repository, issue tracker, document set, or conversat
 | **find-skills** | the need might already be solvable by an existing skill |
 | **scan / morning** | the answer is in the user's own past CC/Codex conversations |
 | **Explore agent / grep** | the answer is in the user's own codebase |
-| **deep-research** | hand off for a genuinely heavy, fact-checked, multi-source report |
+| **research** | hand off when the findings should land as a sourced Markdown file, or the reading should run as a background agent |
 
 ## Workflow
 
@@ -51,7 +51,7 @@ Do not use it when a named repository, issue tracker, document set, or conversat
 2. **Say what you're doing** — one line naming the tool(s) and why. This is also how the user learns the routing.
 3. **Run in parallel** — independent lookups go in one batch, not sequentially.
 4. **Synthesize** — lead with the answer, cite sources, flag where sources disagree, separate fact from inference.
-5. **Flag skill candidates** — if this looks like a recurring need (or the user says it isn't the first time), note it: "this could be a /write-a-skill candidate."
+5. **Flag skill candidates** — if this looks like a recurring need (or the user says it isn't the first time), note it: "this could become a skill (/writing-for-agents)."
 
 ## oc: the default surface
 
@@ -90,7 +90,7 @@ WebFetch and WebSearch return a *summary* produced by a small model. When the ac
 curl -s "https://r.jina.ai/https://example.com/some/article"
 ```
 
-Returns the full page as markdown (verified: ~100KB for a long Wikipedia article). The URL you request is visible to Jina AI, a third party — so never point it at internal, private, or authenticated pages. For those use playwright.
+Returns the full page as markdown (verified: ~100KB for a long Wikipedia article). The URL you request is visible to Jina AI, a third party — so never point it at internal, private, or authenticated pages. For those use agent-browser.
 
 **Reddit is blocked to anonymous HTTP** (403 on both `.json` and via Jina) **but the RSS endpoints are open.** Append `.rss`:
 
@@ -107,7 +107,7 @@ The post-URL form is the valuable one — it returns the entire thread (verified
 
 Two operational facts: the browser User-Agent is required, and Reddit rate-limits hard — several requests in a row return `429` with an empty body. The retry flags above are not optional, and batching many Reddit calls in parallel will just get them all throttled. Run them sequentially.
 
-**Twitter/X reads through `oc`.** `oc open https://x.com/<handle>` returns the logged-out timeline as real post text with dates and links, where Jina returns only the bio and follower counts. Replies and anything past the first page still need a logged-in playwright session.
+**Twitter/X reads through `oc`.** `oc open https://x.com/<handle>` returns the logged-out timeline as real post text with dates and links, where Jina returns only the bio and follower counts. Replies and anything past the first page still need a logged-in agent-browser session.
 
 ## Routing heuristics
 
@@ -115,16 +115,16 @@ Two operational facts: the browser User-Agent is required, and Reddit rate-limit
 - Default to **`oc ddg search`**, then `oc bing search`, for general search (WebSearch is not used), and to `oc open` + `oc find` over any fetcher, on cost.
 - Escalate to **perplexity** when depth or reasoning is the actual need, and say so — it burns prepaid credits.
 - **Blocked page?** The fetchers fail independently: `oc`, `exa.py fetch`, WebFetch, Jina Reader. Try the others before reporting failure.
-- Use **playwright only after** the fetchers fail or content is clearly behind JS/auth — it's heavier and slower.
+- Use **agent-browser only after** the fetchers fail or content is clearly behind JS/auth — it's heavier and slower.
 - Wanting *what people said* (opinions, experiences, "is X any good") → Reddit `.rss`, not a web search that returns SEO blog spam.
 - Needing exact wording, a code block, or a config snippet → `oc find`, not a summarizing fetcher.
 - "Is there a tool for X" → **find-skills**, not a generic web search.
-- Don't reach for **perplexity_research / deep-research** unless depth is actually wanted — they're slow.
+- Don't reach for **perplexity_research** unless depth is actually wanted — it's slow.
 - Answering from memory is the fallback, not the default. If a claim is checkable, check it.
 
 ## Examples
 
 - *"find out the current best way to do X in `<library>`"* → context7 (docs) + perplexity_ask (community practice), in parallel, then synthesize.
 - *"research approaches for keeping responses engaging"* → perplexity_ask (high context) + find-skills, in parallel.
-- *"what does this dashboard actually show"* → playwright, because web fetch can't render it.
+- *"what does this dashboard actually show"* → agent-browser, because web fetch can't render it.
 - *"look into this Facebook login issue in the current repo and task tracker"* → do not invoke this skill; search the repo and tracker directly.

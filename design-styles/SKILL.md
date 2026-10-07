@@ -49,5 +49,5 @@ The reader has ADHD. Format for scanning, then stop:
 
 - Verdict or design read first, one line, before anything else.
 - Findings as one-liners: `location — problem → fix`. Full sentences live in the fix, not around it.
-- Severity tags (`P0/P1/P2`), hard caps per tier (see review.md). Overflow goes in one "also noticed" line, not more bullets.
+- Severity tags (`P0/P1/P2`), ranked hard (see review.md). Overflow goes in one "also noticed" line, not more bullets.
 - Short chunks with bold mini-headers over long paragraphs. A wall of prose is a failed output even when its content is right.

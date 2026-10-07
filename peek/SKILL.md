@@ -42,7 +42,7 @@ the rollout's turn context, so a warden on Astra reads `codex gpt-6-astra`.
 ## T3 Code threads
 
 T3 Code is a front end, not a third harness: every thread it opens runs an
-ordinary Claude Code or Antigravity session underneath, which is why its rows
+ordinary Claude Code, Codex or Antigravity session underneath, which is why its rows
 reach `live` looking like any other session. A `live` row that belongs to one is
 tagged `cc t3`, `codex t3` or `agy t3` and carries a `t3:` line with the thread's own title,
 whether it is `busy`, `waiting` on the user or `idle`, and whether it is

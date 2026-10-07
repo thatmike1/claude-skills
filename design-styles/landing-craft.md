@@ -35,7 +35,7 @@ If the brief reads as an established ecosystem, install the official package ins
 ## Typography
 
 - Display default: sans with character — Geist, Outfit, Cabinet Grotesk, Satoshi, PP Neue Montreal. Inter only when the brief asks for neutral/Linear or public-sector.
-- **Serif discipline:** serif display is the most-tested AI tell. Reach for it only when the brand names one, or the brief is genuinely editorial/luxury/heritage AND you can say why this serif fits this brand. Fraunces and Instrument Serif are banned as defaults. Emphasis inside a headline = italic/bold of the same family, never a serif word dropped into a sans headline.
+- **Serif discipline:** serif display is the most-tested AI tell. Reach for it only when the brand names one, or the brief is genuinely editorial/luxury/heritage AND you can say why this serif fits this brand. Fraunces and Instrument Serif are banned as defaults. Emphasis inside a headline = a heavier weight of the same family; italic accent words and serif words dropped into a sans headline are both tells.
 - Italic display words with descenders (`y g j p q`): `leading-[1.1]` minimum + `pb-1` reserve, or they clip.
 - Body: `max-w-[65ch]`, relaxed leading.
 
@@ -87,6 +87,7 @@ The signatures of "trying to look designed". Zero tolerance unless the brief dem
 - Jane Doe effect: no "John Doe", "Acme Corp", "Sarah Chan", egg avatars, `99.99%`, Lorem Ipsum — realistic names, invented-but-believable brands, organic numbers, real draft copy, sentence case headers.
 - Filler verbs: "Elevate", "Seamless", "Unleash", "Next-Gen", "Revolutionize", "Delve" — concrete verbs only.
 - Quotes: ≤ 3 lines, real typographic quotes or none, attribution as name + role (+ company).
+- Model-default looks, unless the chosen pack or the brief calls for one: a cream or off-white page background, italic accent words in headlines, monospace micro-labels, pill-shaped buttons. When a first build lands on another recurring default, add it here.
 
 ## Pre-flight (mechanical, before delivering)
 
