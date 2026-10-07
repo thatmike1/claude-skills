@@ -92,6 +92,13 @@ knows. When a job reports done, run `git worktree list` in its repo before
 reading results, and fast-forward `main` from any `worktree-<name>` branch
 it left. The worktree stays locked until `claude stop <id>`.
 
+A Codex job outside T3 is a detached `codex exec`: write the task to a file,
+then `nohup codex exec -C <repo> -o <result-file> - < <task-file> > <log-file> 2>&1 &`.
+Model, effort and the workspace-write sandbox come from `~/.codex/config.toml`
+unless you pass `-m` and `-c model_reasoning_effort=<level>`. There is no attach:
+report the log and result paths, and the session id printed at the top of the
+log, which `codex resume <id>` opens.
+
 **Reading the view.** `claude agents` lists background jobs only, never live
 interactive sessions, which is why the roster comes from `peek.mjs live`. Its
 right-hand column is a duration (`createdAt` → `firstTerminalAt`), not an age, so
