@@ -60,11 +60,7 @@ See [references/decide.md](references/decide.md)
 
 ## Chaining
 
-Modes feed into each other naturally. After output, offer the logical next step:
-- compile → "Want me to **decompose** any of these or **estimate** the list?"
-- decompose → "Want me to **estimate** this or break any step down further?"
-- estimate → "Want me to **decompose** the biggest one?"
-- decide → "Made your pick? Want me to **decompose** it into first steps?"
+Modes feed into each other: compile → decompose or estimate, decompose → estimate, estimate → decompose the biggest item, decide → decompose the pick. End on the output; where a follow-up mode is the obvious next move, name it in one line (`/goblin decompose 2`) instead of asking whether they want it.
 
 ## Tone
 

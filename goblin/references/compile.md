@@ -51,4 +51,4 @@ The ADHD brain leaves un-actionified thoughts in anxious limbo. Every item gets 
 
 ## Follow-up
 
-After outputting, ask: "Want me to **decompose** any of these or **estimate** time for the list?"
+After outputting, name the follow-up in one line: decompose an item, or estimate the list.
