@@ -1,0 +1,15 @@
+# copy to ~/.config/systemd/user/jarvis.service, fix the two paths, then
+# systemctl --user daemon-reload && systemctl --user enable --now jarvis.service
+[Unit]
+Description=Jarvis inbox: page on 127.0.0.1:1355 and the wake watcher
+After=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=/path/to/node /path/to/claude-skills/jarvis/scripts/jarvis.mjs serve
+Restart=on-failure
+RestartSec=5
+UMask=0077
+
+[Install]
+WantedBy=default.target
