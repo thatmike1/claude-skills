@@ -17,7 +17,7 @@ cc-audit/                 — audit CC setup and usage patterns, flag anti-patte
 live-prompt/              — write handoff prompts for attended fresh-instance sessions (collaborative / off-the-leash)
 afk-prompt/               — write autonomous-run prompts + pick tasks safe to run unattended
 peek/                     — read another running CC session's transcript from disk (live roster via /proc + session-env, incremental --since cursor)
-jarvis/                   — ask one session about all the others; built on peek, launches --bg jobs
+jarvis/                   — the thread you talk to about all the others: inbox + wake service (port 1355), settle sweep, check-ins; built on peek and T3
 warden/                   — all-day accountability loop: plan interview, then /loop ticks over ActivityWatch + peek, desktop nudge on drift
 gpt-pro/                  — hand-carried ChatGPT Pro runs: prompt + packed context to the clipboard, answer back from it, run folders per project
 readout/                  — MDX-authored session docs published to readout.ssscribe.app with anchored comments (has npm deps for the MDX compile, like the installer)

@@ -1,6 +1,6 @@
 {
     "name": "jarvis",
-    "version": "1.0.0",
-    "description": "Talk to one Claude Code session about all your others: what is open, which to touch next, what a confusing one means, what to send it, and launching background jobs. Built on the peek skill.",
+    "version": "2.0.0-trial",
+    "description": "The thread you talk to about all your other threads: hands out work, gets woken by an inbox when results come back, translates what you cannot eyeball, sweeps open threads for what to settle. Built on peek and T3 Code.",
     "skills": "."
 }
