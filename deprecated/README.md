@@ -9,5 +9,6 @@ Skills that are no longer worth installing by default. Nothing here is deleted: 
 | ai-cv-scanner | built for one job-application questionnaire; the questionnaire is done |
 | invoice-subjects | Czech freelancer invoicing, git-history driven; only useful with the exact setup it was written against |
 | panels, detective, punchy | rotating response styles for ADHD reading; the novelty was the point, and it wore off |
+| design-styles | a merge of six earlier frontend skills; replaced on 9 Oct 2026 by Anthropic's own `frontend-design` (anthropics/skills), with `impeccable` as the heavy option |
 
 `shared/` here is a symlink to the repo's `shared/`, so scripts in these skills keep their `../../shared` imports working when the skill is symlinked into `~/.claude/skills`.

@@ -36,7 +36,6 @@ A collection of custom skills for [Claude Code](https://docs.anthropic.com/en/do
 | **Think & design** | | |
 | [goblin](#goblin) | Neurodivergent thought structuring: compile, decompose, estimate, decide | `/goblin`, `/goblin decompose` |
 | [wonder-pill](#wonder-pill) | Divergent ideation: invert the hidden assumptions, branch them, render the thought-space as a local map | `/wonder`, "help me brainstorm" |
-| [design-styles](#design-styles) | Aesthetic direction + UX baseline: style packs, landing craft, redesign, reviews | triggers on frontend work |
 
 <details>
 <summary><b>Deprecated (8)</b> — kept in <code>deprecated/</code>, still installable, no longer recommended</summary>
@@ -146,19 +145,6 @@ instead of rendering inline through the Visualizer. `scripts/render-map.mjs` inj
 edges into a static shell that carries its own light and dark palettes: drag to pan, zoom between
 0.3 and 1.4, click a node for its gut-check, node types told apart by border style rather than
 colour, dashed cross-links where two branches hit the same tension.
-</details>
-
-<details>
-<summary><b>design-styles</b></summary>
-
-Six frontend skills merged into one with internal routing. A thin SKILL.md does a "design read" of the brief, then loads only what the branch needs:
-
-- **Style packs** — high-end agency, editorial minimalist, industrial brutalist (one per project, pack rules win)
-- **landing-craft** — anti-slop methodology for landing pages/portfolios: dials, layout hard rules, AI-tell bans, mechanical pre-flight (distilled from [Leonxlnx/taste-skill](https://github.com/Leonxlnx/taste-skill))
-- **redesign** — audit-first upgrades of existing sites without breaking them
-- **ux + review** — functional UX baseline and a capped, scannable review format (verdict first, `location — problem → fix` one-liners, max 3 P0 / 5 P1 / 5 P2)
-
-Built as the ungated sibling of heavyweight design skills that require per-project setup.
 </details>
 
 ## Install
