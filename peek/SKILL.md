@@ -107,10 +107,11 @@ found by the id in its name, and the title comes from
 the last 45 days of rollouts, so an older session resumed today is out of its
 reach.
 
-T3 Code: `~/.t3/userdata/state.sqlite`, read-only, joining
-`provider_session_runtime` to `projection_threads`. The underlying session id
-lives in `resume_cursor_json` under a per-provider key — `resume` for Claude
-Code, `threadId` for Codex, `sessionId` for Antigravity — and that field is
+T3 Code: `~/.t3/userdata/statev2.sqlite` since Orchestrator V2 (plain
+`state.sqlite` on a box still on V1), read-only, through `shared/t3-state.mjs`.
+On V2 a thread's session id is `nativeThreadRef.nativeId` in its
+`orchestration_v2_projection_provider_threads` payload; threads from before the
+switch keep theirs in the V1 `provider_session_runtime.resume_cursor_json`. That id is
 the only join between a thread and its session. A T3 process is also recognisable before its state row
 lands, because T3 gives every session it starts an MCP server named `t3-code`,
 which shows in the process's argv.

@@ -275,6 +275,8 @@ function endpoints(baseUrl) {
   const socketUrl = new URL(baseUrl);
   socketUrl.protocol = socketUrl.protocol === 'https:' ? 'wss:' : 'ws:';
   socketUrl.pathname = '/ws';
+  // a V2 server refuses (HTTP 426) any client that does not declare protocol 2
+  socketUrl.searchParams.set('orchestrationProtocol', '2');
   socketUrl.searchParams.set('clientSurface', 'cli');
   return { httpUrl, socketUrl };
 }

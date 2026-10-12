@@ -236,6 +236,8 @@ export async function dispatchMessage({ threadId, text, id, tokenFile, timeoutMs
   const socketUrl = new URL(origin);
   socketUrl.protocol = 'ws:';
   socketUrl.pathname = '/ws';
+  // a V2 server refuses (HTTP 426) any client that does not declare protocol 2
+  socketUrl.searchParams.set('orchestrationProtocol', '2');
   socketUrl.searchParams.set('clientSurface', 'cli');
   socketUrl.searchParams.set('wsTicket', ticket);
   return rpc(socketUrl, {
