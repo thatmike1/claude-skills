@@ -26,7 +26,7 @@ export function isUrgent(entry) {
 }
 
 /**
- * agent-launched threads that went quiet without posting, which get a stub
+ * threads Jarvis launched that went quiet without posting, which get a stub
  * entry so they surface; and the ones still out.
  *
  * Idle is a reason to look, never proof of done: the stub says "finished
@@ -45,7 +45,10 @@ export function sortLaunched({ now, launched, entries, stubbed, silentMinutes = 
     if (thread.settled) continue;
     const reported = entries.some(e => e.thread === thread.threadId && e.created >= thread.launchedAt);
     if (reported || stubbed[thread.threadId]) continue;
-    const quietFor = now - Date.parse(thread.updatedAt || thread.launchedAt);
+    // a thread can predate its launch record (tracked after the fact), so the
+    // quiet clock starts no earlier than the launch
+    const lastMoved = Math.max(Date.parse(thread.updatedAt) || 0, Date.parse(thread.launchedAt));
+    const quietFor = now - lastMoved;
     if (thread.status === 'waiting') stubs.push({ thread, status: 'needs-you' });
     else if (thread.status === 'idle' && quietFor >= silentMinutes * MINUTE) stubs.push({ thread, status: 'silent' });
     else outstanding.push(thread);
@@ -97,7 +100,7 @@ export function decideWake({ now, unhandled, outstanding, home, lastWakeIds,
     reason,
     ids,
     text: `[jarvis inbox] ${summarize(unhandled)}${running}. Why now: ${reason}.\n`
-      + `Read: \`${cli} list --unread\`. Give Mike one digest, then \`${cli} ack ${ids.join(' ')}\`.`,
+      + `Read: \`${cli} list --unread\`. Tell Mike the way the skill says, then \`${cli} ack ${ids.join(' ')}\`.`,
   };
 }
 

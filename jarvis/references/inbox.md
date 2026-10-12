@@ -10,9 +10,9 @@ Everything lives in `~/.jarvis/` (`JARVIS_HOME` overrides it):
   `from:` is his note.
 - `handled/<id>` — an empty marker: Jarvis has dealt with that entry. Reading
   and resolving stay separate acts; the page shows "jarvis has it".
-- `config.json` — written only by the CLI (`bind`, `quiet`), read by the service
-  every tick: `home` (the bound thread), `since` (launches watched from),
-  `tokenFile`, `port`, `deadlineMinutes`, `silentMinutes`, `checkins`
+- `config.json` — written only by the CLI (`bind`, `track`, `quiet`), read by the
+  service every tick: `home` (the bound thread), `launched` (the last 40 threads
+  Jarvis launched for Mike, from `track`), `tokenFile`, `port`, `deadlineMinutes`, `silentMinutes`, `checkins`
   (`from`, `to`, `max`, `quietHours`), `quietUntil`.
 - `service.json` — written only by the service: stubs written, the last wake's
   entry ids, wake and check-in history.
@@ -43,13 +43,14 @@ posting; `reconstructed: true` marks an entry Jarvis wrote from a transcript.
 `jarvis.service` (user systemd) runs `jarvis.mjs serve`: the page on
 127.0.0.1:1355 and a tick every 20 seconds. A tick:
 
-1. Reads the threads Mike's T3 fork recorded as agent-launched
-   (`agent_thread_parents`) since `since`. One waiting on an approval or answer
+1. Reads the state of the threads in `launched` from T3's Orchestrator V2
+   tables (`statev2.sqlite`, read-only). One waiting on an approval or answer
    gets a `needs-you` stub at once; one idle for `silentMinutes` (10) with no
-   entry since its launch gets a `silent` stub.
-2. Wakes Jarvis by starting a turn in its home thread through T3's own API
-   (`orchestration.dispatchCommand`, `thread.turn.start`, the route Warden's
-   bridge uses, with the token at `tokenFile`). Only when the home thread is idle
+   entry since its launch gets a `silent` stub. Delegated tasks are not watched:
+   T3 wakes Jarvis itself when one finishes, and Jarvis posts its result.
+2. Wakes Jarvis by putting a message into its home thread through T3's own API
+   (`message.dispatch` queued after any active run, the route Warden's bridge
+   uses, with the token at `tokenFile`). Only when the home thread is idle
    and has been for a minute, and only for entries it has not woken Jarvis for:
    at once for Mike's notes, `failed`, `blocked`, `needs-you` and `priority:
    now`; otherwise when nothing launched is still out, or the oldest unread entry
@@ -67,11 +68,3 @@ GET `/` is the page, `/board` its 15-second refresh, `/api/entries` the JSON.
 POST `/api/note` takes `{"text": …}` and needs the header `x-jarvis: 1`: the
 custom header forces a CORS preflight the server never answers, so no website
 Mike visits can write into the inbox and steer Jarvis.
-
-## Under T3 Orchestrator V2
-
-V2 (notes in ccChat-general `projects/jarvis/v2-orchestration.md`) drops the
-fork's `agent_thread_parents`, and `delegate_task` wakes the parent on each
-child's completion by itself. Then: launch with `delegate_task`, drop the stub
-watcher and the wake dispatch for delegated work, keep the inbox as what Mike
-reads and writes, and keep the check-ins (or move them to `schedule_task`).

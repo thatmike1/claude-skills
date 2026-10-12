@@ -67,7 +67,7 @@ The flagship. Artifact on steroids: session output authored as **MDX with JSX co
 
 Every Claude Code session writes its transcript to disk as it goes, and reading that file is invisible to the session that owns it. **peek** is the tool: `peek live` lists the sessions running right now (project, quiet-for, session id, last exchange), `peek <id> --last 6` reads one, and every render ends with a `--since N` cursor so you can follow a session incrementally. Peek before you `SendMessage` another session and you skip the ask-then-instruct round trip; run a coach session that peeks a driver session and the driver's transcript stays clean.
 
-**jarvis** is the skill built on it: the session you talk to *about* the others. "I have six open and an hour left, where do I start", "what is this session on about", "tell session X to do Y", "launch a background job on Z". It answers with a pick and a reason rather than a list to re-triage. jarvis does not work without peek installed. `live` is Linux-only (it reads `/proc`).
+**jarvis** is the skill built on it: a T3 Code thread you talk to *about* the others. "Where do I start", "what is this thread on about", "tell thread X to do Y", "fire an agent on Z". It hands out work as delegated tasks, hears back when they finish, and turns "here is the PR" into what changed, whether it works and what you decide. A small service (`jarvis/systemd/jarvis.service`) serves an inbox page on 127.0.0.1:1355 and wakes the thread when results or your notes arrive. It needs T3 Code with Orchestrator V2 and peek. `live` is Linux-only (it reads `/proc`).
 
 ### orchestrate
 

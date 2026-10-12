@@ -1,10 +1,12 @@
 /**
  * service — one tick of the watcher behind Jarvis's inbox.
  *
- * Every tick: find agent-launched threads that went quiet without reporting and
- * give them a stub entry, then decide whether to wake Jarvis (a short message
- * started as a turn in its bound T3 thread) or, on a quiet day, check in. The
- * rules live in decide.mjs; this file only gathers the snapshot and acts on it.
+ * Every tick: find the threads Jarvis launched for Mike (recorded with `track`)
+ * that went quiet without reporting and give them a stub entry, then decide
+ * whether to wake Jarvis (a short message put into its bound T3 thread) or, on a
+ * quiet day, check in. Delegated tasks are not watched here: T3 wakes Jarvis
+ * itself when one finishes. The rules live in decide.mjs; this file only
+ * gathers the snapshot and acts on it.
  */
 
 import { createHash } from 'node:crypto';
@@ -13,7 +15,7 @@ import { fileURLToPath } from 'node:url';
 import { loadConfig, loadServiceState, saveServiceState } from './config.mjs';
 import { decideCheckin, decideWake, sortLaunched } from './decide.mjs';
 import { list, post } from './inbox.mjs';
-import { activity, anyThreadBusy, lastWords, launchedThreads, startTurn, threadInfo } from './t3.mjs';
+import { activity, anyThreadBusy, dispatchMessage, lastWords, threadInfo } from './t3.mjs';
 
 // how a woken agent runs this CLI: by absolute path, since nothing puts it on PATH
 const CLI = `node ${fileURLToPath(new URL('../jarvis.mjs', import.meta.url)).replace(homedir(), '~')}`;
@@ -32,6 +34,18 @@ function stubBody(status, words) {
 }
 
 /**
+ * the threads Jarvis recorded launching, with their live state. One T3 no
+ * longer has (deleted) drops out.
+ * @param {{ threadId: string, title?: string, launchedAt: string }[]} [launched]
+ */
+function trackedThreads(launched = []) {
+  return launched.flatMap(({ threadId, title, launchedAt }) => {
+    const info = threadInfo(threadId);
+    return info ? [{ ...info, title: info.title || title || '', launchedAt }] : [];
+  });
+}
+
+/**
  * gather everything the page and the rules look at, without acting.
  * @param {{ now?: number }} [opts]
  */
@@ -40,8 +54,7 @@ export function snapshot({ now = Date.now() } = {}) {
   const state = loadServiceState();
   const homeId = config.home?.threadId || '';
   const home = homeId ? threadInfo(homeId) : null;
-  const since = config.since || state.startedAt || new Date(now).toISOString();
-  const launched = launchedThreads(since).filter(t => t.threadId !== homeId);
+  const launched = trackedThreads(config.launched).filter(t => t.threadId !== homeId);
   const entries = list();
   const { stubs, outstanding } = sortLaunched({
     now, launched, entries, stubbed: state.stubbed, silentMinutes: config.silentMinutes,
@@ -54,9 +67,9 @@ export function snapshot({ now = Date.now() } = {}) {
  * run one tick: write stubs, then wake or check in if the rules say so.
  * `dispatch` is injectable so tests never touch T3.
  *
- * @param {{ now?: number, dispatch?: typeof startTurn, log?: (line: string) => void }} [opts]
+ * @param {{ now?: number, dispatch?: typeof dispatchMessage, log?: (line: string) => void }} [opts]
  */
-export async function tick({ now = Date.now(), dispatch = startTurn, log = () => {} } = {}) {
+export async function tick({ now = Date.now(), dispatch = dispatchMessage, log = () => {} } = {}) {
   let snap = snapshot({ now });
   const { config, state } = snap;
   state.startedAt ||= new Date(now).toISOString();

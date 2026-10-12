@@ -12,7 +12,7 @@ import { loadConfig, loadServiceState, saveConfig } from './lib/config.mjs';
 import { ack, list, post, STATUSES } from './lib/inbox.mjs';
 import { boardHtml, pageHtml } from './lib/page.mjs';
 import { snapshot, tick } from './lib/service.mjs';
-import { lastWords, startTurn, threadForClaudeSession, threadForCodexThread, threadInfo } from './lib/t3.mjs';
+import { dispatchMessage, lastWords, threadForSession, threadInfo } from './lib/t3.mjs';
 import { duration } from './lib/decide.mjs';
 
 const SELF = fileURLToPath(import.meta.url);
@@ -20,16 +20,17 @@ const SELF = fileURLToPath(import.meta.url);
 const HELP = `jarvis — inbox and thread tools for the jarvis skill
 
   bind [--thread <id>]            make the current T3 thread Jarvis's home (wakes land here)
+  track <thread-id> [--title t]   watch a thread you launched for Mike, so it surfaces if it goes quiet
   post --status <s> [--priority now] [--title t] [--thread id] [--from job|jarvis]
        [--reconstructed] [--id x] [--body text]    add an entry; body from stdin if no --body
   note <text>                     a note from Mike, as if typed on the page
   list [--unread] [--all] [--json]
   show <id>                       one entry in full
   ack <id...> | --all             mark entries as dealt with by Jarvis
-  out                             agent-launched threads still out, and stubs written
+  out                             tracked threads still out, and stubs written
   sweep                           open threads with their last words, for the settle sweep
-  send <thread-id> <text>         start a turn in an idle thread (any provider)
-  prompt-tail                     the paragraph to end a job's prompt with
+  send <thread-id> <text>         message a thread (any provider); a busy one gets it after its run
+  prompt-tail [--delegated]       the paragraph to end a job's prompt with
   quiet [--until <iso>] | --off   pause check-ins (default: until 08:00 tomorrow)
   tick                            run one watcher tick now and print what it did
   serve [--port n]                the watcher plus the page (the systemd unit runs this)
@@ -70,9 +71,8 @@ function hhmm(iso) {
 
 /** the T3 thread the calling agent runs in, when the harness says so. */
 function ownThread() {
-  if (process.env.CLAUDE_CODE_SESSION_ID) return threadForClaudeSession(process.env.CLAUDE_CODE_SESSION_ID);
-  if (process.env.CODEX_THREAD_ID) return threadForCodexThread(process.env.CODEX_THREAD_ID);
-  return null;
+  const nativeId = process.env.CLAUDE_CODE_SESSION_ID || process.env.CODEX_THREAD_ID;
+  return nativeId ? threadForSession(nativeId) : null;
 }
 
 function entryLine(e) {
@@ -93,11 +93,22 @@ const commands = {
     if (!threadId) fail('cannot tell which T3 thread this is; pass --thread <id>');
     const info = threadInfo(threadId);
     if (!info) fail(`no T3 thread ${threadId}`);
-    const now = new Date().toISOString();
     const config = loadConfig();
-    saveConfig({ home: { threadId, title: info.title, boundAt: now }, since: config.since || now });
+    saveConfig({ home: { threadId, title: info.title, boundAt: new Date().toISOString() } });
     console.log(`bound: wakes and check-ins now land in "${info.title}" (${threadId})`);
     if (!config.tokenFile) console.log('no T3 token file configured: set "tokenFile" in ~/.jarvis/config.json or wakes cannot be sent');
+  },
+
+  track(args) {
+    const threadId = args._[0];
+    if (!threadId) fail('usage: track <thread-id> [--title t]');
+    const info = threadInfo(threadId);
+    if (!info) fail(`no T3 thread ${threadId}`);
+    const title = typeof args.title === 'string' ? args.title : info.title;
+    const launched = (loadConfig().launched || []).filter(t => t.threadId !== threadId);
+    launched.push({ threadId, title, launchedAt: new Date().toISOString() });
+    saveConfig({ launched: launched.slice(-40) });
+    console.log(`tracking "${title}": it surfaces here if it goes quiet without posting`);
   },
 
   post(args) {
@@ -188,14 +199,23 @@ const commands = {
     if (!threadId || !text.trim()) fail('usage: send <thread-id> <text>');
     const info = threadInfo(threadId);
     if (!info) fail(`no T3 thread ${threadId}`);
-    if (info.status !== 'idle') fail(`"${info.title}" is ${info.status}; send when it is idle`);
     const config = loadConfig();
     if (!config.tokenFile) fail('no T3 token file configured');
-    await startTurn({ threadId, text, id: `send-${Date.now()}`, tokenFile: config.tokenFile });
-    console.log(`sent to "${info.title}"`);
+    await dispatchMessage({ threadId, text, id: `send-${Date.now()}`, tokenFile: config.tokenFile });
+    console.log(info.status === 'idle' ? `sent to "${info.title}"` : `queued for "${info.title}", which is ${info.status}: it lands after the current run`);
   },
 
-  'prompt-tail'() {
+  'prompt-tail'(args) {
+    if (args.delegated) {
+      return console.log(`End with a final message in this shape, written for someone tired who did not watch you work, in under 150 words:
+
+What changed: two plain sentences.
+Does it work: what you ran and what passed. "Untested" is a fine answer.
+You decide: the one thing Mike must decide, or "nothing".
+Where: PR link, file path or page.
+
+A PR link alone is not a report.`);
+    }
     console.log(`When you are done, or stuck, post one entry to Mike's inbox:
 
 node ${SELF} post --status <done|blocked|failed|needs-you> <<'EOF'
@@ -302,7 +322,7 @@ Write it for someone tired who did not watch you work, in under 150 words. A PR 
     const state = loadServiceState();
     const snap = snapshot();
     console.log(`home thread: ${config.home ? `"${config.home.title}" (${config.home.threadId})` : 'none — run bind'}`);
-    console.log(`watching launches since: ${config.since || state.startedAt || 'service not started'}`);
+    console.log(`tracked launches: ${(config.launched || []).length}, of which ${snap.outstanding.length} still out`);
     console.log(`T3 token: ${config.tokenFile || 'missing'}`);
     console.log(`page: http://127.0.0.1:${config.port}`);
     console.log(`inbox: ${snap.entries.length} entries, ${snap.unhandled.length} unread; ${snap.outstanding.length} threads out`);
