@@ -15,10 +15,13 @@
 
 import { createRequire } from 'module';
 import { homedir } from 'os';
+import { existsSync } from 'fs';
+import { join } from 'path';
 
-/** resolved per call so a test can point at a fixture after import. */
-function dbPath() {
-  return process.env.T3_STATE_DB || `${homedir()}/.t3/userdata/state.sqlite`;
+/** prefer the live V2 database, keeping V1 fallback for boxes before cutover. */
+export function t3StateDbPath(baseDir = join(homedir(), '.t3')) {
+  const v2 = join(baseDir, 'userdata', 'statev2.sqlite');
+  return existsSync(v2) ? v2 : join(baseDir, 'userdata', 'state.sqlite');
 }
 
 /**
@@ -55,7 +58,62 @@ const QUERY = `
    WHERE t.deleted_at IS NULL
    ORDER BY t.updated_at ASC`;
 
-function rawRows() {
+/** merge live thread state with legacy identities only where V2 has none. */
+function v2Rows(db, legacy) {
+  const old = new Map(legacy.map(row => [row.thread_id, row]));
+  return db.prepare(`
+    SELECT t.*, p.title AS project,
+      pt.provider AS provider_name, pt.payload_json AS provider_payload,
+      ps.model, ps.payload_json AS session_payload,
+      -- frozen V1 running/waiting flags must never describe a live V2 shell
+      (SELECT status FROM orchestration_v2_projection_runs r
+        WHERE r.thread_id = t.thread_id ORDER BY ordinal DESC LIMIT 1) AS turn_status,
+      (SELECT MAX(updated_at) FROM orchestration_v2_projection_messages m
+        WHERE m.thread_id = t.thread_id AND m.role = 'user') AS latest_user_message_at,
+      (SELECT COUNT(*) FROM orchestration_v2_projection_runtime_requests q
+        WHERE q.thread_id = t.thread_id AND q.status = 'pending') AS pending_user_input_count,
+      (SELECT COUNT(*) FROM orchestration_v2_projection_turn_items i
+        WHERE i.thread_id = t.thread_id AND i.type = 'secret_request'
+          AND i.status = 'waiting') AS pending_approval_count,
+      (SELECT COUNT(*) FROM orchestration_v2_projection_plans pl
+        WHERE pl.thread_id = t.thread_id AND pl.kind = 'proposed_plan'
+          AND pl.status = 'active') AS has_actionable_proposed_plan
+    FROM orchestration_v2_projection_threads t
+    LEFT JOIN projection_projects p ON p.project_id = t.project_id
+    LEFT JOIN orchestration_v2_projection_provider_threads pt ON pt.provider_thread_id = COALESCE(
+      (SELECT active.provider_thread_id FROM orchestration_v2_projection_provider_threads active
+       WHERE active.provider_thread_id = t.active_provider_thread_id
+         AND json_extract(active.payload_json, '$.nativeThreadRef.nativeId') IS NOT NULL
+         AND json_extract(active.payload_json, '$.nativeThreadRef.nativeId') != ''),
+      (SELECT candidate.provider_thread_id FROM orchestration_v2_projection_provider_threads candidate
+      WHERE candidate.thread_id = t.thread_id
+        AND json_extract(candidate.payload_json, '$.nativeThreadRef.nativeId') IS NOT NULL
+        AND json_extract(candidate.payload_json, '$.nativeThreadRef.nativeId') != ''
+      ORDER BY candidate.updated_at DESC LIMIT 1))
+    LEFT JOIN orchestration_v2_projection_provider_sessions ps
+      ON ps.provider_session_id = pt.provider_session_id
+    WHERE t.deleted_at IS NULL
+    ORDER BY t.updated_at ASC
+  `).all().map(row => {
+    const thread = parseJson(row.payload_json);
+    const nativeId = parseJson(row.provider_payload).nativeThreadRef?.nativeId;
+    const previous = old.get(row.thread_id);
+    return {
+      ...row,
+      native_session_id: nativeId || '',
+      provider_name: nativeId ? row.provider_name : previous?.provider_name,
+      resume_cursor_json: nativeId ? '{}' : previous?.resume_cursor_json,
+      runtime_payload_json: nativeId
+        ? JSON.stringify({ ...parseJson(row.session_payload), model: row.model })
+        : previous?.runtime_payload_json,
+      settled_override: thread.settledOverride,
+      settled_at: thread.settledAt,
+      snoozed_until: thread.snoozedUntil,
+    };
+  });
+}
+
+function rawRows(dbPath) {
   let sqlite;
   try {
     sqlite = loadSqlite();
@@ -64,8 +122,13 @@ function rawRows() {
   }
   let db;
   try {
-    db = new sqlite.DatabaseSync(dbPath(), { readOnly: true });
-    return db.prepare(QUERY).all();
+    db = new sqlite.DatabaseSync(dbPath, { readOnly: true });
+    const hasV2 = db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'orchestration_v2_projection_threads'").get();
+    let legacy = [];
+    try { legacy = db.prepare(QUERY).all(); } catch (error) {
+      if (!hasV2) throw error;
+    }
+    return hasV2 ? v2Rows(db, legacy) : legacy;
   } catch {
     return [];
   } finally {
@@ -96,7 +159,7 @@ function sessionIdOf(cursor, provider) {
 function shape(row, nowMs) {
   const cursor = parseJson(row.resume_cursor_json);
   const payload = parseJson(row.runtime_payload_json);
-  const sessionId = sessionIdOf(cursor, row.provider_name);
+  const sessionId = row.native_session_id || sessionIdOf(cursor, row.provider_name);
   if (!sessionId) return null;
 
   // T3 counts three separate things it can be stopped on the user for
@@ -118,8 +181,9 @@ function shape(row, nowMs) {
     model: String(payload.model || ''),
     cwd: String(payload.cwd || ''),
     // the session's own log carries no idea of any of this; T3 is the only source
-    status: asks ? 'waiting' : row.turn_status === 'running' ? 'busy' : 'idle',
-    settled: String(row.settled_override || '') === 'settled',
+    status: asks || row.turn_status === 'waiting' ? 'waiting'
+      : ['preparing', 'starting', 'running'].includes(row.turn_status) ? 'busy' : 'idle',
+    settled: String(row.settled_override || '') === 'settled' || Boolean(row.settled_at),
     archived: Boolean(row.archived_at),
     snoozed,
     snoozedUntil: snoozed ? snoozedUntil : '',
@@ -135,12 +199,12 @@ function shape(row, nowMs) {
  * A session id can appear on two threads when one was resumed from the other;
  * the query's ascending order leaves the most recent thread holding the key.
  *
- * @param {{ nowMs?: number }} [opts] `nowMs` is the clock snoozes are judged against
+ * @param {{ nowMs?: number, dbPath?: string }} [opts] `nowMs` is the clock snoozes are judged against
  * @returns {Map<string, object>}
  */
-export function t3ThreadsBySession({ nowMs = Date.now() } = {}) {
+export function t3ThreadsBySession({ nowMs = Date.now(), dbPath = process.env.T3_STATE_DB || t3StateDbPath() } = {}) {
   const out = new Map();
-  for (const row of rawRows()) {
+  for (const row of rawRows(dbPath)) {
     const thread = shape(row, nowMs);
     if (thread) out.set(thread.sessionId, thread);
   }
@@ -155,11 +219,11 @@ export function t3ThreadsBySession({ nowMs = Date.now() } = {}) {
  * is left is the set of loops still open on them. Snoozed and archived threads
  * are parked by the same deliberate act and go with it.
  *
- * @param {{ all?: boolean, nowMs?: number }} [opts] `all` keeps everything
+ * @param {{ all?: boolean, nowMs?: number, dbPath?: string }} [opts] `all` keeps everything
  * @returns {object[]}
  */
-export function t3OpenThreads({ all = false, nowMs = Date.now() } = {}) {
-  const threads = [...t3ThreadsBySession({ nowMs }).values()];
+export function t3OpenThreads({ all = false, nowMs = Date.now(), dbPath } = {}) {
+  const threads = [...t3ThreadsBySession({ nowMs, dbPath }).values()];
   const kept = all
     ? threads
     : threads.filter(t => !t.settled && !t.snoozed && !t.archived);

@@ -1,9 +1,10 @@
-import { realpathSync } from 'node:fs';
+import { existsSync, realpathSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { DatabaseSync } from 'node:sqlite';
+import { t3StateDbPath } from '../../shared/t3-state.mjs';
 
 const DEFAULT_TIMEOUT_MS = 10_000;
 const RUNTIME_MODES = new Set([
@@ -105,12 +106,36 @@ async function runtimeIdentity(baseDir) {
 
 /** find exactly one T3 thread for one Codex provider thread id. */
 function mappedThread(baseDir, providerThreadId) {
-  const dbPath = join(baseDir, 'userdata', 'state.sqlite');
+  const dbPath = t3StateDbPath(baseDir);
   let database;
   try {
     database = new DatabaseSync(dbPath, { readOnly: true });
+    const isV2 = Boolean(database.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'orchestration_v2_projection_threads'").get());
     const rows = database
-      .prepare(`
+      .prepare(isV2 ? `
+        SELECT threads.thread_id AS threadId, threads.title AS title,
+          threads.runtime_mode AS runtimeMode, threads.interaction_mode AS interactionMode
+        FROM orchestration_v2_projection_threads threads
+        WHERE threads.deleted_at IS NULL AND threads.archived_at IS NULL AND (
+          EXISTS (
+            SELECT 1 FROM orchestration_v2_projection_provider_threads pt
+            WHERE pt.thread_id = threads.thread_id AND pt.provider = 'codex'
+              AND pt.provider_thread_id = COALESCE(threads.active_provider_thread_id,
+                (SELECT candidate.provider_thread_id FROM orchestration_v2_projection_provider_threads candidate
+                 WHERE candidate.thread_id = threads.thread_id
+                   AND json_extract(candidate.payload_json, '$.nativeThreadRef.nativeId') IS NOT NULL
+                 ORDER BY candidate.updated_at DESC LIMIT 1))
+              AND json_extract(pt.payload_json, '$.nativeThreadRef.nativeId') = ?
+          ) OR (
+            NOT EXISTS (SELECT 1 FROM orchestration_v2_projection_provider_threads pt
+              WHERE pt.thread_id = threads.thread_id
+                AND json_extract(pt.payload_json, '$.nativeThreadRef.nativeId') IS NOT NULL)
+            AND EXISTS (SELECT 1 FROM provider_session_runtime runtime
+              WHERE runtime.thread_id = threads.thread_id AND runtime.provider_name = 'codex'
+                AND json_extract(runtime.resume_cursor_json, '$.threadId') = ?)
+          )
+        )
+      ` : `
         SELECT
           runtime.thread_id AS threadId,
           threads.title AS title,
@@ -123,7 +148,7 @@ function mappedThread(baseDir, providerThreadId) {
           AND threads.deleted_at IS NULL
           AND threads.archived_at IS NULL
       `)
-      .all(providerThreadId);
+      .all(...(isV2 ? [providerThreadId, providerThreadId] : [providerThreadId]));
     if (rows.length !== 1) {
       throw new Error(
         `T3 bridge expected one mapping for Codex thread ${providerThreadId}, found ${rows.length}.`,
@@ -134,6 +159,7 @@ function mappedThread(baseDir, providerThreadId) {
       title: String(rows[0].title),
       runtimeMode: String(rows[0].runtimeMode),
       interactionMode: String(rows[0].interactionMode),
+      orchestratorVersion: isV2 ? 2 : 1,
     };
   } catch (error) {
     if (error instanceof Error && error.message.startsWith('T3 bridge expected')) throw error;
@@ -423,13 +449,25 @@ export async function dispatchTick(binding, tick) {
       id: `warden-rpc:${tickId}`,
       tag: 'orchestration.dispatchCommand',
       payload: {
-        type: 'thread.turn.start',
-        commandId,
-        threadId: verified.threadId,
-        message: { messageId, role: 'user', text, attachments: [] },
-        runtimeMode,
-        interactionMode,
-        createdAt: new Date().toISOString(),
+        ...(verified.orchestratorVersion === 2 ? {
+          type: 'message.dispatch',
+          commandId,
+          threadId: verified.threadId,
+          messageId,
+          text,
+          attachments: [],
+          createdBy: 'user',
+          creationSource: 'server',
+          dispatchMode: { type: 'queue_after_active' },
+        } : {
+          type: 'thread.turn.start',
+          commandId,
+          threadId: verified.threadId,
+          message: { messageId, role: 'user', text, attachments: [] },
+          runtimeMode,
+          interactionMode,
+          createdAt: new Date().toISOString(),
+        }),
       },
     },
     verified,
@@ -478,7 +516,7 @@ async function main(args) {
 }
 
 if (
-  process.argv[1] &&
+  process.argv[1] && existsSync(process.argv[1]) &&
   realpathSync(fileURLToPath(import.meta.url)) === realpathSync(resolve(process.argv[1]))
 ) {
   main(process.argv.slice(2)).catch((error) => {

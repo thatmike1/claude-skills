@@ -408,3 +408,73 @@ test('dispatchTick fails before opening a socket when ticket auth fails', async 
   );
   assert.equal(opened, false);
 });
+
+
+/** keep the frozen V1 fixture alongside live V2 mappings and permissions. */
+async function v2BindingFixture() {
+  const binding = await bindingFixture();
+  const db = new DatabaseSync(join(binding.baseDir, 'userdata', 'statev2.sqlite'));
+  db.exec(`
+    CREATE TABLE provider_session_runtime (thread_id TEXT, provider_name TEXT, resume_cursor_json TEXT);
+    INSERT INTO provider_session_runtime VALUES ('t3-thread-123', 'codex', '{"threadId":"old-codex-session"}');
+    CREATE TABLE orchestration_v2_projection_threads (thread_id TEXT, title TEXT,
+      runtime_mode TEXT, interaction_mode TEXT, active_provider_thread_id TEXT,
+      deleted_at TEXT, archived_at TEXT);
+    INSERT INTO orchestration_v2_projection_threads VALUES
+      ('t3-thread-123', 'Live warden', 'approval-required', 'plan', 'active', NULL, NULL);
+    CREATE TABLE orchestration_v2_projection_provider_threads (provider_thread_id TEXT,
+      thread_id TEXT, provider TEXT, updated_at TEXT, payload_json TEXT);
+    INSERT INTO orchestration_v2_projection_provider_threads VALUES
+      ('active', 't3-thread-123', 'codex', '2026-10-12', '{"nativeThreadRef":{"nativeId":"codex-thread-456"}}'),
+      ('inactive', 't3-thread-123', 'codex', '2026-10-13', '{"nativeThreadRef":{"nativeId":"inactive-codex"}}');
+  `);
+  db.close();
+  return binding;
+}
+
+test('V2 binding uses live mapping and permissions and rejects frozen or inactive identities', async () => {
+  const binding = await v2BindingFixture();
+  const verified = await validateBinding(binding);
+  assert.equal(verified.title, 'Live warden');
+  assert.equal(verified.runtimeMode, 'approval-required');
+  assert.equal(verified.interactionMode, 'plan');
+  assert.equal(verified.orchestratorVersion, 2);
+  await assert.rejects(validateBinding({ ...binding, providerThreadId: 'old-codex-session' }), /found 0/);
+  await assert.rejects(validateBinding({ ...binding, providerThreadId: 'inactive-codex' }), /found 0/);
+});
+
+test('V2 dispatch uses message.dispatch with queue-after-active delivery', async () => {
+  FakeWebSocket.instances = [];
+  globalThis.fetch = async () => new Response(JSON.stringify({ ticket: 'ticket' }));
+  globalThis.WebSocket = FakeWebSocket;
+  const result = await dispatchTick(await v2BindingFixture(), { id: 'v2-tick', text: 'tick text' });
+  assert.equal(result.sequence, 42);
+  const request = JSON.parse(FakeWebSocket.instances[0].sent[0]);
+  assert.equal(request.tag, 'orchestration.dispatchCommand');
+  assert.deepEqual(request.payload, {
+    type: 'message.dispatch', commandId: 'warden:v2-tick', threadId: 't3-thread-123',
+    messageId: 'warden-message:v2-tick', text: 'tick text', attachments: [],
+    createdBy: 'user', creationSource: 'server', dispatchMode: { type: 'queue_after_active' },
+  });
+});
+
+test('V2 legacy identity fallback uses live archive state', async () => {
+  const binding = await v2BindingFixture();
+  const db = new DatabaseSync(join(binding.baseDir, 'userdata', 'statev2.sqlite'));
+  db.exec('DELETE FROM orchestration_v2_projection_provider_threads');
+  db.close();
+  assert.equal((await validateBinding({ ...binding, providerThreadId: 'old-codex-session' })).orchestratorVersion, 2);
+  const update = new DatabaseSync(join(binding.baseDir, 'userdata', 'statev2.sqlite'));
+  update.exec("UPDATE orchestration_v2_projection_threads SET archived_at = '2026-10-12'");
+  update.close();
+  await assert.rejects(validateBinding({ ...binding, providerThreadId: 'old-codex-session' }), /found 0/);
+});
+
+
+test('bridge can be imported by a stdin verification script', () => {
+  const url = new URL('./t3-bridge.mjs', import.meta.url).href;
+  const result = spawnSync(process.execPath, ['--input-type=module', '-'], {
+    input: `await import(${JSON.stringify(url)});`, encoding: 'utf8',
+  });
+  assert.equal(result.status, 0, result.stderr);
+});

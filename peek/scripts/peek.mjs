@@ -172,6 +172,8 @@ function renderMessages(parsed, messages, args) {
 }
 
 async function cmdShow(sessionId, args) {
+  const thread = t3OpenThreads({ all: true }).find(t => t.threadId === sessionId);
+  if (thread) sessionId = thread.sessionId;
   const opts = { maxLength: args.max || Infinity, includeThinking: args.thinking, includeResults: args.results };
   let parsed;
   if (agyTranscriptPath(sessionId)) parsed = await parseAgySession(sessionId, opts);
