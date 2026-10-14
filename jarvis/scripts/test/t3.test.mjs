@@ -38,16 +38,7 @@ db.prepare('INSERT INTO orchestration_v2_projection_provider_threads VALUES (?, 
   .run('home', '2026-10-12T11:00:00.000Z', JSON.stringify({ nativeThreadRef: { nativeId: 'session-abc' } }));
 db.close();
 
-const { activity, anyThreadBusy, lastWords, threadForSession, threadInfo } = await import('../lib/t3.mjs');
-
-test('threadInfo reads status from the latest run and open asks', () => {
-  assert.equal(threadInfo('home').status, 'idle');
-  assert.equal(threadInfo('busy').status, 'busy');
-  assert.equal(threadInfo('asking').status, 'waiting');
-  assert.equal(threadInfo('done').settled, true);
-  assert.equal(threadInfo('home').updatedAt, '2026-10-12T11:00:05.000Z');
-  assert.equal(threadInfo('missing'), null);
-});
+const { lastWords, threadForSession } = await import('../lib/t3.mjs');
 
 test('threadForSession maps a native session id to its thread', () => {
   assert.equal(threadForSession('session-abc'), 'home');
@@ -58,15 +49,6 @@ test('lastWords skips a message still streaming', () => {
   const words = lastWords('busy');
   assert.equal(words.user, 'port the thing');
   assert.equal(words.assistant, '');
-});
-
-test('activity separates Jarvis home from everything else', () => {
-  assert.deepEqual(activity('home'), {
-    lastAll: '2026-10-12T11:20:00.000Z',
-    lastOthers: '2026-10-12T11:20:00.000Z',
-    homeLastUser: '2026-10-12T11:00:00.000Z',
-  });
-  assert.equal(anyThreadBusy(), true);
 });
 
 test.after(() => rmSync(base, { recursive: true, force: true }));

@@ -1,6 +1,6 @@
 {
     "name": "jarvis",
-    "version": "2.0.0",
+    "version": "3.0.0",
     "description": "The thread you talk to about all your other threads: hands out work, hears back when results come in, translates what you cannot eyeball, sweeps open threads for what to settle. Built on peek and T3 Code.",
     "skills": "."
 }
