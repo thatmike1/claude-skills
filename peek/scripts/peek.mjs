@@ -24,7 +24,7 @@
  *   --cc / --agy / --codex  restrict `live` and `list` to one harness
  *   --no-results  drop tool results (agy and codex log them; Claude Code does not)
  *   --no-tools    drop tool calls and their results, leaving only the conversation
- *   --all         `t3` keeps settled, snoozed and archived threads too
+ *   --all         `t3` keeps settled, snoozed, archived and subagent threads too
  *
  * every render ends with a `next: --since <n>` line — pass it back on the
  * next call to get only what happened since.
@@ -449,6 +449,7 @@ async function cmdLive(args) {
  * every process running right now, while a T3 thread outlives its process and
  * stays open until the user settles it. Settled threads are hidden by default
  * and only ever accumulate; what is left is the set of loops still on them.
+ * Subagent threads are hidden with them, as in T3's own sidebar.
  */
 const PROVIDER_TAG = { claudeAgent: 'cc', codex: 'codex', antigravity: 'agy' };
 
@@ -460,7 +461,7 @@ function cmdT3(args) {
 
   const hidden = args.all ? 0 : t3OpenThreads({ all: true }).length - threads.length;
   const label = args.all ? 't3 threads' : 'open t3 threads';
-  const suffix = hidden ? `  ·  ${hidden} settled or parked, hidden (--all)` : '';
+  const suffix = hidden ? `  ·  ${hidden} settled, parked or subagent, hidden (--all)` : '';
   console.log(`# ${threads.length} ${label}  ·  ${hhmm(Date.now())}  ·  newest first${suffix}\n`);
 
   for (const [i, t] of threads.entries()) {

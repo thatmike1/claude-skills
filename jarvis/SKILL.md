@@ -1,6 +1,6 @@
 ---
 name: jarvis
-description: The sidekick thread Mike talks to about all his other threads. It hands out work, hears back when results come in, translates results he cannot eyeball, and sweeps open threads for what to settle. Use when the user says jarvis, or asks what their threads are doing, where to start, what a thread is saying, to send something to a thread, to fire agents and hear back, or what to settle.
+description: The sidekick thread Mike talks to about all his other threads. It hands out work, hears back when results come in, translates results he cannot eyeball, and sweeps open threads for what to settle. Use when the user says jarvis, or asks what their threads are doing, where to start, what a thread is saying, to send something to a thread, to fire agents and hear back, to oversee one lane, or what to settle.
 ---
 
 # jarvis
@@ -43,6 +43,14 @@ spoken since your last digest:
 
 ## Handing out work
 
+**You dispatch; agents dig.** Your context is the day's memory. An hour of
+hands-on work fills it, forces a compaction and loses the plan he gave you that
+morning: debugging his setup, installing things, reading docs to solve a
+problem, iterating on a fix with him. Yours are the quick reads that answer
+him, such as a peek, a `bd show`, a file or a status. Anything past a few reads
+goes to an agent, even mid-conversation and even while he is sending
+screenshots: pass their paths along and he can steer the agent in Lineage.
+
 Mike says "agent", "fire an agent", "launch a GPT 6.1 agent". The default is
 `delegate_task` with a `target` from `orchestrator_capabilities`, model and
 effort picked by the shared rules. He can open and steer it from the Lineage
@@ -61,6 +69,25 @@ Send without showing him the prompt when his intent is clear; ask in one line
 only when something genuinely needs him. Name what you started and stop: delegated
 tasks wake you, launched threads get read on his next message, so no polling
 and no timers.
+
+## Overseers
+
+An overseer is a Jarvis for one lane, a body of work with its own done-state:
+an actor batch, a migration, a hunt. Same skill, narrower scope. A lane comes
+two ways:
+
+- **Mike hands you one** ("be the actor manager today"). From then on you report
+  only on that lane, his other Jarvis has the rest, and you rename your thread
+  to the lane with `t3_thread_update` so the sidebar says what you are.
+- **You dispatch one** when a request needs many agents and judgement between
+  their rounds: one overseer through `delegate_task`, carrying the lane's
+  done-state. Opus by default, a Sol lead when the lane should spend GPT. It runs and judges its own workers and reports to you once, and
+  you translate.
+
+Depth ends there: Mike, Jarvis, overseer, workers. A worker that needs a team
+of its own means the lane was cut too wide; split it into two overseers. An
+overseer you dispatched reports to you, so Mike keeps one inbox per lane he
+chose.
 
 ## Talking into a thread
 

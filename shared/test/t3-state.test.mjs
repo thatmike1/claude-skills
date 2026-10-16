@@ -232,6 +232,18 @@ test('V2 live filtering and pending requests override frozen legacy state', () =
   assert.equal(t3OpenThreads({ ...opts, all: true }).length, 2);
 });
 
+test('V2 subagent threads stay out of the open roster but remain in --all', () => {
+  const opts = v2Fixture();
+  const db = new DatabaseSync(opts.dbPath);
+  db.exec(`UPDATE orchestration_v2_projection_threads
+    SET payload_json = '{"lineage":{"parentThreadId":"handoff","relationshipToParent":"subagent"}}'
+    WHERE thread_id = 'new'`);
+  db.close();
+  assert.deepEqual(t3OpenThreads(opts).map(t => t.sessionId), ['current-session', 'legacy-session']);
+  const child = t3OpenThreads({ ...opts, all: true }).find(t => t.sessionId === 'brand-new-session');
+  assert.equal(child.subagent, true);
+});
+
 test('V2 falls back to newest native provider thread when active identity is absent', () => {
   const opts = v2Fixture();
   const db = new DatabaseSync(opts.dbPath);

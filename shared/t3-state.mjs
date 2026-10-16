@@ -109,6 +109,7 @@ function v2Rows(db, legacy) {
       settled_override: thread.settledOverride,
       settled_at: thread.settledAt,
       snoozed_until: thread.snoozedUntil,
+      relationship_to_parent: thread.lineage?.relationshipToParent,
     };
   });
 }
@@ -187,6 +188,8 @@ function shape(row, nowMs) {
     archived: Boolean(row.archived_at),
     snoozed,
     snoozedUntil: snoozed ? snoozedUntil : '',
+    // a delegate_task child: T3's sidebar hides it and shows it in its parent's Lineage panel
+    subagent: row.relationship_to_parent === 'subagent',
     asks,
     updatedAt: String(row.updated_at || ''),
     lastUserMessageAt: String(row.latest_user_message_at || ''),
@@ -217,7 +220,9 @@ export function t3ThreadsBySession({ nowMs = Date.now(), dbPath = process.env.T3
  * Settled threads are excluded by default and that is the point of the call:
  * settled is what the user has already dealt with, it only ever grows, and what
  * is left is the set of loops still open on them. Snoozed and archived threads
- * are parked by the same deliberate act and go with it.
+ * are parked by the same deliberate act and go with it. Subagent threads go too:
+ * the sidebar never lists them, they are never settled, and a busy delegating
+ * day leaves hundreds of them behind their parents.
  *
  * @param {{ all?: boolean, nowMs?: number, dbPath?: string }} [opts] `all` keeps everything
  * @returns {object[]}
@@ -226,6 +231,6 @@ export function t3OpenThreads({ all = false, nowMs = Date.now(), dbPath } = {}) 
   const threads = [...t3ThreadsBySession({ nowMs, dbPath }).values()];
   const kept = all
     ? threads
-    : threads.filter(t => !t.settled && !t.snoozed && !t.archived);
+    : threads.filter(t => !t.settled && !t.snoozed && !t.archived && !t.subagent);
   return kept.reverse();
 }

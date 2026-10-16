@@ -54,7 +54,9 @@ already open; resuming is what the `t3` roster below is for.
 are hidden and that is the point of the command — settled is the one state on
 that board the user produced deliberately, it only ever accumulates, and what
 is left is the set of loops still on them. Snoozed and archived threads are
-parked by the same act and go with it; `--all` brings all three back.
+parked by the same act and go with it. Subagent threads (`delegate_task`
+children) are hidden too, as in T3's own sidebar, which shows them only in the
+parent's Lineage panel; `--all` brings all four back.
 
 ## Peek before you message
 
