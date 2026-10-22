@@ -21,8 +21,8 @@ db.exec(`
 `);
 const thread = (id, payload = {}) => db.prepare('INSERT INTO orchestration_v2_projection_threads VALUES (?, ?, ?, NULL, ?)')
   .run(id, `title ${id}`, '2026-10-12T10:00:00.000Z', JSON.stringify(payload));
-const message = (id, role, text, at, streaming = 0) => db.prepare('INSERT INTO orchestration_v2_projection_messages VALUES (?, ?, ?, ?, ?)')
-  .run(id, role, streaming, at, JSON.stringify({ text }));
+const message = (id, role, text, at, streaming = 0, createdBy = 'user') => db.prepare('INSERT INTO orchestration_v2_projection_messages VALUES (?, ?, ?, ?, ?)')
+  .run(id, role, streaming, at, JSON.stringify(role === 'user' ? { text, createdBy } : { text }));
 thread('home');
 thread('busy');
 thread('asking');
@@ -34,6 +34,7 @@ message('home', 'user', 'hi jarvis', '2026-10-12T11:00:00.000Z');
 message('home', 'assistant', 'hello', '2026-10-12T11:00:05.000Z');
 message('busy', 'user', 'port the thing', '2026-10-12T11:10:00.000Z');
 message('busy', 'assistant', 'half written', '2026-10-12T11:20:00.000Z', 1);
+message('home', 'user', 'Delegated task reached a terminal state: completed', '2026-10-12T11:01:00.000Z', 0, 'agent');
 db.prepare('INSERT INTO orchestration_v2_projection_provider_threads VALUES (?, ?, ?)')
   .run('home', '2026-10-12T11:00:00.000Z', JSON.stringify({ nativeThreadRef: { nativeId: 'session-abc' } }));
 db.close();
@@ -49,6 +50,10 @@ test('lastWords skips a message still streaming', () => {
   const words = lastWords('busy');
   assert.equal(words.user, 'port the thing');
   assert.equal(words.assistant, '');
+});
+
+test('lastWords skips a notice T3 filed as a user message', () => {
+  assert.equal(lastWords('home').user, 'hi jarvis');
 });
 
 test.after(() => rmSync(base, { recursive: true, force: true }));

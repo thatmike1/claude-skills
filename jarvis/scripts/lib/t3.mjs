@@ -78,9 +78,12 @@ export function threadForSession(nativeId) {
  * @param {number} [max] characters kept from each message's end
  */
 export function lastWords(threadId, max = 600) {
+  // T3 files its own notices (a delegated task finished, a scheduled run fired)
+  // as user messages created by an agent; they are not Mike talking
   const pick = role => query(`
     SELECT payload_json, created_at FROM orchestration_v2_projection_messages
      WHERE thread_id = ? AND role = ? AND streaming = 0
+       AND (role = 'assistant' OR json_extract(payload_json, '$.createdBy') = 'user')
      ORDER BY created_at DESC LIMIT 1`, threadId, role)[0];
   const trim = text => {
     const flat = String(text || '').replace(/\s+/g, ' ').trim();
