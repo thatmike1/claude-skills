@@ -38,12 +38,14 @@ thread('child', '2026-10-22T12:00:00.000Z', { lineage: { parentThreadId: 'newer'
 run('older', 'completed', '2026-10-22T11:00:00.000Z');
 run('newer', 'completed', '2026-10-22T10:00:00.000Z');
 run('child', 'running', '2026-10-22T12:00:00.000Z');
-db.prepare('INSERT INTO orchestration_v2_projection_provider_threads VALUES (?, ?, ?)')
-  .run('self', '2026-10-22T12:00:00.000Z', JSON.stringify({ nativeThreadRef: { nativeId: 'session-me' } }));
+const session = (id, nativeId) => db.prepare('INSERT INTO orchestration_v2_projection_provider_threads VALUES (?, ?, ?)')
+  .run(id, '2026-10-22T12:00:00.000Z', JSON.stringify({ nativeThreadRef: { nativeId } }));
+session('self', 'session-me');
+session('child', 'session-child');
 
 // a T3 notice lands after the agent's reply; it is not Mike talking
 say('older', 'user', 'please sort the tabs into shelves for me', '2026-10-22T10:00:00.000Z');
-say('older', 'assistant', 'Shelves are up at /home/nobody/shelves.html.', '2026-10-22T10:05:00.000Z');
+say('older', 'assistant', `Shelves are up at /home/nobody/shelves.html and the cut is /home/nobody/cut.mp4. ${'progress line. '.repeat(400)}Which shelf goes first?`, '2026-10-22T10:05:00.000Z');
 say('older', 'user', 'Delegated task reached a terminal state: completed', '2026-10-22T10:06:00.000Z', 'agent');
 
 // a Jarvis thread keeps four of his messages, not two
@@ -54,11 +56,15 @@ for (let i = 1; i <= 5; i++) {
 }
 db.close();
 
+/** run gather as the agent of one session, returning its facts. */
+function gather(out, sessionId) {
+  execFileSync('node', [join(scripts, 'gather.mjs'), '--out', out], {
+    env: { ...process.env, T3_STATE_DB: dbPath, CLAUDE_CODE_SESSION_ID: sessionId },
+  });
+  return JSON.parse(readFileSync(join(out, 'facts.json'), 'utf8'));
+}
 const out = join(base, 'run');
-execFileSync('node', [join(scripts, 'gather.mjs'), '--out', out], {
-  env: { ...process.env, T3_STATE_DB: dbPath, CLAUDE_CODE_SESSION_ID: 'session-me' },
-});
-const facts = JSON.parse(readFileSync(join(out, 'facts.json'), 'utf8'));
+const facts = gather(out, 'session-me');
 const byId = Object.fromEntries(facts.threads.map(t => [t.threadId, t]));
 
 test('threads come in sidebar order, numbered with the calling thread counted', () => {
@@ -73,7 +79,21 @@ test('settled, snoozed and subagent threads are left out', () => {
 test('a T3 notice does not count as Mike having the last word', () => {
   assert.equal(byId.older.lastWordIsMike, false);
   assert.deepEqual(byId.older.exchanges.map(e => e.mike), ['please sort the tabs into shelves for me']);
-  assert.deepEqual(byId.older.artifacts, [{ ref: '/home/nobody/shelves.html', exists: false }]);
+});
+
+test('pages and files of any type are picked up from replies', () => {
+  assert.deepEqual(byId.older.artifacts.map(a => a.ref), ['/home/nobody/shelves.html', '/home/nobody/cut.mp4']);
+});
+
+test('a long reply keeps its ending, where the question sits', () => {
+  const reply = byId.older.exchanges[0].reply;
+  assert.ok(reply.length < 1700);
+  assert.match(reply, /\[…\] .*Which shelf goes first\?$/);
+});
+
+test('an agent delegated from a thread leaves that thread out', () => {
+  const ids = gather(join(base, 'run-child'), 'session-child').threads.map(t => t.threadId);
+  assert.deepEqual(ids, ['pinned-a', 'pinned-b', 'older', 'self']);
 });
 
 test('a Jarvis thread carries four exchanges, each with its answer', () => {

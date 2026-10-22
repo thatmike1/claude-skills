@@ -48,9 +48,12 @@ const parse = text => {
   try { return JSON.parse(text || '{}'); } catch { return {}; }
 };
 const ms = iso => (iso ? Date.parse(iso) || 0 : 0);
+// a reply's ask usually sits at its end, so a long message keeps both ends
 const clip = (text, max) => {
   const flat = String(text || '').trim();
-  return flat.length > max ? `${flat.slice(0, max)}…` : flat;
+  if (flat.length <= max) return flat;
+  const tail = Math.min(800, Math.floor(max / 2));
+  return `${flat.slice(0, max - tail)} […] ${flat.slice(-tail)}`;
 };
 // spoken-reply comments are for the voice service, not for reading
 const strip = text => String(text || '').replace(/<!--\s*say:[\s\S]*?-->/g, '').trim();
@@ -60,7 +63,7 @@ const { DatabaseSync } = loadSqlite();
 const db = new DatabaseSync(DB, { readOnly: true });
 
 /** the thread this agent runs in, found by its own session id. */
-function ownThread() {
+function sessionThread() {
   const nativeId = process.env.CLAUDE_CODE_SESSION_ID || process.env.CODEX_THREAD_ID;
   if (!nativeId) return '';
   try {
@@ -73,8 +76,6 @@ function ownThread() {
     return '';
   }
 }
-const SELF = opt('self', ownThread());
-
 const projects = new Map(
   db.prepare('SELECT project_id, title FROM projection_projects').all()
     .map(r => [String(r.project_id), String(r.title)]),
@@ -103,6 +104,12 @@ const all = rows.map(r => {
     linkedPullRequest: p.linkedPullRequest || null,
   };
 });
+
+// a delegated agent runs in a subagent thread; the thread it works for is its
+// top-level ancestor, which is the one to leave out
+const parentOf = new Map(all.filter(t => t.relation === 'subagent' && t.parent).map(t => [t.id, t.parent]));
+let SELF = opt('self', sessionThread());
+for (let hops = 0; parentOf.has(SELF) && hops < 20; hops++) SELF = parentOf.get(SELF);
 
 const latestRun = db.prepare(`
   SELECT status, requested_at, completed_at FROM orchestration_v2_projection_runs
@@ -147,7 +154,7 @@ function descendants(id) {
 }
 
 // local pages, files and links in a reply: what "go look at it" points to
-const ARTIFACT = /(https?:\/\/[^\s)<>\]"'`]+|\/home\/[^\s)<>\]"'`]+\.(?:html|png|jpg|pdf|md))/g;
+const ARTIFACT = /(https?:\/\/[^\s)<>\]"'`]+|\/home\/[^\s)<>\]"'`]+\.[a-z0-9]{2,5}\b)/gi;
 
 const open = all.filter(t => !t.settled && !t.archived && t.relation !== 'subagent');
 
@@ -199,10 +206,8 @@ const threads = open.map(t => {
     // his last real messages and the agent's main answer to each, oldest first
     exchanges,
     recent,
-    children: {
-      running: kids.filter(k => RUNNING.includes(k.status)).map(k => k.title),
-      failed: kids.filter(k => k.status === 'failed').length,
-    },
+    // only running children change what a thread wants; counts of the rest are noise to him
+    children: { running: kids.filter(k => RUNNING.includes(k.status)).map(k => k.title) },
     artifacts,
     pullRequest: t.linkedPullRequest,
   };
@@ -242,7 +247,6 @@ function section(t) {
   const lines = [`## ${t.sidebarIndex} · ${t.title}`, '', `id ${t.threadId} · ${facts.filter(Boolean).join(' · ')}`];
   if (t.lastWordIsMike) lines.push('He wrote last and nothing has answered him yet.');
   if (t.children.running.length) lines.push(`Delegated agents still running: ${t.children.running.join('; ')}`);
-  if (t.children.failed) lines.push(`Delegated agents failed: ${t.children.failed}`);
   if (t.pullRequest) lines.push(`Pull request: ${t.pullRequest.url || JSON.stringify(t.pullRequest)}`);
   if (t.artifacts.length) {
     lines.push('Pages and files in its replies:');

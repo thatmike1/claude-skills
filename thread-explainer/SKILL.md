@@ -11,7 +11,7 @@ Mike fires threads as ideas arrive, then comes back and cannot tell what each on
 
 ## 1. Gather
 
-`node $S/gather.mjs` reads T3's state read-only and prints a new run folder holding `facts.json` for the build and `read.md` for you. The thread you run in is found from your session id and left out, and so are snoozed threads.
+`node $S/gather.mjs` reads T3's state read-only and prints a new run folder holding `facts.json` for the build and `read.md` for you. The thread you run in is found from your session id and left out (for a delegated agent, the thread it works for), and so are snoozed threads.
 
 ## 2. Judge every thread
 
@@ -34,7 +34,7 @@ The lanes, one `kind` per thread:
 - `look-answer`: it made something (a page, an image, a PR) and wants his verdict on it.
 - `do`: his next step happens outside the chat: a click, a setting, a key to rotate, a fresh thread to start.
 - `look`: it made something worth opening, and nothing waits on a reply.
-- `running`: a run or a delegated agent is still going; `you` says what comes back.
+- `running`: work it started is still going, as a run, a delegated agent, or a schedule or job elsewhere; `you` says what comes back.
 - `none`: finished, settling it is all that is left; `you` stays empty.
 
 Reading a thread:
@@ -44,7 +44,7 @@ Reading a thread:
 - Date-bound wording (tonight, tomorrow, before the trip) gets checked against the run date at the top of `read.md`; a step whose day has passed is stale.
 - When he wrote last and nothing is running, the thread never answered him: that is `do`, and `you` says so.
 - `about` is what the thread is about now, since titles go stale. `you` is an imperative short enough for a strip of label tape, about fifteen words, in his plain words: no ids, model names or the thread's own jargon.
-- `links` are the pages and files listed under the thread that exist, plus anything a reply names that he must open to act.
+- `links` are what he must open to act: files listed under the thread that are not marked missing, and web pages a reply sends him to.
 
 The step is done when every thread in `read.md` has an entry. A thread you skip shows on the page as "Not read in this run".
 
