@@ -31,7 +31,7 @@
 
   * { box-sizing: border-box; }
   html, body { margin: 0; background: var(--page); color: var(--ink); }
-  body { font-family: var(--font); font-weight: 450; font-size: 16px; line-height: 1.5; min-height: 100vh; display: flex; flex-direction: column; }
+  body { font-family: var(--font); font-weight: 450; font-size: 16px; line-height: 1.5; height: 100vh; display: flex; flex-direction: column; }
   a { color: inherit; }
   button { font: inherit; color: inherit; }
   :focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
@@ -52,21 +52,39 @@
   .seg button + button { border-left: 2px solid var(--ink); }
   .seg button[aria-pressed="true"] { background: var(--ink); color: var(--page); }
 
-  main { flex: 1; display: flex; flex-direction: column; }
+  main { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow-y: auto; }
 
-  /* the sorting wall */
-  .wall { flex: 1; display: flex; min-width: 0; overflow-x: auto; }
-  .col { flex: 1 1 0; min-width: 360px; background: var(--field); }
+  /* the sorting wall: a lane is a quarter of a wide screen and never narrower,
+     so a fifth lane scrolls the wall sideways instead of squeezing every lane;
+     each lane scrolls on its own, which keeps the sideways scrollbar in view */
+  .wall { flex: 1; min-height: 0; display: flex; overflow-x: auto; overflow-y: hidden;
+          scrollbar-color: oklch(0.2 0.025 280 / 0.45) transparent; }
+  .col { flex: 1 0 max(440px, calc(25vw - 44px)); overflow-y: auto; background: var(--field);
+         scrollbar-width: thin; scrollbar-color: oklch(0.2 0.025 280 / 0.3) transparent; }
   .col-head { position: sticky; top: 0; z-index: 3; background: var(--field); padding: 22px 28px 16px; border-top: 2px solid var(--rule); }
-  .col-head h2 { margin: 0; font-size: 30px; line-height: 1.1; font-weight: 850; letter-spacing: -0.025em; }
+  .col-head h2 { margin: 0; padding-right: 36px; font-size: 30px; line-height: 1.1; font-weight: 850; letter-spacing: -0.025em; }
   .col-head p { margin: 5px 0 0; color: var(--soft); font-size: 15px; }
-  /* colour means it wants you; a lane with nothing left goes grey and narrow
-     but keeps its place, so the others never stretch too wide to read */
-  .col.empty-lane { flex: 0.5 1 0; min-width: 220px; --field: oklch(0.925 0.004 250); }
-  .col.empty-lane h2 { color: var(--soft); font-size: 22px; }
   /* a fixed head height keeps the first rule level across lanes */
   .col-head { min-height: 102px; }
-  .col.empty-lane .gone { padding: 22px 28px; border-top: 2px solid oklch(0.2 0.025 280 / 0.25); color: var(--soft); font-size: 15px; }
+  .fold { position: absolute; top: 22px; right: 18px; width: 30px; height: 30px; border: 0; background: none; cursor: pointer;
+          display: grid; place-items: center; opacity: 0.4; }
+  .fold i { display: block; width: 14px; height: 2px; background: currentColor; }
+  .col-head:hover .fold, .fold:focus-visible { opacity: 1; }
+  .fold:hover { background: oklch(0.2 0.025 280 / 0.1); }
+
+  /* a folded lane, and a lane with nothing left, is a strip that keeps its place:
+     colour still means it wants you, grey means nothing there */
+  .col.folded { flex: 0 0 66px; overflow: hidden; }
+  .col.empty-lane { --field: oklch(0.925 0.004 250); }
+  .strip { display: flex; flex-direction: column; align-items: center; gap: 16px; width: 100%; height: 100%; margin: 0;
+           padding: 24px 0; border: 0; border-top: 2px solid var(--rule); background: none; color: var(--ink); }
+  button.strip { cursor: pointer; }
+  button.strip:hover { background: oklch(0.2 0.025 280 / 0.07); }
+  .strip .count { font-size: 30px; line-height: 1; font-weight: 850; letter-spacing: -0.04em; font-variant-numeric: tabular-nums; }
+  .strip b { writing-mode: vertical-rl; font-size: 24px; line-height: 1; font-weight: 850; letter-spacing: -0.02em; }
+  .strip small { writing-mode: vertical-rl; font-size: 15px; color: var(--soft); }
+  .empty-lane .strip { border-top-color: oklch(0.2 0.025 280 / 0.25); }
+  .empty-lane .strip b { color: var(--soft); font-size: 21px; }
 
   .t { position: relative; display: grid; grid-template-columns: 4.2rem 1fr; column-gap: 8px;
        padding: 22px 28px 24px; border-top: 2px solid var(--rule); }
@@ -133,8 +151,12 @@
   td.act .menu { top: 42px; right: 0; }
 
   @media (max-width: 900px) {
+    body { height: auto; }
+    main { overflow: visible; }
     .wall { flex-direction: column; overflow: visible; }
-    .col { min-width: 0; }
+    .col, .col.folded { flex: none; overflow: visible; }
+    .strip { flex-direction: row; padding: 16px 28px; }
+    .strip b, .strip small { writing-mode: horizontal-tb; }
     td.what, td.kind { width: auto; }
   }
   @media (prefers-reduced-motion: reduce) { .detail, .glyph::before, .glyph::after { transition: none; } }
@@ -176,7 +198,7 @@ const href = h => (h.startsWith('/') ? `file://${h}` : h);
 // hidden threads stay hidden until the thread moves again, so a regenerated
 // page brings back anything with something new to say
 const STORE = 'thread-explainer';
-const state = { view: 'lanes', hidden: {} };
+const state = { view: 'lanes', hidden: {}, folded: {} };
 try { Object.assign(state, JSON.parse(localStorage.getItem(STORE) || '{}')); } catch {}
 const save = () => { try { localStorage.setItem(STORE, JSON.stringify(state)); } catch {} };
 const isHidden = t => state.hidden[t.threadId] === t.lastActivity;
@@ -212,12 +234,18 @@ function renderColumns(threads) {
   return '<div class="wall">' + ORDER.map(kind => {
     const items = threads.filter(t => kindOf(t) === kind);
     const hidden = DATA.threads.filter(t => kindOf(t) === kind).length - items.length;
-    const head = `<div class="col-head"><h2>${KINDS[kind].name}</h2><p>${items.length ? KINDS[kind].take : ''}</p></div>`;
+    const name = KINDS[kind].name;
     if (!items.length) {
-      const why = hidden ? `${hidden} hidden` : 'Nothing here.';
-      return `<section class="col k-${kind} empty-lane">${head}<p class="gone">${why}</p></section>`;
+      return `<section class="col k-${kind} folded empty-lane" data-kind="${kind}"><div class="strip">
+        <b>${name}</b><small>${hidden ? `${hidden} hidden` : 'nothing here'}</small></div></section>`;
     }
-    return `<section class="col k-${kind}">${head}${items.map(entry).join('')}</section>`;
+    if (state.folded[kind]) {
+      return `<section class="col k-${kind} folded" data-kind="${kind}"><button class="strip" data-unfold="${kind}" title="Open this lane">
+        <span class="count">${items.length}</span><b>${name}</b></button></section>`;
+    }
+    const head = `<div class="col-head"><h2>${name}</h2><p>${KINDS[kind].take}</p>
+      <button class="fold" data-fold="${kind}" aria-label="Fold ${name}" title="Fold this lane"><i></i></button></div>`;
+    return `<section class="col k-${kind}" data-kind="${kind}">${head}${items.map(entry).join('')}</section>`;
   }).join('') + '</div>';
 }
 
@@ -240,7 +268,15 @@ function render() {
   restore.hidden = !hiddenCount;
   restore.textContent = `${hiddenCount} hidden`;
   document.querySelectorAll('#view button').forEach(b => b.setAttribute('aria-pressed', String(state.view === b.dataset.v)));
+  // a rebuild keeps where he had scrolled, sideways and in every lane
+  const old = document.querySelector('.wall');
+  const left = old?.scrollLeft || 0;
+  const tops = Object.fromEntries([...(old?.children || [])].map(c => [c.dataset.kind, c.scrollTop]));
   document.getElementById('main').innerHTML = state.view === 'list' ? renderTable(shown) : renderColumns(shown);
+  const wall = document.querySelector('.wall');
+  if (!wall) return;
+  wall.scrollLeft = left;
+  for (const c of wall.children) c.scrollTop = tops[c.dataset.kind] || 0;
 }
 
 function closeMenus() {
@@ -265,6 +301,14 @@ document.addEventListener('click', e => {
   const hide = e.target.closest('[data-hide]');
   const more = e.target.closest('[data-more]');
   const view = e.target.closest('#view button');
+  const fold = e.target.closest('[data-fold], [data-unfold]');
+  if (fold) {
+    const kind = fold.dataset.fold || fold.dataset.unfold;
+    if (fold.dataset.fold) state.folded[kind] = true; else delete state.folded[kind];
+    save(); closeMenus(); render();
+    if (fold.dataset.unfold) document.querySelector(`.col[data-kind="${kind}"]`)?.scrollIntoView({ inline: 'nearest', block: 'nearest' });
+    return;
+  }
   if (hide) {
     const t = DATA.threads.find(x => x.threadId === hide.dataset.hide);
     state.hidden[t.threadId] = t.lastActivity;
@@ -319,6 +363,14 @@ document.addEventListener('click', e => {
   }
 });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeMenus(); });
+// the wheel over a lane's head or a strip moves the wall sideways; inside a lane it scrolls the lane
+document.addEventListener('wheel', e => {
+  const wall = document.querySelector('.wall');
+  if (!wall || e.shiftKey || !e.target.closest('.col-head, .strip') || wall.scrollWidth <= wall.clientWidth) return;
+  if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
+  e.preventDefault();
+  wall.scrollLeft += e.deltaY * (e.deltaMode === 1 ? 40 : 1);
+}, { passive: false });
 
 render();
 </script>
