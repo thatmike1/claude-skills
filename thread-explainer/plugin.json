@@ -1,0 +1,6 @@
+{
+    "name": "thread-explainer",
+    "version": "1.0.0",
+    "description": "One page of every open T3 Code thread, sorted into lanes by what each wants from you: answer it, look then answer, your move, look at it, running, nothing to do. Read straight from T3's own database.",
+    "skills": "."
+}

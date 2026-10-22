@@ -25,6 +25,7 @@ A collection of custom skills for [Claude Code](https://docs.anthropic.com/en/do
 | [scan](#scan) | Ask any question about your past Claude Code conversations | `/scan` |
 | ⭐ [peek](#peek--jarvis) | Read another running session's transcript from disk, zero footprint | `/peek live`, `/peek <id> --last 6` |
 | ⭐ [jarvis](#peek--jarvis) | Ask one session about all your others: what is open, what to touch next | `/jarvis` |
+| [thread-explainer](#peek--jarvis) | One page of every open T3 thread, sorted by what each wants from you | `/thread-explainer` |
 | [warden](#warden) | All-day accountability loop: plan interview, then nudge on drift | `/warden` |
 | **Delegate** | | |
 | ⭐ [orchestrate](#orchestrate) | Frontier lead plans, routes, verifies; cheaper Claude/Codex workers execute | `/orchestrate` |
@@ -68,6 +69,8 @@ The flagship. Artifact on steroids: session output authored as **MDX with JSX co
 Every Claude Code session writes its transcript to disk as it goes, and reading that file is invisible to the session that owns it. **peek** is the tool: `peek live` lists the sessions running right now (project, quiet-for, session id, last exchange), `peek <id> --last 6` reads one, and every render ends with a `--since N` cursor so you can follow a session incrementally. Peek before you `SendMessage` another session and you skip the ask-then-instruct round trip; run a coach session that peeks a driver session and the driver's transcript stays clean.
 
 **jarvis** is the skill built on it: a T3 Code thread you talk to *about* the others. "Where do I start", "what is this thread on about", "tell thread X to do Y", "fire an agent on Z". It hands out work as delegated tasks, hears back when they finish, and turns "here is the PR" into what changed, whether it works and what you decide. It needs T3 Code with Orchestrator V2 and peek. `live` is Linux-only (it reads `/proc`).
+
+**thread-explainer** is the one-shot version for when you never opened a Jarvis: it reads every open T3 thread from T3's own database (read-only), the agent judges what each wants from you, and you get one local page of colour-blocked lanes (answer it, look then answer, your move, look at it, running, nothing to do), numbered by sidebar position. A thread you have dealt with hides from its menu until it moves again. Needs T3 Code with Orchestrator V2 and Node 22.
 
 ### orchestrate
 

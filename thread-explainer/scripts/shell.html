@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Open threads</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400..900&display=swap" rel="stylesheet">
+<style>
+  /*
+    Direction: a sorting wall. Each kind of ask is a full-height field of colour,
+    edge to edge with no gutters; a thread is a large sidebar number hung in the
+    margin, a title, and one strip of label-maker tape in the field's strong hue
+    for what Mike has to do. No cards: rules and the hung number do the grouping.
+  */
+  :root {
+    --page: oklch(0.965 0.004 250);
+    --ink: oklch(0.2 0.025 280);
+    --soft: oklch(0.2 0.025 280 / 0.64);
+    --rule: oklch(0.2 0.025 280 / 0.85);
+    --font: "Schibsted Grotesk", Ubuntu, "Segoe UI", sans-serif;
+    --lc: 0.865; --cc: 0.075;   /* lightness and chroma of the fields */
+    --lt: 0.47;  --ct: 0.165;   /* and of the tape */
+  }
+  .k-answer      { --h: 12;  --field: oklch(var(--lc) var(--cc) 12);  --tape: oklch(var(--lt) var(--ct) 18); }
+  .k-look-answer { --h: 78;  --field: oklch(var(--lc) 0.095 78);      --tape: oklch(0.49 0.12 55); }
+  .k-do          { --h: 295; --field: oklch(var(--lc) var(--cc) 295); --tape: oklch(var(--lt) var(--ct) 290); }
+  .k-look        { --h: 235; --field: oklch(var(--lc) 0.065 235);     --tape: oklch(0.48 0.12 245); }
+  .k-running     { --h: 150; --field: oklch(var(--lc) 0.075 150);     --tape: oklch(0.47 0.11 152); }
+  .k-none        { --h: 90;  --field: oklch(0.875 0.012 90);          --tape: oklch(0.42 0.02 80); }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--page); color: var(--ink); }
+  body { font-family: var(--font); font-weight: 450; font-size: 16px; line-height: 1.5; min-height: 100vh; display: flex; flex-direction: column; }
+  a { color: inherit; }
+  button { font: inherit; color: inherit; }
+  :focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+
+  /* top strip */
+  header { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 14px 28px; }
+  header h1 { margin: 0; font-size: 21px; font-weight: 800; letter-spacing: -0.015em; }
+  .bar { display: flex; align-items: center; gap: 24px; }
+  .restore-wrap { position: relative; }
+  .restore-wrap .menu { top: 34px; right: 0; min-width: 320px; }
+  .menu .n { font-weight: 850; display: inline-block; min-width: 1.6em; }
+  .menu .all { border-top: 2px solid var(--ink); margin-top: 4px; }
+  .restore { border: 0; background: none; padding: 0; cursor: pointer; font-size: 15px; font-weight: 600;
+             text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 4px; }
+  /* every option has the same weight and padding, so a pick never moves its neighbour */
+  .seg { display: inline-flex; border: 2px solid var(--ink); }
+  .seg button { border: 0; background: none; cursor: pointer; font-size: 15px; font-weight: 650; padding: 4px 16px; }
+  .seg button + button { border-left: 2px solid var(--ink); }
+  .seg button[aria-pressed="true"] { background: var(--ink); color: var(--page); }
+
+  main { flex: 1; display: flex; flex-direction: column; }
+
+  /* the sorting wall */
+  .wall { flex: 1; display: flex; min-width: 0; overflow-x: auto; }
+  .col { flex: 1 1 0; min-width: 360px; background: var(--field); }
+  .col-head { position: sticky; top: 0; z-index: 3; background: var(--field); padding: 22px 28px 16px; border-top: 2px solid var(--rule); }
+  .col-head h2 { margin: 0; font-size: 30px; line-height: 1.1; font-weight: 850; letter-spacing: -0.025em; }
+  .col-head p { margin: 5px 0 0; color: var(--soft); font-size: 15px; }
+  /* colour means it wants you; a lane with nothing left goes grey and narrow
+     but keeps its place, so the others never stretch too wide to read */
+  .col.empty-lane { flex: 0.5 1 0; min-width: 220px; --field: oklch(0.925 0.004 250); }
+  .col.empty-lane h2 { color: var(--soft); font-size: 22px; }
+  /* a fixed head height keeps the first rule level across lanes */
+  .col-head { min-height: 102px; }
+  .col.empty-lane .gone { padding: 22px 28px; border-top: 2px solid oklch(0.2 0.025 280 / 0.25); color: var(--soft); font-size: 15px; }
+
+  .t { position: relative; display: grid; grid-template-columns: 4.2rem 1fr; column-gap: 8px;
+       padding: 22px 28px 24px; border-top: 2px solid var(--rule); }
+  .num { font-size: 56px; line-height: 0.9; font-weight: 850; letter-spacing: -0.05em; font-variant-numeric: tabular-nums; margin-left: -3px; }
+  .body { min-width: 0; padding-right: 30px; }
+  .title { display: block; font-size: 20px; line-height: 1.25; font-weight: 750; letter-spacing: -0.012em; text-decoration: none; }
+  .title:hover { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 3px; }
+  .about { margin: 6px 0 0; color: var(--soft); font-size: 15.5px; }
+  .you { margin: 14px 0 0; font-size: 16.5px; line-height: 1.75; font-weight: 600; }
+  .you span { background: var(--tape); color: oklch(0.99 0.005 90); padding: 3px 9px;
+              -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+  .links { margin: 14px 0 0; display: flex; flex-wrap: wrap; gap: 2px 20px; font-size: 15.5px; font-weight: 600; }
+  .links a { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 4px; }
+
+  /* the open/close control: same label both ways, a drawn plus that becomes a minus */
+  .more { margin: 14px 0 0; padding: 0; border: 0; background: none; cursor: pointer; font-size: 15px; font-weight: 600;
+          display: inline-flex; align-items: center; gap: 9px; color: var(--ink); }
+  .glyph { position: relative; width: 14px; height: 14px; flex: none; }
+  .glyph::before, .glyph::after { content: ""; position: absolute; left: 0; right: 0; top: 6px; height: 2px; background: currentColor; transition: transform .18s; }
+  .glyph::after { transform: rotate(90deg); }
+  .more[aria-expanded="true"] .glyph::after { transform: rotate(0); }
+  .more:hover span:last-child { text-decoration: underline; text-underline-offset: 3px; }
+  .detail { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .22s ease; }
+  .t.open .detail { grid-template-rows: 1fr; }
+  .detail > div { overflow: hidden; min-height: 0; }
+  .detail p { margin: 12px 0 0; max-width: 62ch; font-size: 15.5px; }
+  .detail p.context { color: var(--soft); }
+  .detail p:first-child { margin-top: 14px; }
+  code { font: inherit; font-weight: 700; background: oklch(0.2 0.025 280 / 0.1); padding: 0 4px; }
+
+  /* quiet per-thread menu */
+  .dots { position: absolute; top: 18px; right: 18px; width: 30px; height: 30px; border: 0; background: none; cursor: pointer;
+          display: grid; place-items: center; opacity: 0.4; }
+  .dots i { display: block; width: 4px; height: 4px; background: currentColor; border-radius: 50%; box-shadow: -7px 0 currentColor, 7px 0 currentColor; }
+  .t:hover .dots, tr:hover .dots, .dots:focus-visible, .dots[aria-expanded="true"] { opacity: 1; }
+  .dots:hover { background: oklch(0.2 0.025 280 / 0.1); }
+  .menu { position: absolute; top: 50px; right: 18px; z-index: 6; min-width: 210px; background: var(--page);
+          border: 2px solid var(--ink); box-shadow: 5px 5px 0 var(--ink); padding: 4px; }
+  .menu button { display: block; width: 100%; text-align: left; border: 0; background: none; padding: 8px 10px; cursor: pointer; font-size: 15px; font-weight: 600; }
+  .menu button:hover { background: var(--ink); color: var(--page); }
+  .menu small { display: block; font-weight: 450; font-size: 13px; opacity: 0.75; }
+
+  .toast { position: fixed; left: 28px; bottom: 24px; z-index: 9; background: var(--ink); color: var(--page);
+           padding: 11px 12px 11px 18px; display: flex; gap: 18px; align-items: center; font-size: 15px; box-shadow: 5px 5px 0 oklch(0.2 0.025 280 / 0.25); }
+  .toast button { border: 0; background: none; font-weight: 800; cursor: pointer; padding: 3px 8px; text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 3px; }
+
+
+  /* table: every thread in sidebar order, compact and not full width */
+  .tablewrap { padding: 8px 28px 56px; }
+  table { border-collapse: collapse; width: 100%; max-width: 1480px; }
+  th { text-align: left; font-weight: 450; color: var(--soft); font-size: 14.5px; padding: 0 20px 10px 0; }
+  td { padding: 13px 20px 13px 0; border-top: 2px solid var(--rule); vertical-align: top; }
+  td.n { width: 68px; }
+  td.n .num { font-size: 40px; }
+  td.what { width: 480px; }
+  td.what .title { font-size: 18px; }
+  td.what .about { font-size: 15px; }
+  td.kind { width: 170px; white-space: nowrap; padding-top: 16px; font-weight: 650; }
+  td.kind::before { content: ""; display: inline-block; width: 12px; height: 12px; background: var(--field); border: 2px solid var(--ink); margin-right: 9px; vertical-align: -1px; }
+  td .you { margin: 2px 0 0; font-size: 15.5px; line-height: 1.7; }
+  td .links { margin-top: 8px; }
+  td.act { position: relative; width: 44px; padding-right: 0; }
+  td.act .dots { top: 8px; right: 0; }
+  td.act .menu { top: 42px; right: 0; }
+
+  @media (max-width: 900px) {
+    .wall { flex-direction: column; overflow: visible; }
+    .col { min-width: 0; }
+    td.what, td.kind { width: auto; }
+  }
+  @media (prefers-reduced-motion: reduce) { .detail, .glyph::before, .glyph::after { transition: none; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>Open threads</h1>
+  <div class="bar">
+    <span class="restore-wrap"><button class="restore" id="restore" aria-expanded="false" hidden></button></span>
+    <div class="seg" id="view" role="group" aria-label="View">
+      <button data-v="lanes">Columns</button>
+      <button data-v="list">Table</button>
+    </div>
+  </div>
+</header>
+<main id="main"></main>
+
+<script id="data" type="application/json">/*DATA*/</script>
+<script>
+const DATA = JSON.parse(document.getElementById('data').textContent);
+
+const KINDS = {
+  answer:        { name: 'Answer it',         take: 'One reply from you starts the next step.' },
+  'look-answer': { name: 'Look, then answer', take: 'Open what it made, then tell the thread.' },
+  do:            { name: 'Your move',         take: 'A step on your side, not a reply.' },
+  look:          { name: 'Look at it',        take: 'Open what it made. No reply needed.' },
+  running:       { name: 'Running',           take: 'Still working.' },
+  none:          { name: 'Nothing to do',     take: 'Finished. These can be settled.' },
+};
+const ORDER = Object.keys(KINDS);
+const kindOf = t => (KINDS[t.kind] ? t.kind : 'none');
+
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+// the judgments use `code` spans and nothing else from markdown
+const md = s => esc(s).replace(/`([^`]+)`/g, '<code>$1</code>');
+const href = h => (h.startsWith('/') ? `file://${h}` : h);
+
+// hidden threads stay hidden until the thread moves again, so a regenerated
+// page brings back anything with something new to say
+const STORE = 'thread-explainer';
+const state = { view: 'lanes', hidden: {} };
+try { Object.assign(state, JSON.parse(localStorage.getItem(STORE) || '{}')); } catch {}
+const save = () => { try { localStorage.setItem(STORE, JSON.stringify(state)); } catch {} };
+const isHidden = t => state.hidden[t.threadId] === t.lastActivity;
+const open = new Set();
+
+function menu(t) {
+  return `<button class="dots" aria-label="More for ${esc(t.title)}" aria-expanded="false" data-menu="${esc(t.threadId)}"><i></i></button>`;
+}
+function links(t) {
+  const a = (t.links || []).map(l => `<a href="${esc(href(l.href))}" target="_blank">${esc(l.label)}</a>`).join('');
+  return a ? `<div class="links">${a}</div>` : '';
+}
+function you(t) { return t.you ? `<p class="you"><span>${md(t.you)}</span></p>` : ''; }
+
+function entry(t) {
+  const more = t.happened || t.context;
+  const isOpen = open.has(t.threadId);
+  return `<article class="t${isOpen ? ' open' : ''}" data-id="${esc(t.threadId)}">
+    <div class="num">${t.sidebarIndex}</div>
+    <div class="body">
+      <a class="title" href="${esc(t.link)}">${esc(t.title)}</a>
+      <p class="about">${md(t.about)}</p>
+      ${you(t)}
+      ${links(t)}
+      ${more ? `<button class="more" data-more="${esc(t.threadId)}" aria-expanded="${isOpen}"><span class="glyph"></span><span>What happened</span></button>
+      <div class="detail"><div>${t.happened ? `<p>${md(t.happened)}</p>` : ''}${t.context ? `<p class="context">${md(t.context)}</p>` : ''}</div></div>` : ''}
+    </div>
+    ${menu(t)}
+  </article>`;
+}
+
+function renderColumns(threads) {
+  return '<div class="wall">' + ORDER.map(kind => {
+    const items = threads.filter(t => kindOf(t) === kind);
+    const hidden = DATA.threads.filter(t => kindOf(t) === kind).length - items.length;
+    const head = `<div class="col-head"><h2>${KINDS[kind].name}</h2><p>${items.length ? KINDS[kind].take : ''}</p></div>`;
+    if (!items.length) {
+      const why = hidden ? `${hidden} hidden` : 'Nothing here.';
+      return `<section class="col k-${kind} empty-lane">${head}<p class="gone">${why}</p></section>`;
+    }
+    return `<section class="col k-${kind}">${head}${items.map(entry).join('')}</section>`;
+  }).join('') + '</div>';
+}
+
+function renderTable(threads) {
+  const rows = [...threads].sort((a, b) => a.sidebarIndex - b.sidebarIndex).map(t => `
+    <tr data-id="${esc(t.threadId)}">
+      <td class="n"><div class="num">${t.sidebarIndex}</div></td>
+      <td class="what"><a class="title" href="${esc(t.link)}">${esc(t.title)}</a><p class="about">${md(t.about)}</p></td>
+      <td class="kind k-${kindOf(t)}">${KINDS[kindOf(t)].name}</td>
+      <td class="k-${kindOf(t)}">${you(t)}${links(t)}</td>
+      <td class="act">${menu(t)}</td>
+    </tr>`).join('');
+  return `<div class="tablewrap"><table><thead><tr><th></th><th>Thread</th><th>It wants</th><th>You do</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+
+function render() {
+  const shown = DATA.threads.filter(t => !isHidden(t));
+  const hiddenCount = DATA.threads.length - shown.length;
+  const restore = document.getElementById('restore');
+  restore.hidden = !hiddenCount;
+  restore.textContent = `${hiddenCount} hidden`;
+  document.querySelectorAll('#view button').forEach(b => b.setAttribute('aria-pressed', String(state.view === b.dataset.v)));
+  document.getElementById('main').innerHTML = state.view === 'list' ? renderTable(shown) : renderColumns(shown);
+}
+
+function closeMenus() {
+  document.querySelectorAll('.menu').forEach(m => m.remove());
+  document.querySelectorAll('.dots[aria-expanded="true"], #restore[aria-expanded="true"]').forEach(d => d.setAttribute('aria-expanded', 'false'));
+}
+
+let toastTimer;
+function toast(text, undo) {
+  document.querySelector('.toast')?.remove();
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.innerHTML = `<span>${esc(text)}</span><button>Undo</button>`;
+  el.querySelector('button').onclick = () => { undo(); el.remove(); };
+  document.body.append(el);
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.remove(), 7000);
+}
+
+document.addEventListener('click', e => {
+  const dots = e.target.closest('.dots');
+  const hide = e.target.closest('[data-hide]');
+  const more = e.target.closest('[data-more]');
+  const view = e.target.closest('#view button');
+  if (hide) {
+    const t = DATA.threads.find(x => x.threadId === hide.dataset.hide);
+    state.hidden[t.threadId] = t.lastActivity;
+    save(); closeMenus(); render();
+    toast(`Hid “${t.title}”`, () => { delete state.hidden[t.threadId]; save(); render(); });
+    return;
+  }
+  const back = e.target.closest('[data-back]');
+  if (back) {
+    const id = back.dataset.back;
+    const before = { ...state.hidden };
+    if (id === '*') state.hidden = {}; else delete state.hidden[id];
+    save(); closeMenus(); render();
+    if (id === '*') toast('Brought back every hidden thread', () => { state.hidden = before; save(); render(); });
+    return;
+  }
+  if (e.target.closest('#restore')) {
+    const btn = e.target.closest('#restore');
+    const wasOpen = btn.getAttribute('aria-expanded') === 'true';
+    closeMenus();
+    if (wasOpen) return;
+    btn.setAttribute('aria-expanded', 'true');
+    const gone = DATA.threads.filter(isHidden).sort((a, b) => a.sidebarIndex - b.sidebarIndex);
+    const m = document.createElement('div');
+    m.className = 'menu';
+    m.innerHTML = gone.map(t => `<button data-back="${esc(t.threadId)}"><span class="n">${t.sidebarIndex}</span>${esc(t.title)}</button>`).join('')
+      + (gone.length > 1 ? '<button class="all" data-back="*">Bring back all</button>' : '');
+    btn.after(m);
+    return;
+  }
+  if (dots) {
+    const wasOpen = dots.getAttribute('aria-expanded') === 'true';
+    closeMenus();
+    if (wasOpen) return;
+    dots.setAttribute('aria-expanded', 'true');
+    const m = document.createElement('div');
+    m.className = 'menu';
+    m.innerHTML = `<button data-hide="${esc(dots.dataset.menu)}">Hide from this page<small>until the thread moves again</small></button>`;
+    dots.after(m);
+    return;
+  }
+  closeMenus();
+  if (more) {
+    // toggle in place so the height change animates and the page does not jump
+    const id = more.dataset.more;
+    const on = !open.has(id);
+    on ? open.add(id) : open.delete(id);
+    more.closest('.t').classList.toggle('open', on);
+    more.setAttribute('aria-expanded', String(on));
+  } else if (view) {
+    state.view = view.dataset.v; save(); render();
+  }
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeMenus(); });
+
+render();
+</script>
+</body>
+</html>

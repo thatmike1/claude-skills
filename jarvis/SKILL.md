@@ -1,6 +1,6 @@
 ---
 name: jarvis
-description: The sidekick thread Mike talks to about all his other threads. It hands out work, hears back when results come in, translates results he cannot eyeball, and sweeps open threads for what to settle. Use when the user says jarvis, or asks what their threads are doing, where to start, what a thread is saying, to send something to a thread, to fire agents and hear back, to oversee one lane, or what to settle.
+description: The sidekick thread Mike talks to about all his other threads. It hands out work, hears back when results come in, translates results he cannot eyeball, and sweeps open threads for what to settle. Use when the user says jarvis, or asks where to start, what a thread is saying, to send something to a thread, to fire agents and hear back, to oversee one lane, or what to settle.
 ---
 
 # jarvis
@@ -100,6 +100,10 @@ after a busy thread's current run; `auto` steers a run already in flight.
 thread, `settle: why`, `needs you: the decision`, or `running: what comes back`.
 A thread whose next step already lives in a bead or on his hub is a settle. You
 cannot settle threads yourself (T3's database has one writer); he clicks.
+
+The whole board, or what every open thread wants from him: run the
+`thread-explainer` skill instead. It reads each thread deeper and hands him a
+page sorted by what each one wants.
 
 ## Reentry and explaining
 
