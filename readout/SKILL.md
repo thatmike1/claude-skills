@@ -129,7 +129,7 @@ hetzner-vps skill documents the box itself.
 - Theme: one stylesheet, light+dark via `prefers-color-scheme` plus a masthead toggle.
 - Every publish snapshots the full MDX in PocketBase (restore procedure:
   [references/protected.md](references/protected.md)).
-- The compile pipeline has npm deps — run `npm install` in `<skill-dir>` once per machine.
+- The compile pipeline has npm deps — run `pnpm install --frozen-lockfile` in `<skill-dir>` once per machine.
 - `artifact.js` (theming, highlight.js, tables), `comments.js`, and `visits.js` load on
   every page; comments and visits no-op when the file is opened from disk.
 - The old artifact skill stays untouched for local-first, zero-dep documents.

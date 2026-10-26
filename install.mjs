@@ -2,7 +2,7 @@
 
 /**
  * interactive installer for claude-skills — a React terminal app built on ink.
- * this entry stays a plain .mjs: it guards the environment, bootstraps the npm
+ * this entry stays a plain .mjs: it guards the environment, bootstraps the pnpm
  * dependencies on first run, then hands off to the JSX app via tsx.
  *
  * usage: node install.mjs [--dry-run]
@@ -41,13 +41,13 @@ if (!process.stdin.isTTY || !process.stdout.isTTY) {
     process.exit(1);
 }
 
-// self-bootstrap: the bin can be run straight after clone, before npm install
+// self-bootstrap: the bin can be run straight after clone, before pnpm install
 if (!existsSync(join(__dirname, "node_modules", "ink"))) {
     console.log("first run — installing installer dependencies (one-time, ~2s)...\n");
     try {
-        execSync("npm install", { cwd: __dirname, stdio: "inherit" });
+        execSync("pnpm install --frozen-lockfile", { cwd: __dirname, stdio: "inherit" });
     } catch {
-        console.error("\nnpm install failed — run it manually in the repo root and retry.");
+        console.error("\npnpm install --frozen-lockfile failed — run it manually in the repo root and retry.");
         process.exit(1);
     }
 }

@@ -152,7 +152,7 @@ colour, dashed cross-links where two branches hit the same tension.
 
 ## Install
 
-Requires Node.js 22+ for the installer (an [ink](https://github.com/vadimdemedes/ink) app). The skills themselves need no npm install, with one exception: readout compiles MDX and carries its own `package.json`.
+Requires Node.js 22+ and pnpm 12.15.0 for the installer (an [ink](https://github.com/vadimdemedes/ink) app). The skills themselves need no pnpm install, with one exception: readout compiles MDX and carries its own `package.json`.
 
 ```bash
 git clone https://github.com/thatmike1/claude-skills.git
@@ -160,7 +160,7 @@ cd claude-skills
 node install.mjs
 ```
 
-First run installs the installer's npm dependencies automatically. The installer:
+First run installs the installer's pnpm dependencies automatically. The installer:
 
 1. Discovers every directory with a `SKILL.md` (root and `deprecated/`) and shows them grouped by category
 2. Asks whether to **symlink** (edits here update the skill) or **copy** (standalone; also copies the `shared/` parser helpers)

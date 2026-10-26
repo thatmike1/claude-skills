@@ -5,7 +5,7 @@ A collection of custom skills for Claude Code and compatible agent harnesses.
 ## Repo Structure
 
 ```
-install.mjs              — installer entry: env guards, npm self-bootstrap, loads src/app.jsx via tsx
+install.mjs              — installer entry: env guards, pnpm self-bootstrap, loads src/app.jsx via tsx
 src/                      — installer ink (React terminal) app: components/ (UI screens), lib/ (discovery, install, setup writers)
 morning/                  — daily briefing skill (CC + Codex session parsing)
 evening/                  — end-of-day receipts: what actually got done today (reuses morning's gather script)
@@ -59,7 +59,7 @@ Skills that need user-specific values (API keys, git author, repo paths) use a `
 
 ## Installer
 
-An ink (React terminal) app. `install.mjs` is a thin entry (Node 22+ guard, TTY guard, npm self-bootstrap, tsx JSX loading); the app lives in `src/`. It handles:
+An ink (React terminal) app. `install.mjs` is a thin entry (Node 22+ guard, TTY guard, pnpm self-bootstrap, tsx JSX loading); the app lives in `src/`. It handles:
 - Skill auto-discovery — scans repo dirs for `SKILL.md`, no hardcoded list (new skills appear automatically)
 - Checkbox multi-select with installed markers, symlink vs copy install to `~/.claude/skills/`
 - Per-skill setup forms driven by field definitions in `src/lib/setup-fields.js` (morning: git author/repos, invoice-subjects: repo list)
