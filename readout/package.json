@@ -3,6 +3,7 @@
     "version": "1.0.0",
     "private": true,
     "type": "module",
+    "packageManager": "pnpm@12.15.0",
     "description": "MDX -> HTML compile pipeline for readout session artifacts",
     "engines": {
         "node": ">=22"
