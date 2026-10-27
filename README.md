@@ -31,8 +31,7 @@ A collection of custom skills for [Claude Code](https://docs.anthropic.com/en/do
 | ⭐ [orchestrate](#orchestrate) | Frontier lead plans, routes, verifies; cheaper Claude/Codex workers execute | `/orchestrate` |
 | [find-out](#find-out) | Research orchestrator: picks the surface, fans out, reconciles sources | `/find-out` |
 | [gpt-pro](#gpt-pro) | Put a question to ChatGPT's Pro model from your agent session: it packs the prompt and context, you paste and copy back | `/gpt-pro` |
-| **Publish** | | |
-| ⭐ [readout](#readout) | Publish session work as a shareable, commentable web page | `/readout`, `/readout comments` |
+| **Feedback** | | |
 | [redline](redline/SKILL.md) | Work through the notes left on a running app with the redline Firefox extension | `/redline`, "read the feedback" |
 | **Think & design** | | |
 | [goblin](#goblin) | Neurodivergent thought structuring: compile, decompose, estimate, decide | `/goblin`, `/goblin decompose` |
@@ -53,16 +52,6 @@ See [`deprecated/README.md`](deprecated/README.md). The installer lists them und
 </details>
 
 ## Highlights
-
-### readout
-
-The flagship. Artifact on steroids: session output authored as **MDX with JSX components**, compiled to a themed HTML page, and **published to the web** (readout.ssscribe.app) instead of sitting on disk.
-
-- Document types: walkthroughs, plans, comparisons, investigations, changelogs
-- Rich components: diffs, checklists, timelines, stat tiles, file trees, diagrams, docshelf
-- **Anchored comments** — teammates comment on specific parts of the page, and the agent reads the comments back into the session to act on them
-- Password-protected readouts (encrypted at publish, comments encrypted too)
-- Living documents: re-publishing updates the same page
 
 ### peek / jarvis
 
@@ -152,7 +141,7 @@ colour, dashed cross-links where two branches hit the same tension.
 
 ## Install
 
-Requires Node.js 22+ and pnpm 12.15.0 for the installer (an [ink](https://github.com/vadimdemedes/ink) app). The skills themselves need no pnpm install, with one exception: readout compiles MDX and carries its own `package.json`.
+Requires Node.js 22+ and pnpm 12.15.0 for the installer (an [ink](https://github.com/vadimdemedes/ink) app). The skills themselves need no pnpm install, with one exception: the deprecated readout compiles MDX and carries its own `package.json`.
 
 ```bash
 git clone https://github.com/thatmike1/claude-skills.git

@@ -21,7 +21,6 @@ jarvis/                   — the thread you talk to about all the others: dispa
 thread-explainer/         — one page of every open T3 thread sorted by what each wants (gather from T3's sqlite, agent judges, build the page)
 warden/                   — all-day accountability loop: plan interview, then /loop ticks over ActivityWatch + peek, desktop nudge on drift
 gpt-pro/                  — hand-carried ChatGPT Pro runs: prompt + packed context to the clipboard, answer back from it, run folders per project
-readout/                  — MDX-authored session docs published to readout.ssscribe.app with anchored comments (has npm deps for the MDX compile, like the installer)
 shared/                   — Claude Code + Codex JSONL discovery, parsing, search; imported by morning, evening, scan, peek, cc-audit, ai-cv-scanner
 ```
 

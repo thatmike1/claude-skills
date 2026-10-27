@@ -44,7 +44,6 @@ export const SKILL_DEPENDENCIES = { evening: "morning", jarvis: "peek" };
 export const CATEGORIES = [
     { title: "sessions", skills: ["morning", "evening", "scan", "peek", "jarvis"] },
     { title: "delegate", skills: ["orchestrate", "find-out", "gpt-pro"] },
-    { title: "publish", skills: ["readout"] },
     { title: "think & design", skills: ["goblin", "design-styles", "oocl"] },
 ];
 
