@@ -29,10 +29,9 @@ const SHORT_BLURBS = {
     "afk-prompt": "Autonomous-run prompts + picking tasks safe to run unattended",
 };
 
-// skills whose scripts import from ../../shared — copy installs must also copy
-// shared/ or those imports break. re-derive with:
-//   grep -rl "shared/" --include="*.mjs" .
-export const SHARED_CONSUMERS = ["morning", "ai-cv-scanner", "cc-audit", "scan", "peek"];
+// a static or dynamic relative import of shared/, e.g. from "../../shared/cc-parser.mjs".
+// anchored on from/import so a comment that only names the path does not count.
+const SHARED_IMPORT = /\b(?:from|import)\s*\(?\s*["'](?:\.\.?\/)+shared\//;
 
 /** skill -> skill it depends on at runtime (soft dependency, warn only) */
 export const SKILL_DEPENDENCIES = { evening: "morning", jarvis: "peek" };
@@ -116,10 +115,25 @@ function scanDir(dir, relative, targetDir) {
             glyph: GLYPHS[name] ?? "◆",
             hasSetup: name in SETUP_FIELDS,
             installed: existsSync(join(targetDir, name)),
-            needsShared: SHARED_CONSUMERS.includes(name),
+            needsShared: importsShared(join(dir, name)),
         });
     }
     return skills;
+}
+
+/** true when any script under a skill imports from shared/ — copy installs must then copy shared/ too */
+function importsShared(dir) {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        if (entry.name.startsWith(".") || entry.name === "node_modules") continue;
+
+        const path = join(dir, entry.name);
+        if (entry.isDirectory()) {
+            if (importsShared(path)) return true;
+        } else if (/\.[mc]?js$/.test(entry.name) && SHARED_IMPORT.test(readFileSync(path, "utf-8"))) {
+            return true;
+        }
+    }
+    return false;
 }
 
 /** position of a skill's category, then its position inside it */
