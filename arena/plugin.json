@@ -1,0 +1,6 @@
+{
+    "name": "arena",
+    "version": "1.0.0",
+    "description": "Give several T3 child candidates the same prompt, rank them against a rubric written before they run, pick a base and graft the best of the rest into it. Ported from cursor/plugins pstack arena (MIT).",
+    "skills": "."
+}

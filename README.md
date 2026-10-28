@@ -31,6 +31,7 @@ A collection of custom skills for [Claude Code](https://docs.anthropic.com/en/do
 | ⭐ [orchestrate](#orchestrate) | Frontier lead plans, routes, verifies; cheaper Claude/Codex workers execute | `/orchestrate` |
 | [find-out](#find-out) | Research orchestrator: picks the surface, fans out, reconciles sources | `/find-out` |
 | [gpt-pro](#gpt-pro) | Put a question to ChatGPT's Pro model from your agent session: it packs the prompt and context, you paste and copy back | `/gpt-pro` |
+| [arena](#arena) | Same prompt to three T3 child candidates, ranked against a rubric written first, winners grafted into one result | `/arena` |
 | **Feedback** | | |
 | [redline](redline/SKILL.md) | Work through the notes left on a running app with the redline Firefox extension | `/redline`, "read the feedback" |
 | **Think & design** | | |
@@ -108,6 +109,12 @@ Deliberately narrow: ordinary codebase, issue-tracker or history lookups with a 
 Typed messages in ChatGPT's Chat mode are metered apart from the Codex allowance, and Chat carries the Pro model and image generation. This skill turns that into a lane your agent can use without automating the browser. The agent writes a self-contained prompt, zips the context, puts the prompt on your clipboard and opens the folder for the drag. You paste, attach and send in whatever ChatGPT window you already have open, then click Copy on the answer, and the agent reads it off the clipboard into the run folder.
 
 Good for a second opinion on a plan from another model family, big divergent idea runs, self-contained 3D or math-heavy code, and images. Every run is a folder (`gpt-pro/<date>-<slug>/` with `prompt.md`, `answer.md`, `context/`, `returned/`) inside the project it belongs to, so a chained run feeds on the previous answer without you re-pasting anything. Clipboard support: `wl-copy`, `xclip`, `pbcopy`.
+</details>
+
+<details>
+<summary><b>arena</b></summary>
+
+For an artifact where one attempt would lock in the wrong shape. Before anything runs, the lead writes a rubric of 3 to 6 gradeable criteria and one prompt (the contract). Three candidates get that same prompt as T3 child tasks, each in its own worktree with its model chosen per seat, and none of them sees the rubric. A judge from a different model family scores them, the lead picks a base, grafts the one or two things worth keeping from the others, verifies in the real tree and records what was rejected and why. Ported from [pstack's arena](https://github.com/cursor/plugins) (MIT). Needs T3 Code with Orchestrator V2; `arena/references/worked-example.md` is a full run.
 </details>
 
 <details>

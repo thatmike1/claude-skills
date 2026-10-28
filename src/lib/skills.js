@@ -11,6 +11,7 @@ import { SETUP_FIELDS } from "./setup-fields.js";
 const SHORT_BLURBS = {
     readout: "Publish session docs to the web — MDX-authored, themed, anchored comments",
     orchestrate: "Frontier lead plans, routes, verifies — cheap Claude/Codex workers execute",
+    arena: "Same prompt to N T3 candidates, rubric-ranked, winners grafted into one result",
     morning: "Daily briefing — aggregates CC/Codex sessions, git, memory into a morning plan",
     evening: "End-of-day receipts — proves what actually got done today",
     goblin: "Neurodivergent thought structuring — braindumps, decompose, estimate, decide",
@@ -42,7 +43,7 @@ export const SKILL_DEPENDENCIES = { evening: "morning", jarvis: "peek" };
  */
 export const CATEGORIES = [
     { title: "sessions", skills: ["morning", "evening", "scan", "peek", "jarvis"] },
-    { title: "delegate", skills: ["orchestrate", "find-out", "gpt-pro"] },
+    { title: "delegate", skills: ["orchestrate", "arena", "find-out", "gpt-pro"] },
     { title: "think & design", skills: ["goblin", "design-styles", "oocl"] },
 ];
 
@@ -52,6 +53,7 @@ export const DEPRECATED_DIR = "deprecated";
 const GLYPHS = {
     readout: "❖",
     orchestrate: "♬",
+    arena: "⚔",
     morning: "☀",
     evening: "☾",
     goblin: "♟",

@@ -21,6 +21,7 @@ jarvis/                   — the thread you talk to about all the others: dispa
 thread-explainer/         — one page of every open T3 thread sorted by what each wants (gather from T3's sqlite, agent judges, build the page)
 warden/                   — all-day accountability loop: plan interview, then /loop ticks over ActivityWatch + peek, desktop nudge on drift
 gpt-pro/                  — hand-carried ChatGPT Pro runs: prompt + packed context to the clipboard, answer back from it, run folders per project
+arena/                    — same prompt to N T3 child candidates, rubric written before they run, pick a base, graft the rest; ported from cursor/plugins pstack, MIT
 shared/                   — Claude Code + Codex JSONL discovery, parsing, search; imported by morning, evening, scan, peek, cc-audit, ai-cv-scanner
 ```
 
