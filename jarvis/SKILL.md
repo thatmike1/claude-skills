@@ -67,6 +67,15 @@ absolute paths and which repo, the done condition, how to verify, where to
 commit, then the paragraph from `node $J prompt-tail`. Give each task
 its own `clientRequestId`.
 
+A GPT child does what the text says and little it only implies, so its task
+also says three things outright: ground each claim in a file it read or a
+command it ran and label guesses as guesses; check the result against the done
+condition before reporting and fix what fails instead of reporting a first
+draft; stay inside the task and name any risky or irreversible step before
+taking it. A GPT review gets the prompt in `references/adversarial-review.md`
+pasted in with target and focus filled; its final message is a JSON verdict
+with findings (file, lines, confidence, fix). Parse it before relaying it.
+
 When he asks for a thread of his own ("a new thread", "in its own worktree"), use
 `t3_thread_launch` with a workspace, end the message with the same paragraph,
 and link it for him as `[title](t3-thread://v1/<thread id>)`. Nothing wakes you
