@@ -4,7 +4,7 @@ description: >-
   FAST reconnaissance agent for orchestrate. Read-only codebase scanning,
   location of relevant files and symbols, extraction of facts. Dispatched by
   the conductor orchestrator — not intended for direct invocation.
-model: sonnet
+model: haiku
 effort: high
 disallowedTools: Edit, Write, NotebookEdit, Agent
 ---
