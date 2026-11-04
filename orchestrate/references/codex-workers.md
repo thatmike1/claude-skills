@@ -1,4 +1,7 @@
-# Codex workers: probe, consent, invoke, read back
+# Standalone Codex workers: probe, consent, invoke, read back
+
+Inside T3 use [t3-workers.md](t3-workers.md). The CLI workflow below is for standalone
+harnesses; it does not replace app-owned child tasks.
 
 OpenAI's Codex CLI is an optional accelerator — never a requirement. When present and consented, it adds a second family of worker seats.
 
@@ -20,7 +23,7 @@ test -s "${CODEX_HOME:-$HOME/.codex}/auth.json"    # 2b. fallback if the subcomm
 The probe above is metadata-only and free. An actual Codex invocation **spends the user's OpenAI account** — subscription quota, or real metered dollars on an API key. Before the first dispatch:
 
 1. Tell the user Codex is available and which billing mode `login status` reported.
-2. Confirm they want Codex in the rotation — unless they already asked for Codex this session, which is consent.
+2. Confirm routing only if existing user or project authorization does not already cover it. Record existing authorization rather than asking again.
 3. Record the consent (and mode) in the ledger.
 
 Only after consent, run the functional check — one tiny call, cheapest tier you can name confidently or the account default: `codex exec "Reply with exactly: ok"`. If it fails while credentials exist, they're likely expired: tell the user to run `codex login`; never initiate an interactive auth flow yourself.
@@ -52,7 +55,7 @@ codex exec -m <verified-model> -c model_reasoning_effort=<level> \
 - Write the ticket to a file and pipe via stdin (`- <`) — avoids shell-quoting bugs.
 - Sandbox follows the *task* (advisory vs implementation), not the seat.
 - `--json` emits a JSONL event stream if you need structured events; otherwise the final message arrives on stdout.
-- Long tasks run in the background: **record the job ID and output file path in the ledger at dispatch time**, capture the exit code on collection, and apply the LOST-worker protocol (delegation.md) if it goes silent. Never foreground-block the session on a long build.
+- Where the standalone project permits background processes, long tasks run in the background: **record the job ID and output file path in the ledger at dispatch time**, capture the exit code on collection, and apply the LOST-worker protocol (delegation.md) if it goes silent. Never foreground-block the session on a long build.
 
 ## Reading back
 

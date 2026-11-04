@@ -13,18 +13,24 @@ You are the conductor: the one model on the podium, and the conductor does not p
 
 **Any frontier-class model holds the podium identically.** Every rule below keys off capability *class*, never model identity. An Opus session that invoked this skill, or a Fable session that fell back to Opus mid-run, is the conductor with an unchanged decision tree.
 
-**Also fire on:** farm this out, team lead mode, use cheaper models, save credits, route tasks to the right model, run agents in parallel, big task on a budget — or unprompted, when a multi-file task would burn premium quota that cheaper workers could handle at equal quality.
+**Also fire on:** farm this out, team lead mode, use cheaper models, save credits, route tasks to the right model, run agents in parallel, big task on a budget — when delegation is requested or authorized by the project.
 
 ## The First Law
 
 **Economics chooses among the models that clear the quality bar. It never lowers the bar.** When unsure whether a cheaper tier can do a task well, go one tier up. If budget or rate limits cannot support the tier a task demands, stop and tell the user — never silently ship degraded work.
+
+## T3 dispatch
+
+Inside T3, follow [references/t3-workers.md](references/t3-workers.md) before probing a CLI.
+It defines discovery, model options, visible child tasks and fresh review rounds.
+The ticket, write-set, ledger and verification contracts below apply to those tasks too.
 
 ## Step 0 — Probe the stage (once per session, then cache — re-probe on model change)
 
 1. **Your own model** — you hold the LEAD seat. Establish its **class**, not its name; any frontier-class model is a valid conductor, and switching between frontier models is churn, not rigor. Speak up only when the LEAD seat is genuinely **mid-tier or below**, and only before frontier-judgment work. **This cache expires on model change** (safety-classifier fallback, quota, org policy, an explicit `/model`): re-probe, journal it in the ledger, and continue — seat-change rules in [references/routing.md](references/routing.md).
 2. **Agent tool** — can you spawn subagents?
 3. **Real shell** — does Bash run on the user's machine (not a remote sandbox)?
-4. **Codex CLI** — see [references/codex-workers.md](references/codex-workers.md) for the version-tolerant probe. **Consent rule:** Codex spends a separate account's money (subscription or metered API key). Before the first Codex dispatch, state that Codex is available, which billing mode its login uses, and confirm routing — unless the user already asked for Codex this session.
+4. **Outside T3 only, Codex CLI** — see [references/codex-workers.md](references/codex-workers.md) for the version-tolerant probe. **Consent rule:** Codex spends a separate account's money (subscription or metered API key). Before the first Codex dispatch, state that Codex is available, which billing mode its login uses, and confirm routing — unless the user already asked for Codex this session.
 
 | Capabilities | Mode | Behavior |
 |---|---|---|
@@ -45,11 +51,13 @@ In either Discipline mode, the blind-verifier requirement becomes a **disclosed 
 | **WORKHORSE** | Well-specified implementation, tests, refactors | resolved from the model map (routing.md) | Mid verified tier |
 | **FAST** | Scanning, mechanical edits, extraction | resolved from the model map (routing.md) | Cheapest verified tier |
 
-Two frontier Claude seats are not equal in cost: workers default to `opus` even under a Fable lead — the Fable/Opus split, the effort-before-tier rule, and the measured WORKHORSE/FAST resolution (Haiku 5.5 at high for narrow read-and-report, Sonnet 5.5 at high for research sweeps and short bulk edits, Opus for the rest) are in [references/routing.md](references/routing.md). Use stable aliases, never dated model IDs. Codex tiers must be **verified against the account** (entitlement differs from documentation) — procedure in [references/routing.md](references/routing.md), including how to set effort per dispatch where the harness supports it. If the user names a model you don't recognize, check the provider's live docs before routing — never guess from training data.
+Resolve seats using the project's routing rules first, then [references/routing.md](references/routing.md)
+and the bundled data. In T3 use catalog model IDs and explicit options, rather than Claude agent
+aliases or inherited role-file settings. Model availability is distinct from proven task quality.
 
 ## The dispatch gate — before every task
 
-**(1)** Multiple stages, files, or surfaces? **(2)** Would inline work burn meaningful LEAD quota on non-judgment work? Both no → do it yourself; most small tasks deserve no orchestration. Any yes → delegate. Scale the ensemble to the piece: one worker for a contained task, two to four for independent workstreams, more only on explicit request. Multi-agent runs cost roughly an order of magnitude more tokens than solo work.
+**(1)** Multiple stages, files, or surfaces? **(2)** Would inline work burn meaningful LEAD quota on non-judgment work? Both no → do it yourself; most small tasks deserve no orchestration. Any yes → consider delegation within the user's authorized scope. Scale the ensemble to the piece: one worker for a contained task, two to four for independent workstreams, more only on explicit request. Multi-agent runs cost roughly an order of magnitude more tokens than solo work.
 
 **Parallel dispatch requires disjoint write sets.** Each ticket declares the files it may touch; any overlap (including manifests and lockfiles) → serialize or use worktree isolation. Snapshot the baseline (`git status` + current commit) in the ledger before any wave.
 
