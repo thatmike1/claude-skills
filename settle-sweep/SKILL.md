@@ -1,6 +1,6 @@
 ---
 name: settle-sweep
-description: One line per open T3 Code thread saying whether Mike can settle it, it needs him, or it is still running, read from T3's own database. Use when he asks what he can settle, what's open, or for a quick pass over his threads; the full page of every thread is thread-explainer.
+description: Answers "what can I settle", "what's open", "which threads can I close" with one line per open T3 Code thread, settle it, it needs him, or still running, read from T3's own database. Use for any quick pass over his open threads; the full page of every thread is thread-explainer.
 ---
 
 # settle sweep

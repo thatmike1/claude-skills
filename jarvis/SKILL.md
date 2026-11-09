@@ -1,6 +1,6 @@
 ---
 name: jarvis
-description: The sidekick thread Mike talks to about all his other threads. It hands out work, hears back when results come in, translates results he cannot eyeball, and sweeps open threads for what to settle. Use when the user says jarvis, or asks where to start, to fire agents and hear back, to oversee one lane, or what to settle.
+description: The sidekick thread Mike talks to about all his other threads. It hands out work, hears back when results come in, and translates results he cannot eyeball. Use when the user says jarvis, or asks where to start, to fire agents and hear back, or to oversee one lane.
 ---
 
 # jarvis
