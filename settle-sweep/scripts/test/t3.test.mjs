@@ -1,12 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, rmSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 
-// a minimal statev2.sqlite with only the columns Jarvis reads
-const base = mkdtempSync(join(tmpdir(), 'jarvis-t3-'));
+// a minimal statev2.sqlite with only the columns the sweep reads
+const base = mkdtempSync(join(tmpdir(), 'settle-sweep-t3-'));
 mkdirSync(join(base, 'userdata'));
 process.env.T3_BASE_DIR = base;
 const db = new DatabaseSync(join(base, 'userdata', 'statev2.sqlite'));
@@ -39,7 +39,13 @@ db.prepare('INSERT INTO orchestration_v2_projection_provider_threads VALUES (?, 
   .run('home', '2026-10-12T11:00:00.000Z', JSON.stringify({ nativeThreadRef: { nativeId: 'session-abc' } }));
 db.close();
 
-const { lastWords, threadForSession } = await import('../lib/t3.mjs');
+writeFileSync(join(base, 'userdata', 'environment-id'), 'env-1\n');
+
+const { lastWords, threadForSession, threadLink } = await import('../lib/t3.mjs');
+
+test('threadLink builds the clickable T3 link from the environment id', () => {
+  assert.equal(threadLink('home'), '<t3-thread://v2/env-1/home>');
+});
 
 test('threadForSession maps a native session id to its thread', () => {
   assert.equal(threadForSession('session-abc'), 'home');

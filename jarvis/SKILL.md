@@ -57,11 +57,8 @@ chose.
 
 ## Settle sweep
 
-"What can I settle", "what's open": run `node ~/.claude/skills/jarvis/scripts/jarvis.mjs sweep`
-and answer one line per thread, `settle: why`, `needs you: the decision`, or
-`running: what comes back`. A thread whose next step already lives in a bead or on
-his hub is a settle. You cannot settle threads yourself (T3's database has one
-writer); he clicks. The whole board goes to the `thread-explainer` skill instead.
+"What can I settle", "what's open": follow the `settle-sweep` skill. The whole board
+goes to the `thread-explainer` skill instead.
 
 ## Where do I start
 

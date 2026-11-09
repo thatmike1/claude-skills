@@ -21,6 +21,7 @@ const SHORT_BLURBS = {
     scan: "Query past CC conversations for a date range / project",
     peek: "Read another running CC session's transcript from disk, zero footprint",
     jarvis: "Ask one session about all your others — what's open, what to touch next",
+    "settle-sweep": "One line per open T3 thread: settle it, it needs you, or still running",
     "find-out": "Research orchestrator — picks the surface, fans out, reconciles sources",
     "design-styles": "Frontend aesthetic direction + UX baseline, no per-project setup",
     panels: "Engagement style — comic-book layout with severity tags",
@@ -42,7 +43,7 @@ export const SKILL_DEPENDENCIES = { evening: "morning", jarvis: "peek" };
  * the last one; skills under deprecated/ form their own collapsed group.
  */
 export const CATEGORIES = [
-    { title: "sessions", skills: ["morning", "evening", "scan", "peek", "jarvis"] },
+    { title: "sessions", skills: ["morning", "evening", "scan", "peek", "jarvis", "settle-sweep", "thread-explainer"] },
     { title: "delegate", skills: ["orchestrate", "arena", "find-out", "gpt-pro"] },
     { title: "think & design", skills: ["goblin", "design-styles", "oocl"] },
 ];
@@ -63,6 +64,7 @@ const GLYPHS = {
     scan: "⌕",
     peek: "◉",
     jarvis: "☉",
+    "settle-sweep": "✓",
     "live-prompt": "➳",
     "afk-prompt": "☍",
     "find-out": "⌖",

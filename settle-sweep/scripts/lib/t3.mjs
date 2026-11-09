@@ -1,11 +1,12 @@
 /**
- * t3 — what Jarvis needs from T3 Code beyond the shared roster reader: the
- * thread a session runs in, and the last words of a thread.
+ * t3 — what the settle sweep needs from T3 Code beyond the shared roster
+ * reader: the thread a session runs in, a thread's link, and its last words.
  *
  * Reads go straight to T3's Orchestrator V2 tables in `statev2.sqlite`,
  * read-only, so T3 stays the only writer of its database.
  */
 
+import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
@@ -13,6 +14,21 @@ import { join } from 'node:path';
 /** the T3 base directory; overridable so tests can point at a fixture. */
 export function t3BaseDir() {
   return process.env.T3_BASE_DIR || join(homedir(), '.t3');
+}
+
+/**
+ * the link T3 renders as a clickable thread, built from the local environment
+ * id T3 keeps in `userdata/environment-id`; null when that file is missing.
+ * @param {string} threadId
+ */
+export function threadLink(threadId) {
+  let env;
+  try {
+    env = readFileSync(join(t3BaseDir(), 'userdata', 'environment-id'), 'utf8').trim();
+  } catch {
+    return null;
+  }
+  return env ? `<t3-thread://v2/${env}/${threadId}>` : null;
 }
 
 /** load node:sqlite without its one-off ExperimentalWarning. */

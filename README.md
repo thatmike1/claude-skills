@@ -25,6 +25,7 @@ A collection of custom skills for [Claude Code](https://docs.anthropic.com/en/do
 | [scan](#scan) | Ask any question about your past Claude Code conversations | `/scan` |
 | ⭐ [peek](#peek--jarvis) | Read another running session's transcript from disk, zero footprint | `/peek live`, `/peek <id> --last 6` |
 | ⭐ [jarvis](#peek--jarvis) | Ask one session about all your others: what is open, what to touch next | `/jarvis` |
+| [settle-sweep](#peek--jarvis) | One line per open T3 thread: settle it, it needs you, or still running | `/settle-sweep` |
 | [thread-explainer](#peek--jarvis) | One page of every open T3 thread, sorted by what each wants from you | `/thread-explainer` |
 | [warden](#warden) | All-day accountability loop: plan interview, then nudge on drift | `/warden` |
 | **Delegate** | | |

@@ -1,0 +1,6 @@
+{
+    "name": "settle-sweep",
+    "version": "1.0.0",
+    "description": "One line per open T3 Code thread: settle it, it needs you, or it is still running. Read straight from T3's own database.",
+    "skills": "."
+}
