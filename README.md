@@ -28,6 +28,7 @@ A collection of custom skills for [Claude Code](https://docs.anthropic.com/en/do
 | [settle-sweep](#peek--jarvis) | One line per open T3 thread: settle it, it needs you, or still running | `/settle-sweep` |
 | [thread-explainer](#peek--jarvis) | One page of every open T3 thread, sorted by what each wants from you | `/thread-explainer` |
 | [warden](#warden) | All-day accountability loop: plan interview, then nudge on drift | `/warden` |
+| [attention-queue](attention-queue/SKILL.md) | The day as a queue of one-thing blocks: what Mike is on now, add a block, attach a link, via the `aq` command | "what is Mike on", `aq now` |
 | **Delegate** | | |
 | ⭐ [orchestrate](#orchestrate) | Frontier lead plans, routes, verifies; cheaper Claude/Codex workers execute | `/orchestrate` |
 | [find-out](#find-out) | Research orchestrator: picks the surface, fans out, reconciles sources | `/find-out` |
