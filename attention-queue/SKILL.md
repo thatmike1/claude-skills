@@ -16,6 +16,8 @@ Mike plans his day as a queue of blocks: one thing per block, about an hour, in 
 - Work that lands for a block later in the queue (an agent finished early) gets a note, and `aq finish` too if its done line is met.
 - Before ending a turn that touched queue work, run `aq now` and check it shows what is true.
 
+**Tie every block to its bead.** `aq bead <id> <bead id>` (or `--bead` on `aq add`). The page then shows the bead's state and the headline of its newest comment, and once every tied bead is closed, a block that is still waiting finishes itself. Your bead comments keep the block current that way, even in a thread that never ran `aq`. A block with no bead behind it (a chore, a call) stays untied.
+
 `aq break`, `back`, `push`, `more`, `less` and `drop` stay his moves: use them when he asks.
 
 ## Read
@@ -35,7 +37,7 @@ A `stale` field means the queue is still on an earlier day. Run `aq carry`: it a
 Adding to the queue and kitting out a block is the agent's part:
 
 ```
-aq add "Read the founder research" --min 45 --step "Open the summary first" --done "Reacted to each agent's findings" --at 3
+aq add "Read the founder research" --min 45 --step "Open the summary first" --done "Reacted to each agent's findings" --bead ccChat-general-g56f --at 3
 aq add "GitGuardian" --min 10 --park           # on the side, out of the queue until he queues it
 aq link freelance https://everything.thatmike1.dev/#/p/... --label "Report: freelance platforms"
 aq link reports-demand /home/thatmike1/git/.../sol.md --label "Sol shortlist"
@@ -54,4 +56,4 @@ Changes are logged under `$AQ_ACTOR`, falling back to `$BEADS_ACTOR`, so the pag
 
 ## Days
 
-`aq carry` rolls an unfinished day into today. `aq seed <plan.json>` replaces the queue with a new plan and archives the old one under `~/.local/share/attention-queue/days/`; `aq log --day YYYY-MM-DD` and `aq report --day ...` read an archived day. The plan format and the rest of the setup (service, port, the planned-time sound) are in `~/git/ccChat-general/projects/attention-queue/README.md`.
+`aq carry` rolls an unfinished day into today. Kept days stay readable on the page (`← day` beside the date) and through `aq log --day` / `aq report --day`. `aq seed <plan.json>` replaces the queue with a new plan and archives the old one under `~/.local/share/attention-queue/days/`; `aq log --day YYYY-MM-DD` and `aq report --day ...` read an archived day. The plan format and the rest of the setup (service, port, the planned-time sound) are in `~/git/ccChat-general/projects/attention-queue/README.md`.
