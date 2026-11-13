@@ -56,4 +56,6 @@ Changes are logged under `$AQ_ACTOR`, falling back to `$BEADS_ACTOR`, so the pag
 
 ## Days
 
+His raw plan for a day is what he dictates to ChatGPT, saved in the Everything app as `Days/<date>`. The queue is the shaped version: when he asks to plan or load a day, read that page and turn it into blocks with kits and beads. There is no sync between the two.
+
 `aq carry` rolls an unfinished day into today. Kept days stay readable on the page (`← day` beside the date) and through `aq log --day` / `aq report --day`. `aq seed <plan.json>` replaces the queue with a new plan and archives the old one under `~/.local/share/attention-queue/days/`; `aq log --day YYYY-MM-DD` and `aq report --day ...` read an archived day. The plan format and the rest of the setup (service, port, the planned-time sound) are in `~/git/ccChat-general/projects/attention-queue/README.md`.
