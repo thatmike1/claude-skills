@@ -25,12 +25,15 @@ Mike plans his day as a queue of blocks: one thing per block, about an hour, in 
 Since 17 Nov 2026 he types thoughts onto a **dump shelf** on the page: a title, maybe a description later, no length and no place. Dumped blocks sit outside the queue and its estimates (`aq list` → `dumped`). When he says "check the dump", "plan the day" or "give it structure", the pass is yours:
 
 - Read every dumped block, and the beads, notes and threads it points at, until you know what he meant. Where two readings fit, ask in one line before planning it.
-- For each one that belongs in today: `aq plan <id> --min N --at N --title "..." --description "..." --step "..." --done "..."`, then `aq bead` if a bead is behind it. Your title and description replace what the page shows; **his own words are kept apart and never change** (`hisWords` in `aq list`, a "Your words" toggle on the page). Rewrite for clarity, keep his intent, and do not invent scope he did not ask for.
+- Every dumped item leaves the pass tied to a bead: search the backlog for the one it belongs to (`beadside search <words>`), and when none fits, create one under its home epic. Then `aq bead <id> <bead id>`, so the page shows where it stands and the block finishes itself when the bead closes.
+- For each one that belongs in today: `aq plan <id> --min N --at N --title "..." --description "..." --step "..." --done "..."`. Your title and description replace what the page shows; **his own words are kept apart and never change** (`hisWords` in `aq list`, a "Your words" toggle on the page). Rewrite for clarity, keep his intent, and do not invent scope he did not ask for.
 - Minutes are a rough guess for his own hands-on time, 30 when unsure. Agent runs inside a block finish far faster than a model predicts, so do not pad for them; his estimates get corrected by `aq report`, not by buffers.
 - What is not for today: `aq park <id>` (his, when there is room), `aq wait <id> <who>` when someone else has to move first, or leave it dumped. Anything bigger than a day, or not a day's task at all, goes to a bead and off the queue (`aq drop`, with a note naming the bead).
 - Then tell him the order you chose and why in a few lines, and what you parked or left.
 
-`aq dump "title" [--description d]` puts something on the shelf for him. `aq undump <id>` sends a block back.
+Never show or mention how long an item has sat in the dump: he expects an age on it to make him avoid it.
+
+The page also shows today's day plan from the Everything app (`Days/<date>`) with a "Dump it" per line; lines he sends over carry `fromPlan`. `aq dump "title" [--description d]` puts something on the shelf for him. `aq undump <id>` sends a block back.
 
 **Waiting on someone.** `aq wait <id> <who>` parks a block as blocked on that person; the page lists those apart from his own parked blocks, and marks one "moved" when its tied bead gets a newer comment than the wait. `aq wait <id> --clear` makes it his again; queuing it clears the wait.
 
