@@ -46,6 +46,87 @@ interval. **Do not read a near-tied intelligence score as "interchangeable" for 
 design and Arena.ai's WebDev row is a multi-turn Codex-harness build. They put Astra seventh and
 first respectively. That is not noise between them; they are measuring different jobs.
 
+## Fable 5.2, checked 10 November 2026
+
+Released 9 November 2026 at $8/$40 per million (cache read $0.20), 20% under Fable 5.1's
+$10/$50 and twice Opus 5.5. Five effort rows, all on the same v5 index as the rest of this
+refresh; the recovered formula reproduces AA's own cost per task ($26.539 at max).
+
+It tops the index at every rung that matters, and it is token-thrifty below max:
+
+- **Low (53.9, $3.10, 35,860 tokens) beats Opus 5.5 high** (51.8, $3.47, 60,071) for less
+  money and 60% of the tokens. It is also above every Fable 5.1 row.
+- **Medium (56.4, $3.80, 43,131)** sits a point under Opus 5.5 xhigh (57.4, $6.05) for 63% of
+  the price, on the same output tokens as Opus 5.5 medium (48.2).
+- **High (61.8, $9.08, 97,841) beats Opus 5.5 max** (59.1, $10.04, 173,313) on 56% of the tokens.
+- **Xhigh is the skip:** 0.4 points over high for 1.65x the tokens and 1.6x the cost.
+- **Max (64.6) is the quota trap:** 273,776 output tokens and $26.54 a task, about 2.6x Opus 5.5 max.
+
+Coding and agentic composites are null for every row, which is where Fable 5.1 used to lead,
+so the coding case rests on the vendor's own claims until AA publishes them. AA's measured
+time to first token is about four minutes (253 s median at max) at 95 tok/s, so a Fable task
+is slow to start even when it is short.
+
+On a Claude subscription Fable draws on its own sub-cap of the weekly limit and, per
+Anthropic, uses limits faster than other models; the exchange rate against Opus tokens is not
+published, so the token columns above do not translate straight into quota. Launch offer: Max
+plans get one to three Fable limit resets depending on subscription length, usable until
+8 March 2027 from Settings > Usage; a reset restores Fable weekly usage and refills the whole
+five-hour window.
+
+## GPT-6.2 Sol and GPT-6.2 Astra, checked 18 November 2026
+
+Released 17 November 2026. Sol keeps 6.1 Sol's $2/$10 per million (cached $0.10; Codex
+50 / 2.5 / 250 credits per million input, cached input, output). Astra drops to $8/$40,
+cached $0.40, from GPT-6 Astra's $10/$50/$1.00 (Codex 200 / 10 / 1,000, from 250 / 25 /
+1,250). Five effort rows each on the same v5 index; the recovered formula reproduces AA's own
+cost per task on all ten new rows, and on 133 of 133 priced rows overall.
+
+**6.2 Sol is a free upgrade on the index.** It gains 3 to 6 points at every rung for about
+the same money, and runs nearly twice as fast per token (91 to 116 tok/s against 48 to 62):
+
+- **Low (40.6, $0.18, 5,980 tokens, 85 s)** beats 6.1 Sol low by 6 points and Terra medium
+  (38.2, $0.17, 10,875 tokens, 172 s) on half the tokens and half the time. Terra low (29.4,
+  $0.07) is still the cheapest useful row.
+- **Medium (52.7, $0.41)** matches 6.1 Sol xhigh (52.5, $0.76) at about half the cost.
+- **High (54.9, $0.56, 20,160 tokens, 259 s)** costs less than 6.1 Sol high (50.3, $0.59), beats
+  Opus 5.5 high (51.8, $3.46) and Fable 5.2 low (53.9, $3.10) at a sixth of their cost, and
+  takes about 60% of 6.1 Sol high's time per task.
+- **Xhigh (55.7, $0.65)** adds under a point over high; **max (57.3, $1.01, 40,360 tokens)**
+  is still cheaper than 6.1 Sol max (54.6, $1.27, 67,824 tokens).
+
+The catch is the part this table does not show. AA's separate Coding Agent Index (Codex
+harness, max effort) has 6.2 Sol **3 points below 6.1 Sol**, driven by a 14-point drop on
+SWE-Atlas-QnA, where it more often leaves key facts out of its answers. That is the job Sol
+is routed to here (defined tasks, research, review), so the index gain does not settle it.
+
+**6.2 Astra is the new second model on the index and the cheap road to the top.** Low 45.7
+($0.66), medium 57.0 ($1.62), high 60.1 ($2.07, 17,828 tokens), xhigh 61.6 ($2.52, 22,238),
+max 62.1 ($4.00, 41,029). Medium already matches GPT-6 Astra max (56.9, $6.24) at a quarter of
+the cost. High beats Opus 5.5 max (59.1, $10.04, 173,313 tokens) at a fifth of the cost on a
+tenth of the tokens. Xhigh sits level with Fable 5.2 high (61.8, $9.08, 97,841 tokens) at 28%
+of the cost and 23% of the tokens; only Fable 5.2 max (64.6, $26.54) is above it. It streams
+slowly (33 to 41 tok/s below max), so high still takes 321 s a task against Sol high's 259 s.
+AA puts it first on AA-3D (1318 against Fable 5.2's 1271), has OpenAI leading
+Terminal-Bench-Science, and has it flat with GPT-6 Astra on the Coding Agent Index. When it
+does not know a factual answer it guesses rather than abstains 59% of the time at max (Sol 55%).
+
+The hands-on report is the opposite of the index. On Nerd Snipe's 17 November episode
+("Astra 6.2 Is A Step Back") the hosts call it hugely capable and miserable to work with:
+best in their code-review bench and strong at 3D, but its explanations are close to
+unreadable, it buries the important finding, it needs a tightly specified task to stay on
+course, and on a long unattended goal (make a Rust TypeScript compiler faster and smaller) it
+made the binary about 40% smaller and the compiler 56% slower. Their working pattern was
+Astra for the hard part and a Claude model to explain what it did. Sol 6.2 is not discussed
+in that episode.
+
+**Routing is unchanged.** Sol 6.1 at high stays the defined-task and review worker until a
+trial on real tasks shows whether 6.2's index and speed gains survive its coding-agent drop;
+Astra stays a by-choice model. GPT-6.1 Terra stays current. Sources:
+[OpenAI's announcement](https://openai.com/index/introducing-gpt-6-2-astra-sol/),
+[the Codex rate card](https://learn.chatgpt.com/docs/pricing),
+[AA's launch article](https://artificialanalysis.ai/articles/openai-has-the-2-model-in-the-intelligence-index-with-the-release-of-gpt-6-2-astra-and-gpt-6-2-sol).
+
 ## current evidence, checked 4 November 2026
 
 AA's live page reports v5.0.1; its free API labels the version `5`. Compare only
@@ -85,7 +166,7 @@ the authenticated free API and the live evaluation-page registry captured in
 
 <!-- DATA -->
 
-Artificial Analysis Intelligence Index v5, refreshed 2026-11-04. 97 available operating points, 63 of them in the current set defined by `focus.py`. Design and webdev columns are human-preference Elo from Design Arena and Arena.ai (board updated 2026-11-04); a `*` means the Elo is for the model family rather than that exact effort level, because those boards mostly vote without naming an effort setting. Regenerate with `./refresh.py`.
+Artificial Analysis Intelligence Index v5, refreshed 2026-11-18. 151 available operating points, 69 of them in the current set defined by `focus.py`. Design and webdev columns are human-preference Elo from Design Arena and Arena.ai (board updated 2026-11-18); a `*` means the Elo is for the model family rather than that exact effort level, because those boards mostly vote without naming an effort setting. Regenerate with `./refresh.py`.
 
 A `-` means unavailable, never zero. Zero is printed numerically. Time per task uses AA’s benchmark-weighted generation time, excluding latency and tool time. A `~` marks the fallback estimate, output tokens divided by the free feed’s median output tokens/s.
 
@@ -93,69 +174,75 @@ A `-` means unavailable, never zero. Zero is printed numerically. Time per task 
 
 | model | intel | coding | agentic | design | webdev | $/task | out tok/task | s/task |
 |---|---|---|---|---|---|---|---|---|
-| Claude Opus 5.5 (Max, Default Fallback) | 59.1 | - | - | 1325 * | 1814 | $10.036 | 173,313 | 1549 |
-| Claude Opus 5.5 (Xhigh, Default Fallback) | 57.4 | - | - | 1325 * | - | $6.047 | 103,395 | 968 |
-| GPT-6 Astra (Max) | 56.9 | - | - | 1336 | 1788 | $6.245 | 51,973 | 1093 |
-| GPT-6 Astra (Xhigh) | 55.3 | - | - | 1333 * | - | $3.659 | 26,724 | 543 |
-| GPT-6 Astra (High) | 54.8 | - | - | 1333 * | - | $3.239 | 23,133 | 462 |
-| GPT-6.1 Sol (Max) | 54.6 | - | - | 1313 * | 1757 | $1.272 | 67,824 | 1205 |
-| Claude Sonnet 5.5 (Max, Default Fallback) | 54.5 | - | - | 1319 * | - | $10.021 | 285,387 | 1835 |
-| GPT-6.1 Sol (Xhigh) | 52.5 | - | - | 1313 * | - | $0.764 | 30,241 | 532 |
-| Claude Opus 5.5 (High, Default Fallback) | 51.8 | - | - | 1325 * | - | $3.465 | 60,071 | 556 |
-| GPT-6 Astra (Medium) | 51.6 | - | - | 1333 * | - | $2.732 | 18,052 | 354 |
-| GPT-6.1 Terra (Max) | 51.3 | - | - | 1289 * | - | $0.961 | 59,883 | 761 |
-| Gemini 4 Argon (High) | 50.4 | - | - | 1316 * | 1678 | $7.683 | 116,368 | 2041 |
-| GPT-6.1 Sol (High) | 50.3 | - | - | 1313 * | - | $0.591 | 22,606 | 391 |
+| Claude Fable 5.2 (Max, Default Fallback) | 64.6 | - | - | 1346 * | - | $26.539 | 273,776 | 2467 |
+| Claude Fable 5.2 (Xhigh, Default Fallback) | 62.2 | - | - | 1346 * | - | $14.829 | 161,944 | 1445 |
+| GPT-6.2 Astra (Max) | 62.1 | - | - | 1356 * | - | $3.998 | 41,029 | 774 |
+| Claude Fable 5.2 (High, Default Fallback) | 61.8 | - | - | 1346 * | - | $9.078 | 97,841 | 893 |
+| GPT-6.2 Astra (Xhigh) | 61.6 | - | - | 1356 * | - | $2.521 | 22,238 | 411 |
+| GPT-6.2 Astra (High) | 60.1 | - | - | 1356 * | - | $2.074 | 17,828 | 321 |
+| Claude Opus 5.5 (Max, Default Fallback) | 59.1 | - | - | 1323 * | 1814 | $10.036 | 173,313 | 1475 |
+| Claude Opus 5.5 (Xhigh, Default Fallback) | 57.4 | - | - | 1323 * | - | $6.047 | 103,395 | 950 |
+| GPT-6.2 Sol (Max) | 57.3 | - | - | - | - | $1.014 | 40,360 | 477 |
+| GPT-6.2 Astra (Medium) | 57.0 | - | - | 1356 * | - | $1.618 | 13,165 | 250 |
+| Claude Fable 5.2 (Medium, Default Fallback) | 56.4 | - | - | 1346 * | - | $3.803 | 43,131 | 383 |
+| GPT-6.2 Sol (Xhigh) | 55.7 | - | - | - | - | $0.648 | 24,323 | 300 |
+| GPT-6.2 Sol (High) | 54.9 | - | - | - | - | $0.564 | 20,160 | 259 |
+| Claude Sonnet 5.5 (Max, Default Fallback) | 54.5 | - | - | 1304 * | - | $10.021 | 285,387 | 1934 |
+| Claude Fable 5.2 (Low, Default Fallback) | 53.9 | - | - | 1346 * | - | $3.097 | 35,860 | 321 |
+| GPT-6.2 Sol (Medium) | 52.7 | - | - | - | - | $0.406 | 13,651 | 188 |
+| Claude Opus 5.5 (High, Default Fallback) | 51.8 | - | - | 1323 * | - | $3.465 | 60,071 | 557 |
+| GPT-6.1 Terra (Max) | 51.3 | - | - | 1283 * | - | $0.961 | 59,883 | 872 |
+| Gemini 4 Argon (High) | 50.4 | - | - | 1313 * | 1678 | $4.973 | 116,368 | 1757 |
 | Muse Wonder Full (Max) | 50.1 | - | - | - | - | - | 88,476 | - |
-| Claude Fable 5.1 (Xhigh, Default Fallback) | 50.0 | - | - | 1308 * | - | $10.848 | 97,059 | 1158 |
-| Claude Sonnet 5.5 (Xhigh, Default Fallback) | 49.9 | - | - | 1319 * | 1773 | $4.092 | 122,205 | 828 |
-| Claude Fable 5.1 (Max, Default Fallback) | 49.2 | - | - | 1308 * | 1745 | $12.994 | 117,941 | 1345 |
-| Claude Opus 5.5 (Medium, Default Fallback) | 48.2 | - | - | 1325 * | - | $2.451 | 43,817 | 403 |
-| Claude Fable 5.1 (High, Default Fallback) | 47.2 | - | - | 1308 * | - | $7.540 | 66,031 | 768 |
-| Kimi K3.1 Pro | 46.5 | - | - | 1326 * | - | $3.681 | 72,239 | 2251 |
-| GPT-6.1 Sol (Medium) | 46.3 | - | - | 1313 * | - | $0.359 | 13,518 | 231 |
-| GPT-6.1 Terra (Xhigh) | 45.3 | - | - | 1289 * | - | $0.401 | 26,200 | 348 |
-| Muse Wonder (Max) | 43.6 | - | - | 1370 * | - | $6.952 | 96,063 | 709 |
-| GPT-6 Astra (Low) | 43.3 | - | - | 1333 * | - | $1.424 | 9,126 | 186 |
-| Claude Fable 5.1 (Medium, Default Fallback) | 43.2 | - | - | 1308 * | - | $5.564 | 48,545 | 580 |
-| GPT-6.1 Terra (High) | 42.4 | - | - | 1289 * | - | $0.259 | 16,746 | 225 |
-| Claude Sonnet 5.5 (High, Default Fallback) | 41.5 | - | - | 1319 * | 1716 | $1.636 | 58,421 | 418 |
-| Claude Fable 5.1 (Low, Default Fallback) | 38.7 | - | - | 1308 * | - | $4.471 | 37,837 | 454 |
-| GPT-6.1 Terra (Medium) | 38.2 | - | - | 1289 * | - | $0.169 | 10,875 | 151 |
-| Claude Haiku 5.5 (Max) | 36.5 | - | - | 1261 * | - | $0.411 | 225,966 | 884 |
-| Grok 4.7 (Xhigh) | 35.5 | - | - | 1248 * | 1638 | $7.771 | 104,531 | 1455 |
-| Grok 4.7 (High) | 35.2 | - | - | 1248 * | - | $6.184 | 89,127 | 1258 |
-| Claude Opus 5.5 (Low, Default Fallback) | 34.8 | - | - | 1325 * | - | $0.976 | 19,060 | 177 |
-| GPT-6.1 Sol (Low) | 34.8 | - | - | 1313 * | - | $0.162 | 5,838 | 100 |
-| Claude Haiku 5.5 (Xhigh) | 34.6 | - | - | 1261 * | - | $0.248 | 136,177 | 571 |
-| Qwen3.8 Max (0902) | 33.7 | - | - | - | 1672 * | $10.024 | 170,794 | 3747 |
-| GLM-5.3 (Max) | 31.7 | - | - | - | 1622 | $5.009 | 118,987 | 1743 |
-| Grok 4.7 (Low) | 31.1 | - | - | 1248 * | - | $2.922 | 42,670 | 595 |
-| Claude Sonnet 5.5 (Medium, Default Fallback) | 30.8 | - | - | 1319 * | - | $0.781 | 30,746 | 220 |
-| Gemini 3.8 Flash (High) | 30.8 | - | - | 1300 * | 1583 | $7.766 | 98,940 | 870 |
-| GPT-6.1 Terra (Non-reasoning) | 30.5 | - | - | 1289 * | - | $0.226 | 9,488 | 132 |
-| Gemini 3.8 Flash (Medium) | 30.1 | - | - | 1300 * | - | $6.259 | 82,068 | - |
-| Claude Haiku 5.5 (High) | 29.9 | - | - | 1261 * | - | $0.159 | 88,064 | 410 |
-| GPT-6.1 Terra (Low) | 29.4 | - | - | 1289 * | - | $0.071 | 4,422 | 62 |
-| MiniMax-M3.1-Flash | 29.1 | - | - | - | - | $0.491 | 138,176 | 1275 |
-| GPT-6 Luna (Max) | 27.9 | - | - | 1268 * | 1582 | $0.152 | 75,296 | 733 |
-| GLM-5.3-Flash | 27.8 | - | - | - | 1610 * | $0.583 | 134,205 | 2269 |
-| Claude Sonnet 5.5 (Low, Default Fallback) | 25.6 | - | - | 1319 * | - | $0.511 | 20,856 | 150 |
-| Claude Haiku 5.5 (Medium) | 24.6 | - | - | 1261 * | - | $0.092 | 53,335 | 237 |
-| GPT-6 Luna (Xhigh) | 23.5 | - | - | 1268 * | - | $0.104 | 43,893 | 454 |
-| DeepSeek V4 Pro 0813 (Max) | 23.1 | - | - | - | - | $1.769 | 98,733 | 1187 |
-| GLM-5.3 (Low) | 23.1 | - | - | - | 1622 * | $1.575 | 51,986 | 848 |
-| Gemini 3.8 Flash (Low) | 22.5 | - | - | 1300 * | - | - | - | - |
-| GPT-6 Luna (High) | 21.4 | - | - | 1268 * | - | $0.073 | 32,839 | 339 |
-| Qwen3.8 27B (Xhigh) | 20.1 | - | - | - | 1592 * | $3.530 | 109,802 | 2286 |
-| MiniMax-M3 | 18.9 | - | - | 1256 * | 1482 * | $1.285 | 91,452 | 784 |
-| Claude Haiku 5.5 (Low) | 18.6 | - | - | 1261 * | - | $0.044 | 28,161 | 129 |
-| GPT-6 Luna (Medium) | 18.5 | - | - | 1268 * | - | $0.042 | 19,823 | - |
-| Qwen3.8 27B (Medium) | 17.5 | - | - | - | 1592 * | $2.160 | 86,407 | 1644 |
-| Qwen3.8 27B (Low) | 15.7 | - | - | - | 1592 * | $1.906 | 80,176 | 1556 |
-| Qwen3.8 27B (Non-reasoning) | 10.0 | - | - | - | 1592 * | $3.773 | 44,867 | 1012 |
-| GPT-6 Luna (Low) | 9.7 | - | - | 1268 * | - | $0.005 | 3,296 | 37 |
-| GPT-6 Luna (Non-reasoning) | 9.4 | - | - | 1268 * | - | $0.071 | 10,059 | 108 |
+| Claude Sonnet 5.5 (Xhigh, Default Fallback) | 49.9 | - | - | 1304 * | 1773 | $4.092 | 122,205 | 850 |
+| Claude Opus 5.5 (Medium, Default Fallback) | 48.2 | - | - | 1323 * | - | $2.451 | 43,817 | 412 |
+| Gemini 4 Argon (Medium) | 47.6 | - | - | 1313 * | - | $4.315 | 100,407 | 1707 |
+| Kimi K3.1 Pro | 46.5 | - | - | 1316 * | - | $3.681 | 72,239 | 2305 |
+| GPT-6.2 Astra (Low) | 45.7 | - | - | 1356 * | - | $0.662 | 5,216 | 98 |
+| GPT-6.1 Terra (Xhigh) | 45.3 | - | - | 1283 * | - | $0.401 | 26,200 | 401 |
+| Claude Opus 5 (Max) | 44.2 | - | - | 1300 * | 1692 | $11.822 | 118,068 | 1482 |
+| Muse Wonder (Max) | 43.6 | - | - | 1375 * | - | $6.952 | 96,063 | 801 |
+| GPT-6.1 Terra (High) | 42.4 | - | - | 1283 * | - | $0.259 | 16,746 | 256 |
+| Claude Sonnet 5.5 (High, Default Fallback) | 41.5 | - | - | 1304 * | 1716 | $1.636 | 58,421 | 421 |
+| GPT-6.2 Sol (Low) | 40.6 | - | - | - | - | $0.184 | 5,980 | 85 |
+| Muse Wonder (High) | 40.5 | - | - | - | - | $4.561 | 67,927 | 524 |
+| GPT-6.1 Terra (Medium) | 38.2 | - | - | 1283 * | - | $0.169 | 10,875 | 172 |
+| Claude Haiku 5.5 (Max) | 36.5 | - | - | 1249 * | - | $0.411 | 225,966 | 885 |
+| Grok 4.7 (Xhigh) | 35.5 | - | - | 1241 * | 1638 | $7.771 | 104,531 | 1465 |
+| Grok 4.7 (High) | 35.2 | - | - | 1241 * | - | $6.184 | 89,127 | 1270 |
+| Claude Opus 5.5 (Low, Default Fallback) | 34.8 | - | - | 1323 * | - | $0.976 | 19,060 | 182 |
+| Claude Haiku 5.5 (Xhigh) | 34.6 | - | - | 1249 * | - | $0.248 | 136,177 | 575 |
+| Qwen3.8 Max (0902) | 33.7 | - | - | - | 1672 * | $10.024 | 170,794 | 2845 |
+| GLM-5.3 (Max) | 31.7 | - | - | - | 1622 | $5.009 | 118,987 | 1338 |
+| Grok 4.7 (Low) | 31.1 | - | - | 1241 * | - | $2.922 | 42,670 | 604 |
+| Claude Sonnet 5.5 (Medium, Default Fallback) | 30.8 | - | - | 1304 * | - | $0.781 | 30,746 | 225 |
+| Gemini 3.8 Flash (High) | 30.8 | - | - | 1288 * | 1583 | $7.766 | 98,940 | 851 |
+| GPT-6.1 Terra (Non-reasoning) | 30.5 | - | - | 1283 * | - | $0.226 | 9,488 | 151 |
+| Gemini 3.8 Flash (Medium) | 30.1 | - | - | 1288 * | - | $6.259 | 82,068 | 690 |
+| Claude Haiku 5.5 (High) | 29.9 | - | - | 1249 * | - | $0.159 | 88,064 | 388 |
+| GPT-6.1 Terra (Low) | 29.4 | - | - | 1283 * | - | $0.071 | 4,422 | 74 |
+| MiniMax-M3.1-Flash | 29.1 | - | - | - | - | $0.491 | 138,176 | 1033 |
+| Qwen3.8-Flash-Next | 28.6 | - | - | - | 1632 * | $0.569 | 147,706 | 1779 |
+| GPT-6 Luna (Max) | 27.9 | - | - | 1264 * | 1582 | $0.152 | 75,296 | 728 |
+| GLM-5.3-Flash | 27.8 | - | - | - | 1610 * | $0.583 | 134,205 | 2346 |
+| Claude Sonnet 5.5 (Low, Default Fallback) | 25.6 | - | - | 1304 * | - | $0.511 | 20,856 | 155 |
+| Claude Haiku 5.5 (Medium) | 24.6 | - | - | 1249 * | - | $0.092 | 53,335 | 237 |
+| GPT-6 Luna (Xhigh) | 23.5 | - | - | 1264 * | - | $0.104 | 43,893 | 439 |
+| DeepSeek V4 Pro 0813 (Max) | 23.1 | - | - | - | - | $1.769 | 98,733 | 1042 |
+| GLM-5.3 (Low) | 23.1 | - | - | - | 1622 * | $1.575 | 51,986 | 742 |
+| Gemini 3.8 Flash (Low) | 22.5 | - | - | 1288 * | - | - | - | - |
+| GPT-6 Luna (High) | 21.4 | - | - | 1264 * | - | $0.073 | 32,839 | 349 |
+| DeepSeek V4 Pro 0813 (High) | 20.8 | - | - | - | - | $0.849 | 70,314 | 1328 |
+| Qwen3.8 27B (Xhigh) | 20.1 | - | - | - | 1592 * | $3.530 | 109,802 | 2321 |
+| MiniMax-M3 | 18.9 | - | - | 1245 * | 1482 * | $1.285 | 91,452 | 878 |
+| Claude Haiku 5.5 (Low) | 18.6 | - | - | 1249 * | - | $0.044 | 28,161 | 131 |
+| GPT-6 Luna (Medium) | 18.5 | - | - | 1264 * | - | $0.042 | 19,823 | 208 |
+| Qwen3.8 27B (Medium) | 17.5 | - | - | - | 1592 * | $2.160 | 86,407 | 1857 |
+| Qwen3.8 27B (Low) | 15.7 | - | - | - | 1592 * | $1.906 | 80,176 | 1674 |
+| DeepSeek V4 Pro 0813 (Non-reasoning) | 12.6 | - | - | - | - | $0.977 | 71,588 | 858 |
+| Qwen3.8 27B (Non-reasoning) | 10.0 | - | - | - | 1592 * | $3.773 | 44,867 | 1164 |
+| GPT-6 Luna (Low) | 9.7 | - | - | 1264 * | - | $0.005 | 3,296 | 37 |
+| GPT-6 Luna (Non-reasoning) | 9.4 | - | - | 1264 * | - | $0.071 | 10,059 | 111 |
 
 ## token efficiency
 
@@ -165,57 +252,61 @@ Sorted by output tokens spent per point of intelligence, cheapest first. On a su
 
 | model | intel | out tok/task | answer | reasoning | reasoning % | intel per 10k out tok | $/task | access |
 |---|---|---|---|---|---|---|---|---|
+| GPT-6.2 Astra (Low) | 45.7 | 5,216 | 3,741 | 1,476 | 28% | 87.6 | $0.662 | ChatGPT sub |
+| GPT-6.2 Sol (Low) | 40.6 | 5,980 | 4,670 | 1,310 | 22% | 67.9 | $0.184 | ChatGPT sub |
 | GPT-6.1 Terra (Low) | 29.4 | 4,422 | 3,472 | 950 | 21% | 66.5 | $0.071 | ChatGPT sub |
-| GPT-6.1 Sol (Low) | 34.8 | 5,838 | 4,253 | 1,585 | 27% | 59.6 | $0.162 | ChatGPT sub |
-| GPT-6 Astra (Low) | 43.3 | 9,126 | 5,821 | 3,304 | 36% | 47.4 | $1.424 | ChatGPT sub |
+| GPT-6.2 Astra (Medium) | 57.0 | 13,165 | 7,617 | 5,547 | 42% | 43.3 | $1.618 | ChatGPT sub |
+| GPT-6.2 Sol (Medium) | 52.7 | 13,651 | 9,249 | 4,402 | 32% | 38.6 | $0.406 | ChatGPT sub |
 | GPT-6.1 Terra (Medium) | 38.2 | 10,875 | 6,821 | 4,055 | 37% | 35.1 | $0.169 | ChatGPT sub |
-| GPT-6.1 Sol (Medium) | 46.3 | 13,518 | 8,714 | 4,805 | 36% | 34.2 | $0.359 | ChatGPT sub |
+| GPT-6.2 Astra (High) | 60.1 | 17,828 | 9,897 | 7,931 | 44% | 33.7 | $2.074 | ChatGPT sub |
 | GPT-6.1 Terra (Non-reasoning) | 30.5 | 9,488 | 9,488 | 0 | 0% | 32.1 | $0.226 | ChatGPT sub |
 | GPT-6 Luna (Low) | 9.7 | 3,296 | 2,594 | 702 | 21% | 29.4 | $0.005 | ChatGPT sub |
-| GPT-6 Astra (Medium) | 51.6 | 18,052 | 9,471 | 8,581 | 48% | 28.6 | $2.732 | ChatGPT sub |
+| GPT-6.2 Astra (Xhigh) | 61.6 | 22,238 | 11,143 | 11,095 | 50% | 27.7 | $2.521 | ChatGPT sub |
+| GPT-6.2 Sol (High) | 54.9 | 20,160 | 12,044 | 8,116 | 40% | 27.2 | $0.564 | ChatGPT sub |
 | GPT-6.1 Terra (High) | 42.4 | 16,746 | 9,129 | 7,618 | 45% | 25.3 | $0.259 | ChatGPT sub |
-| GPT-6 Astra (High) | 54.8 | 23,133 | 11,042 | 12,092 | 52% | 23.7 | $3.239 | ChatGPT sub |
-| GPT-6.1 Sol (High) | 50.3 | 22,606 | 12,471 | 10,135 | 45% | 22.3 | $0.591 | ChatGPT sub |
-| GPT-6 Astra (Xhigh) | 55.3 | 26,724 | 12,031 | 14,693 | 55% | 20.7 | $3.659 | ChatGPT sub |
+| GPT-6.2 Sol (Xhigh) | 55.7 | 24,323 | 13,268 | 11,055 | 45% | 22.9 | $0.648 | ChatGPT sub |
 | Claude Opus 5.5 (Low, Default Fallback) | 34.8 | 19,060 | 12,196 | 6,864 | 36% | 18.3 | $0.976 | Claude sub |
-| GPT-6.1 Sol (Xhigh) | 52.5 | 30,241 | 14,715 | 15,527 | 51% | 17.4 | $0.764 | ChatGPT sub |
 | GPT-6.1 Terra (Xhigh) | 45.3 | 26,200 | 12,006 | 14,193 | 54% | 17.3 | $0.401 | ChatGPT sub |
+| GPT-6.2 Astra (Max) | 62.1 | 41,029 | 14,880 | 26,150 | 64% | 15.1 | $3.998 | ChatGPT sub |
+| Claude Fable 5.2 (Low, Default Fallback) | 53.9 | 35,860 | 19,357 | 16,503 | 46% | 15.0 | $3.097 | Claude sub |
+| GPT-6.2 Sol (Max) | 57.3 | 40,360 | 17,561 | 22,800 | 56% | 14.2 | $1.014 | ChatGPT sub |
+| Claude Fable 5.2 (Medium, Default Fallback) | 56.4 | 43,131 | 22,456 | 20,675 | 48% | 13.1 | $3.803 | Claude sub |
 | Claude Sonnet 5.5 (Low, Default Fallback) | 25.6 | 20,856 | 12,298 | 8,559 | 41% | 12.3 | $0.511 | Claude sub |
 | Claude Opus 5.5 (Medium, Default Fallback) | 48.2 | 43,817 | 23,140 | 20,676 | 47% | 11.0 | $2.451 | Claude sub |
-| GPT-6 Astra (Max) | 56.9 | 51,973 | 16,214 | 35,760 | 69% | 10.9 | $6.245 | ChatGPT sub |
-| Claude Fable 5.1 (Low, Default Fallback) | 38.7 | 37,837 | 22,303 | 15,534 | 41% | 10.2 | $4.471 | Claude sub |
 | Claude Sonnet 5.5 (Medium, Default Fallback) | 30.8 | 30,746 | 16,377 | 14,369 | 47% | 10.0 | $0.781 | Claude sub |
 | GPT-6 Luna (Non-reasoning) | 9.4 | 10,059 | 10,059 | 0 | 0% | 9.3 | $0.071 | ChatGPT sub |
 | GPT-6 Luna (Medium) | 18.5 | 19,823 | 8,781 | 11,043 | 56% | 9.3 | $0.042 | ChatGPT sub |
-| Claude Fable 5.1 (Medium, Default Fallback) | 43.2 | 48,545 | 26,171 | 22,374 | 46% | 8.9 | $5.564 | Claude sub |
 | Claude Opus 5.5 (High, Default Fallback) | 51.8 | 60,071 | 28,510 | 31,561 | 53% | 8.6 | $3.465 | Claude sub |
 | GPT-6.1 Terra (Max) | 51.3 | 59,883 | 20,521 | 39,362 | 66% | 8.6 | $0.961 | ChatGPT sub |
-| GPT-6.1 Sol (Max) | 54.6 | 67,824 | 18,611 | 49,213 | 73% | 8.1 | $1.272 | ChatGPT sub |
 | Grok 4.7 (Low) | 31.1 | 42,670 | 20,996 | 21,674 | 51% | 7.3 | $2.922 | API only |
-| Claude Fable 5.1 (High, Default Fallback) | 47.2 | 66,031 | 32,002 | 34,029 | 52% | 7.1 | $7.540 | Claude sub |
 | Claude Sonnet 5.5 (High, Default Fallback) | 41.5 | 58,421 | 26,680 | 31,741 | 54% | 7.1 | $1.636 | Claude sub |
 | Claude Haiku 5.5 (Low) | 18.6 | 28,161 | 12,881 | 15,280 | 54% | 6.6 | $0.044 | Claude sub |
 | GPT-6 Luna (High) | 21.4 | 32,839 | 11,221 | 21,618 | 66% | 6.5 | $0.073 | ChatGPT sub |
 | Kimi K3.1 Pro | 46.5 | 72,239 | 28,009 | 44,230 | 61% | 6.4 | $3.681 | Kimi plan |
+| Claude Fable 5.2 (High, Default Fallback) | 61.8 | 97,841 | 39,600 | 58,241 | 60% | 6.3 | $9.078 | Claude sub |
+| Muse Wonder (High) | 40.5 | 67,927 | 29,177 | 38,750 | 57% | 6.0 | $4.561 | Meta API |
 | Muse Wonder Full (Max) | 50.1 | 88,476 | 33,796 | 54,679 | 62% | 5.7 | - | Muse Code plan |
 | Claude Opus 5.5 (Xhigh, Default Fallback) | 57.4 | 103,395 | 39,632 | 63,763 | 62% | 5.6 | $6.047 | Claude sub |
 | GPT-6 Luna (Xhigh) | 23.5 | 43,893 | 13,873 | 30,020 | 68% | 5.4 | $0.104 | ChatGPT sub |
-| Claude Fable 5.1 (Xhigh, Default Fallback) | 50.0 | 97,059 | 41,116 | 55,942 | 58% | 5.2 | $10.848 | Claude sub |
+| Gemini 4 Argon (Medium) | 47.6 | 100,407 | 45,342 | 55,065 | 55% | 4.7 | $4.315 | API only |
 | Claude Haiku 5.5 (Medium) | 24.6 | 53,335 | 21,244 | 32,091 | 60% | 4.6 | $0.092 | Claude sub |
 | Muse Wonder (Max) | 43.6 | 96,063 | 37,479 | 58,584 | 61% | 4.5 | $6.952 | Meta API |
 | GLM-5.3 (Low) | 23.1 | 51,986 | 16,324 | 35,661 | 69% | 4.4 | $1.575 | GLM plan |
-| Gemini 4 Argon (High) | 50.4 | 116,368 | 48,067 | 68,301 | 59% | 4.3 | $7.683 | API only |
-| Claude Fable 5.1 (Max, Default Fallback) | 49.2 | 117,941 | 46,554 | 71,387 | 61% | 4.2 | $12.994 | Claude sub |
+| Gemini 4 Argon (High) | 50.4 | 116,368 | 48,067 | 68,301 | 59% | 4.3 | $4.973 | API only |
 | Claude Sonnet 5.5 (Xhigh, Default Fallback) | 49.9 | 122,205 | 43,206 | 78,999 | 65% | 4.1 | $4.092 | Claude sub |
 | Grok 4.7 (High) | 35.2 | 89,127 | 30,944 | 58,183 | 65% | 3.9 | $6.184 | API only |
+| Claude Fable 5.2 (Xhigh, Default Fallback) | 62.2 | 161,944 | 55,588 | 106,356 | 66% | 3.8 | $14.829 | Claude sub |
+| Claude Opus 5 (Max) | 44.2 | 118,068 | 45,297 | 72,771 | 62% | 3.7 | $11.822 | Claude sub |
 | GPT-6 Luna (Max) | 27.9 | 75,296 | 17,734 | 57,562 | 76% | 3.7 | $0.152 | ChatGPT sub |
 | Gemini 3.8 Flash (Medium) | 30.1 | 82,068 | 34,840 | 47,228 | 58% | 3.7 | $6.259 | API only |
 | Claude Opus 5.5 (Max, Default Fallback) | 59.1 | 173,313 | 52,853 | 120,460 | 70% | 3.4 | $10.036 | Claude sub |
 | Grok 4.7 (Xhigh) | 35.5 | 104,531 | 35,090 | 69,441 | 66% | 3.4 | $7.771 | API only |
 | Claude Haiku 5.5 (High) | 29.9 | 88,064 | 30,535 | 57,529 | 65% | 3.4 | $0.159 | Claude sub |
 | Gemini 3.8 Flash (High) | 30.8 | 98,940 | 38,872 | 60,067 | 61% | 3.1 | $7.766 | API only |
+| DeepSeek V4 Pro 0813 (High) | 20.8 | 70,314 | 25,342 | 44,972 | 64% | 3.0 | $0.849 | API only |
 | GLM-5.3 (Max) | 31.7 | 118,987 | 34,211 | 84,776 | 71% | 2.7 | $5.009 | GLM plan |
 | Claude Haiku 5.5 (Xhigh) | 34.6 | 136,177 | 38,916 | 97,261 | 71% | 2.5 | $0.248 | Claude sub |
+| Claude Fable 5.2 (Max, Default Fallback) | 64.6 | 273,776 | 81,075 | 192,701 | 70% | 2.4 | $26.539 | Claude sub |
 | DeepSeek V4 Pro 0813 (Max) | 23.1 | 98,733 | 38,024 | 60,709 | 61% | 2.3 | $1.769 | API only |
 | Qwen3.8 27B (Non-reasoning) | 10.0 | 44,867 | 44,867 | 0 | 0% | 2.2 | $3.773 | Qwen plan |
 | MiniMax-M3.1-Flash | 29.1 | 138,176 | 35,236 | 102,941 | 74% | 2.1 | $0.491 | API only |
@@ -224,8 +315,10 @@ Sorted by output tokens spent per point of intelligence, cheapest first. On a su
 | Qwen3.8 27B (Medium) | 17.5 | 86,407 | 29,207 | 57,201 | 66% | 2.0 | $2.160 | Qwen plan |
 | Qwen3.8 Max (0902) | 33.7 | 170,794 | 51,096 | 119,698 | 70% | 2.0 | $10.024 | Qwen plan |
 | Qwen3.8 27B (Low) | 15.7 | 80,176 | 29,653 | 50,523 | 63% | 2.0 | $1.906 | Qwen plan |
+| Qwen3.8-Flash-Next | 28.6 | 147,706 | 50,394 | 97,313 | 66% | 1.9 | $0.569 | Qwen plan |
 | Claude Sonnet 5.5 (Max, Default Fallback) | 54.5 | 285,387 | 79,025 | 206,362 | 72% | 1.9 | $10.021 | Claude sub |
 | Qwen3.8 27B (Xhigh) | 20.1 | 109,802 | 37,438 | 72,364 | 66% | 1.8 | $3.530 | Qwen plan |
+| DeepSeek V4 Pro 0813 (Non-reasoning) | 12.6 | 71,588 | 71,588 | 0 | 0% | 1.8 | $0.977 | API only |
 | Claude Haiku 5.5 (Max) | 36.5 | 225,966 | 53,151 | 172,814 | 76% | 1.6 | $0.411 | Claude sub |
 
 ## what a subscription actually buys
@@ -240,10 +333,10 @@ Two assumptions worth knowing. Plans quoted per five-hour window are converted a
 
 | plan | $/mo | meter | tasks/week | plan $/task | same model on API | ratio | confidence |
 |---|---|---|---|---|---|---|---|
-| ChatGPT Plus | $20 | credits-openai | 34 | $0.137 | $3.239 | 24x | meter official; allowance derived, one report contradicts it |
-| ChatGPT Pro 5x | $100 | credits-openai | 170 | $0.137 | $3.239 | 24x | meter official; allowance derived, one report contradicts it |
-| ChatGPT Pro 20x | $200 | credits-openai | 670 | $0.068 | $3.239 | 47x | meter official; allowance derived, one report contradicts it |
-| ChatGPT Business | $25 | credits-openai | 34 | $0.171 | $3.239 | 19x | meter official; allowance assumed equal to Plus, same caveat |
+| ChatGPT Plus | $20 | credits-openai | 53 | $0.086 | $2.074 | 24x | meter official; allowance derived, one report contradicts it |
+| ChatGPT Pro 5x | $100 | credits-openai | 270 | $0.086 | $2.074 | 24x | meter official; allowance derived, one report contradicts it |
+| ChatGPT Pro 20x | $200 | credits-openai | 1,100 | $0.043 | $2.074 | 48x | meter official; allowance derived, one report contradicts it |
+| ChatGPT Business | $25 | credits-openai | 53 | $0.108 | $2.074 | 19x | meter official; allowance assumed equal to Plus, same caveat |
 | Claude Max 5x | $100 | undisclosed | - | - | $3.465 | - | no quota published in any unit; not derivable |
 | Claude Max 20x | $200 | undisclosed | - | - | $3.465 | - | no quota published in any unit; not derivable |
 | GLM Coding Lite | $18 | credits | 3 | $1.313 | $5.009 | 4x | quota official, price secondary |

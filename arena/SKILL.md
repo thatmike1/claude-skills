@@ -30,7 +30,7 @@ Spawn every candidate in one message: one `delegate_task` each, `mode: "async"`,
 
 ## 3. Cross-judge
 
-Once all candidates are back, spawn one read-only judge from a different model family than the candidates, so the judge does not share their blind spots. Under a Claude lead with Claude candidates that is `gpt-6.1-sol` at high effort on the `codex` provider. Its task: the rubric, the ground truth, each candidate by label with its worktree or output path, score every criterion for every candidate with evidence, recommend a base, change nothing. Read the candidates yourself while it runs.
+Once all candidates are back, spawn one read-only judge from a different model family than the candidates, so the judge does not share their blind spots. Under a Claude lead with Claude candidates that is `gpt-6.2-sol` at high effort on the `codex` provider. Its task: the rubric, the ground truth, each candidate by label with its worktree or output path, score every criterion for every candidate with evidence, recommend a base, change nothing. Read the candidates yourself while it runs.
 
 When no other family is reachable, the judge is a fresh-context model of the same family, or there is none and the pick is yours alone. The synthesis note says which.
 

@@ -9,7 +9,7 @@ to spend a quota, launch an unattended run or override a model choice.
 | Work | Seat and effort |
 |---|---|
 | Code and design, including scoped implementation | Opus 5.5 medium; high for harder work |
-| Defined tasks, research, browser use, review of Claude code | GPT-6.1 Sol high; medium for browser and computer use |
+| Defined tasks, research, browser use, review of Claude code | GPT-6.2 Sol high; medium for browser and computer use |
 | Bulk under a Codex lead | GPT-6.1 Terra: low for reads, medium for clearly specified small changes; lead reviews changes |
 | Bulk under a Claude lead | Haiku 5.5 medium; high or xhigh for harder reads; keep tickets short |
 | Research and reading sweeps under a Claude lead | Sonnet 5.5 high |
