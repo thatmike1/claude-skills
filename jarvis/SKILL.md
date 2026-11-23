@@ -61,7 +61,8 @@ goes to the `thread-explainer` skill instead.
 
 ## Where do I start
 
-One pick and a reason, not a list. A thread waiting on his decision beats one
+Run the settle-sweep script first so you see every open thread, then give
+one pick and a reason, not a list. A thread waiting on his decision beats one
 mid-run, nearly finished beats fresh, today's named priority beats both. If he gives
 the 5h block state, size the pick to it.
 
