@@ -11,5 +11,6 @@ Skills that are no longer worth installing by default. Nothing here is deleted: 
 | panels, detective, punchy | rotating response styles for ADHD reading; the novelty was the point, and it wore off |
 | design-styles | a merge of six earlier frontend skills; replaced on 9 Oct 2026 by Anthropic's own `frontend-design` (anthropics/skills), with `impeccable` as the heavy option |
 | readout | session docs written as MDX, compiled to a themed page and published to a self-hosted PocketBase with anchored comments; retired 27 Oct 2026 with its server, since a local HTML page covers the same need without the hosting. `server/setup.md` still documents running your own instance |
+| warden, jarvis-sidekick | the all-day accountability loop and the thread-about-threads sidekick; both replaced on 26 Nov 2026 by the new `jarvis`, a helper that does blocks with you instead of watching for drift. Warden felt like an authority, and most of the sidekick's rules had moved into shared agent rules |
 
 `shared/` here is a symlink to the repo's `shared/`, so scripts in these skills keep their `../../shared` imports working when the skill is symlinked into `~/.claude/skills`.

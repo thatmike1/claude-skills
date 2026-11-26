@@ -17,10 +17,9 @@ cc-audit/                 — audit CC setup and usage patterns, flag anti-patte
 live-prompt/              — write handoff prompts for attended fresh-instance sessions (collaborative / off-the-leash)
 afk-prompt/               — write autonomous-run prompts + pick tasks safe to run unattended
 peek/                     — read another running CC session's transcript from disk (live roster via /proc + session-env, incremental --since cursor)
-jarvis/                   — the thread you talk to about all the others: dispatch, digests, explaining results; built on peek and T3
+jarvis/                   — day helper in one pinned T3 thread: spoken morning start, blocks done together step by step, watcher events; CLI and watcher live in ccChat-general/projects/jarvis
 settle-sweep/             — one line per open T3 thread: settle / needs you / running (reads T3's sqlite, agent judges)
 thread-explainer/         — one page of every open T3 thread sorted by what each wants (gather from T3's sqlite, agent judges, build the page)
-warden/                   — all-day accountability loop: plan interview, then /loop ticks over ActivityWatch + peek, desktop nudge on drift
 gpt-pro/                  — hand-carried ChatGPT Pro runs: prompt + packed context to the clipboard, answer back from it, run folders per project
 arena/                    — same prompt to N T3 child candidates, rubric written before they run, pick a base, graft the rest; ported from cursor/plugins pstack, MIT
 shared/                   — Claude Code + Codex JSONL discovery, parsing, search; imported by morning, evening, scan, peek, cc-audit, ai-cv-scanner

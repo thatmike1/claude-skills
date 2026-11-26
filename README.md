@@ -24,10 +24,9 @@ A collection of custom skills for [Claude Code](https://docs.anthropic.com/en/do
 | [evening](#morning--evening) | End-of-day receipts: what actually got done today | `/evening` |
 | [scan](#scan) | Ask any question about your past Claude Code conversations | `/scan` |
 | ⭐ [peek](#peek--jarvis) | Read another running session's transcript from disk, zero footprint | `/peek live`, `/peek <id> --last 6` |
-| ⭐ [jarvis](#peek--jarvis) | Ask one session about all your others: what is open, what to touch next | `/jarvis` |
+| ⭐ [jarvis](#peek--jarvis) | A day helper in one pinned thread: plans the morning out loud, does each block with you step by step, speaks first only at a few named moments | `/jarvis` |
 | [settle-sweep](#peek--jarvis) | One line per open T3 thread: settle it, it needs you, or still running | `/settle-sweep` |
 | [thread-explainer](#peek--jarvis) | One page of every open T3 thread, sorted by what each wants from you | `/thread-explainer` |
-| [warden](#warden) | All-day accountability loop: plan interview, then nudge on drift | `/warden` |
 | [attention-queue](attention-queue/SKILL.md) | The day as a queue of one-thing blocks: what Mike is on now, add a block, attach a link, via the `aq` command | "what is Mike on", `aq now` |
 | **Delegate** | | |
 | ⭐ [orchestrate](#orchestrate) | Frontier lead plans, routes, verifies; cheaper Claude/Codex workers execute | `/orchestrate` |
@@ -60,7 +59,7 @@ See [`deprecated/README.md`](deprecated/README.md). The installer lists them und
 
 Every Claude Code session writes its transcript to disk as it goes, and reading that file is invisible to the session that owns it. **peek** is the tool: `peek live` lists the sessions running right now (project, quiet-for, session id, last exchange), `peek <id> --last 6` reads one, and every render ends with a `--since N` cursor so you can follow a session incrementally. Peek before you `SendMessage` another session and you skip the ask-then-instruct round trip; run a coach session that peeks a driver session and the driver's transcript stays clean.
 
-**jarvis** is the skill built on it: a T3 Code thread you talk to *about* the others. "Where do I start", "what is this thread on about", "tell thread X to do Y", "fire an agent on Z". It hands out work as delegated tasks, hears back when they finish, and turns "here is the PR" into what changed, whether it works and what you decide. It needs T3 Code with Orchestrator V2 and peek. `live` is Linux-only (it reads `/proc`).
+**jarvis** is a day helper that lives in one pinned T3 Code thread. Blocks rarely stall on forgetting; they stall on a snag at the first step with nobody there to clear it, so Jarvis does each block with you: it cuts it into steps, opens the page, puts the file on your clipboard, rechecks prepared text, and hands work to other threads itself. Each morning it proposes the day out loud and you correct it. A small watcher wakes it at a few named moments (you sat back down, a handed step went quiet, a fixed time is near), and only then does it put one line in big type on screen and read it aloud. It replaces the earlier sidekick Jarvis and Warden, both kept in `deprecated/`. It is tied to this setup: the attention queue, a local Kokoro voice, a GTK overlay and a Firefox tab bridge.
 
 **thread-explainer** is the one-shot version for when you never opened a Jarvis: it reads every open T3 thread from T3's own database (read-only), the agent judges what each wants from you, and you get one local page of colour-blocked lanes (answer it, look then answer, your move, look at it, running, nothing to do), numbered by sidebar position. A thread you have dealt with hides from its menu until it moves again. Needs T3 Code with Orchestrator V2 and Node 22.
 
@@ -81,12 +80,6 @@ Bookends for the workday.
 
 - **morning** plans the day forward: aggregates yesterday's Claude Code conversations, Codex sessions, git history, and memory files into a plan with checkboxes, time estimates, and sequencing. Repo mode (deep single-project) or global mode (cross-project). Flexible ranges — yesterday, 3 days, week.
 - **evening** proves the day backward: today's sessions, commits, and issue-tracker activity as an honest accomplishment log. Built for the "I did nothing today" feeling — it shows the receipts.
-</details>
-
-<details>
-<summary><b>warden</b></summary>
-
-A standing session that holds you to the day. It interviews you into a short checklist with time anchors, then runs the `loop` skill self-paced: every tick it reads ActivityWatch (window focus and afk state) plus `peek live`, decides on-plan / break / drift, and on drift fires a desktop notification naming the single next physical action. Declared breaks are part of the plan and are never nudged. Needs ActivityWatch running locally and `peek` installed; `config.json` carries the machine's sound target for setups where the default sink is inaudible.
 </details>
 
 <details>

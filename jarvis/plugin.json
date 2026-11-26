@@ -1,6 +1,6 @@
 {
     "name": "jarvis",
-    "version": "3.1.0",
-    "description": "The thread you talk to about all your other threads: hands out work, hears back when results come in, translates what you cannot eyeball. Built on peek and T3 Code.",
+    "version": "4.0.0",
+    "description": "A day helper in one pinned thread: plans the morning out loud, does each block with you step by step, and speaks first only at a few named moments. Built on T3 Code.",
     "skills": "."
 }
