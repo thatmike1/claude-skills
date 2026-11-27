@@ -35,17 +35,22 @@ Never show or mention how long an item has sat in the dump: he expects an age on
 
 The page also shows today's day plan from the Everything app (`Days/<date>`) with a "Dump it" per line; lines he sends over carry `fromPlan`. `aq dump "title" [--description d]` puts something on the shelf for him. `aq undump <id>` sends a block back.
 
-**Waiting on someone.** `aq wait <id> <who>` parks a block as blocked on that person; the page lists those apart from his own parked blocks, and marks one "moved" when its tied bead gets a newer comment than the wait. `aq wait <id> --clear` makes it his again; queuing it clears the wait.
+**Beside him: the second lane.** Work that goes on without his attention sits in a lane at the foot of the block card, off his clock, so he can start the next block. Two kinds:
+
+- `aq beside <id> "Opus thread"` when a block's work now runs on its own: you launched a thread or a render for it and he moves on. Without an id it takes the block he is on. Link the thread on the block (`aq link`), and `aq finish <id>` when the run is done and reviewed; `aq beside <id> --clear` makes it his own parked block again. A block whose agent finished but still needs his review goes back to him with `aq unpark <id> --at 1`.
+- `aq wait <id> <who>` parks a block as blocked on that person; the lane marks one "moved" when its tied bead gets a newer comment than the wait. `aq wait <id> --clear` makes it his again; queuing it clears the wait.
+
+`aq now` lists the lane as `beside`; `aq list` shows `runsBeside` or `waitingOn` on parked blocks. Like waiting blocks, a lane block finishes itself once all its tied beads close.
 
 ## Read
 
 ```
 aq now        # mode (block, break, idle, empty), the block he is on with spentMin, plannedMin, untilAbout, and the next one
-aq list       # the whole day: upcoming with estimated times and positions, dumped, parked (waitingOn when blocked), finished
+aq list       # the whole day: upcoming with estimated times and positions, dumped, parked (waitingOn, runsBeside), finished
 aq log        # every change with time and who made it; aq report gives planned against real minutes per block
 ```
 
-Every command prints JSON. `aq help` lists all of them. Ids are short slugs from the titles, shown by `aq list`.
+Every command prints JSON. `aq help` lists all of them. Ids are short slugs from the titles, shown by `aq list`. The same actions answer over MCP at http://127.0.0.1:1365/mcp (tools `queue_now`, `queue_dump`, `queue_start` and so on; `/setup` has the lines); in a shell, `aq` is the way in.
 
 A `stale` field means the queue is still on an earlier day. Run `aq carry`: it archives that day and starts today with every block not done or dropped, in order, kits intact, clocks clean. Then tell him what came along.
 
