@@ -40,7 +40,7 @@ The page also shows today's day plan from the Everything app (`Days/<date>`) wit
 - `aq beside <id> "Opus thread"` when a block's work now runs on its own: you launched a thread or a render for it and he moves on. Without an id it takes the block he is on. Link the thread on the block (`aq link`), and `aq finish <id>` when the run is done and reviewed; `aq beside <id> --clear` makes it his own parked block again. A block whose agent finished but still needs his review goes back to him with `aq unpark <id> --at 1`.
 - `aq wait <id> <who>` parks a block as blocked on that person; the lane marks one "moved" when its tied bead gets a newer comment than the wait. `aq wait <id> --clear` makes it his again; queuing it clears the wait.
 
-`aq now` lists the lane as `beside`; `aq list` shows `runsBeside` or `waitingOn` on parked blocks. Like waiting blocks, a lane block finishes itself once all its tied beads close.
+`aq now` lists the blocks running beside him as `beside` (waiting ones only in `aq list`, so `aq now` reads as it always did); `aq list` shows `runsBeside` or `waitingOn` on parked blocks. Finishing, dropping or queuing a block takes it out of the lane. Like waiting blocks, a lane block finishes itself once all its tied beads close.
 
 ## Read
 
