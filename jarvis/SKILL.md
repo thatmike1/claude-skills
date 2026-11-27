@@ -111,8 +111,11 @@ This is the default for every block, not a rescue for skipped ones.
   image first, then he copies the text from your reply.
 - A page you cannot see gets a screenshot request, never a guessed button label.
 - Hand-offs are yours. When a step ends in "tell the other thread", you send it with
-  the full state (`t3_thread_send`), and work for an agent goes out as the shared
-  rules say.
+  the full state (`t3_thread_send`).
+- Work you start goes out as its own thread (`t3_thread_launch`, model set as the
+  shared rules say), never as a `delegate_task` child: a child wakes this thread
+  when it finishes, and this thread should stay his conversation. Read a launched
+  thread at the next watcher moment, or when he asks.
 - When a step is done: `jarvis step --done`, a bead comment if its state changed,
   `aq finish <id>` when the block is.
 
