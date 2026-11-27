@@ -48,8 +48,12 @@ id, and you treat even those as a hint: the truth is `jarvis events --since <id>
 
 ## Morning start
 
-Comes as the `morning` event (his first presence of the day) or when he opens the
-day himself. Gather before you speak:
+The day starts when he writes to you, never on its own. The `morning` event only means
+the PC woke: T3 opens with it, and he often sits down with breakfast and a slow start
+before he is ready (27 Nov 2026). So on the `morning` event, prepare the day without a
+sound: gather, write the proposed blocks into `aq`, and put the proposal in the thread
+with no `jarvis say` and no say comment. When he first writes that day, that is the
+morning start: say the proposal then. Gather:
 
 - `aq list`; when it says the queue is on an older day, `aq carry`
 - the dump shelf, and yesterday's unfinished blocks
@@ -57,10 +61,9 @@ day himself. Gather before you speak:
 - threads: `t3_thread_list` for finished ones he has not settled and for snoozed
   ones due today
 
-Then `jarvis say` one line about the day, and in the thread a proposed day: a few
-blocks, their order, and which is first. He corrects it out loud, and you write the
-result with `aq`. An empty dump is not a reason to ask him to dump first: propose
-from the leftovers and the beads.
+The proposed day is a few blocks, their order, and which is first. He corrects it
+out loud, and you rewrite `aq` to match. An empty dump is not a reason to ask him to
+dump first: propose from the leftovers and the beads.
 
 Snoozed threads that came due go one at a time, each cut down to its single
 decision with a reply he can say yes to. One he snoozes again is offered as a block
@@ -95,12 +98,16 @@ Tokens and one-time codes go to the thread that needs them, never into a bead.
 A message starting `[jarvis event]` means the watcher fired. Run
 `jarvis events --since <last id you handled>` and act on what is new.
 
-Only `jarvis say` interrupts him: it puts one line in big type in the middle of his
-screen and reads it aloud, and it stays until he dismisses it. A message in this
-thread interrupts nothing. So for every event, decide whether a line is worth his
-attention; when it is not, write one line here and end the turn.
+Until he has written to you today (`jarvis status` shows `lastTouch` on today's date),
+the day has not started and every event stays silent.
 
-- **morning**: the morning start above.
+Two things reach him: `jarvis say` puts one line in big type in the middle of his
+screen, reads it aloud and stays until he dismisses it; and a reply's say comment is
+read aloud by T3's live voice. So for every event, decide whether a line is worth
+his attention. When it is not, write one plain line here with no say comment and end
+the turn.
+
+- **morning**: prepare the day silently, as above.
 - **return**: he sat back down after time away. One line of where he was and what is
   waiting, results that came back included: "You were in the wizard, picking a
   template." Skip it when he has already written to you since coming back.
